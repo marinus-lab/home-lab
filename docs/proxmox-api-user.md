@@ -39,11 +39,12 @@ root/
 ├── create_proxmox_user.yml         # Playbook principale
 ├── group_vars/
 │   └── all.yml                     # Variabili (credeziali) da cifrare con Vault
-└── PROXMOX_API_USER_DOC.md        # Questa documentazione
+└── docs/
+    └── proxmox-api-user.md         # Questa documentazione
 ```
 
 * `requirements.yml` – definisce le collection necessarie.
-* `create_proxmox_user.yml` – contiene tutti i task per creare l’utente, assegnare i permessi e generare il token.
+* `create_proxmox_user.yml` – contiene tutti i task per creare l'utente, assegnare i permessi e generare il token.
 * `group_vars/all.yml` – file dove inserire le password in **Ansible Vault** (vedere sotto).
 
 ---
@@ -118,8 +119,8 @@ root/
 ### Cosa fa il playbook
 | Task | Scopo |
 |------|-------|
-| **Create (or ensure) the API user** | Usa il modulo `proxmox_user` per creare (o verificare) l’utente `automation@pve`. |
-| **Assign role to the user** | Con una chiamata `uri` all’endpoint `/access/acl` assegna il ruolo (`PVEAdmin` di default) al percorso `/`. |
+| **Create (or ensure) the API user** | Usa il modulo `proxmox_user` per creare (o verificare) l'utente `automation@pve`. |
+| **Assign role to the user** | Con una chiamata `uri` all'endpoint `/access/acl` assegna il ruolo (`PVEAdmin` di default) al percorso `/`. |
 | **Create an API token for the user** | Genera un token permanente (`ansible`) che può essere usato nei successivi playbook. |
 | **Show token** | Restituisce il valore del token (una tantum). Il valore deve essere salvato in un vault; non sarà più recuperabile via API. |
 
@@ -132,7 +133,7 @@ Le password non devono mai essere in chiaro nel repository. Usa **Ansible Vault*
 ansible-vault encrypt_string --name 'vault_proxmox_root_pw' 'LaTuaPasswordRoot'
 ansible-vault encrypt_string --name 'vault_automation_user_pw' 'PasswordUtenteAPI'
 ```
-Copia l’output (che include il blocco `!vault |`) dentro `group_vars/all.yml`.
+Copia l'output (che include il blocco `!vault |`) dentro `group_vars/all.yml`.
 
 Per eseguire il playbook con il vault:
 ```bash
@@ -150,7 +151,7 @@ ansible-playbook create_proxmox_user.yml --vault-password-file ~/.vault_pass.txt
 # 1. Export del nome host Proxmox (es. proxmox.local)
 export PROXMOX_HOST=proxmox.mio.lan
 
-# 2. Installa la collection (se non l’hai già fatto)
+# 2. Installa la collection (se non l'hai già fatto)
 ansible-galaxy install -r requirements.yml
 
 # 3. Esegui il playbook
@@ -193,8 +194,8 @@ Imposta `vault_api_token_value` nello stesso `group_vars/all.yml` (cifrato) e in
 ## 7️⃣ Suggerimenti di sicurezza <a name="suggerimenti-di-sicurezza"></a>
 * **TLS** – cambia `api_validate_certs: false` in `true` appena disponi di un certificato valido.
 * **Ruolo minimo** – invece di `PVEAdmin`, crea un ruolo custom con solo i privilegi necessari (`VM.Allocate`, `VM.PowerMgmt`, `Datastore.Allocate` ecc.).
-* **Rotazione token** – pianifica una rotazione periodica (es. ogni 30 gg) usando un job di Ansible o AWX.
-* **Limitazione IP** – se possibile, aggiungi una regola firewall sul nodo Proxmox per consentire le chiamate API solo dall’indirizzo IP del tuo server CI.
+* **Rotazione token** – pianifica una rotazione periodica (es. ogni 30 gg) usando un job di Ansible o AWX.
+* **Limitazione IP** – se possibile, aggiungi una regola firewall sul nodo Proxmox per consentire le chiamate API solo dall'indirizzo IP del tuo server CI.
 * **Audit** – i token sono tracciabili nei log di Proxmox (`/var/log/pveproxy/access.log`). Controlla i log dopo la creazione.
 
 ---

@@ -106,7 +106,7 @@ Vedi [docs/init-project.md](docs/init-project.md) per dettagli.
 | [docs/packer-ubuntu-base.md](docs/packer-ubuntu-base.md) | Template Packer: autoinstall Ubuntu, boot_command, cleanup |
 | [docs/terraform-k8s-cluster.md](docs/terraform-k8s-cluster.md) | Terraform: provider, moduli, cloud-init, scalabilità |
 | [docs/kubespray-deploy.md](docs/kubespray-deploy.md) | Kubespray: group_vars, Calico, gestione nodi |
-| [PROXMOX_API_USER_DOC.md](PROXMOX_API_USER_DOC.md) | Utente API Proxmox: Vault, permessi, token |
+| [docs/proxmox-api-user.md](docs/proxmox-api-user.md) | Utente API Proxmox: Vault, permessi, token |
 
 ## Configurazione cluster
 
