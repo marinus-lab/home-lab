@@ -57,10 +57,15 @@ UBUNTU_PASSWORD_HASH=$(openssl passwd -6 "${UBUNTU_PASSWORD}")
 ROCKY_PASSWORD_HASH=$(openssl passwd -6 "${ROCKY_PASSWORD}")
 ROOT_PASSWORD_HASH=$(openssl passwd -6 "${ROOT_PASSWORD}")
 
-# ── Variabili obbligatorie via env ────────────────────────────────────────────
-: "${PROXMOX_URL:?Imposta la variabile PROXMOX_URL}"
-: "${PROXMOX_TOKEN_ID:?Imposta la variabile PROXMOX_TOKEN_ID}"
-: "${PROXMOX_TOKEN_SECRET:?Imposta la variabile PROXMOX_TOKEN_SECRET}"
+# ── Verifica file di configurazione Packer ────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PKRVARS_FILE="$SCRIPT_DIR/packer.pkrvars.hcl"
+
+if [ ! -f "$PKRVARS_FILE" ]; then
+  error "File $PKRVARS_FILE non trovato. Esegui prima 'bash init-project.sh' dalla root del progetto"
+fi
+
+ok "Configurazione Packer trovata: $PKRVARS_FILE"
 
 # ── Build per ogni distribuzione ──────────────────────────────────────────────
 mkdir -p http
@@ -84,8 +89,8 @@ for dist in "${DISTRIBUTIONS[@]}"; do
       # Inizializza plugin Packer
       packer init "${dist}.pkr.hcl"
 
-      # Build
-      packer build ${PACKER_ARGS:-} "${dist}.pkr.hcl"
+      # Build con var-file
+      packer build -var-file="$PKRVARS_FILE" ${PACKER_ARGS:-} "${dist}.pkr.hcl"
       ;;
 
     rocky-9)
@@ -100,8 +105,8 @@ for dist in "${DISTRIBUTIONS[@]}"; do
       # Inizializza plugin Packer
       packer init rocky-9.pkr.hcl
 
-      # Build
-      packer build ${PACKER_ARGS:-} rocky-9.pkr.hcl
+      # Build con var-file
+      packer build -var-file="$PKRVARS_FILE" ${PACKER_ARGS:-} rocky-9.pkr.hcl
       ;;
   esac
 
