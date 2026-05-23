@@ -43,11 +43,26 @@ echo ""
 read -rp "Nome utente automation (default: automation): " API_USERNAME
 API_USERNAME="${API_USERNAME:-automation}"
 
-read -rsp "Password per utente $API_USERNAME: " API_PASSWORD
-echo ""
-[ -n "$API_PASSWORD" ] || error "Password richiesta"
+# Leggi password API finché non è valida (min 8 caratteri)
+while true; do
+  read -rsp "Password per utente $API_USERNAME (min 8 caratteri): " API_PASSWORD
+  echo ""
 
-# Vault
+  if [ -z "$API_PASSWORD" ]; then
+    warn "Password richiesta"
+    continue
+  fi
+
+  if [ ${#API_PASSWORD} -lt 8 ]; then
+    warn "Password troppo corta (${#API_PASSWORD} caratteri) — richiesti almeno 8 caratteri"
+    continue
+  fi
+
+  ok "Password accettata (${#API_PASSWORD} caratteri)"
+  break
+done
+
+# Vault (nessun vincolo di lunghezza)
 read -rsp "Password per il Vault (proteggere bene!): " VAULT_PASSWORD
 echo ""
 [ -n "$VAULT_PASSWORD" ] || error "Password Vault richiesta"
