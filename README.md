@@ -32,14 +32,24 @@ Bastion ──SSH──▶ nodi K8s  (Kubespray installa il cluster)
 
 ```
 home-lab/
-├── setup-bastion.sh            # Installa il tooling sul bastion
-├── create_proxmox_user.yml     # Crea l'utente API Proxmox (Ansible)
+├── init-project.sh             # Setup iniziale (crea credenziali + token)
+├── verify-init.sh              # Verifica configurazione
+├── setup-bastion.sh            # Installa tooling sul bastion
 ├── packer/                     # Build template Ubuntu 22.04
+│   └── packer.pkrvars.hcl*     # Credenziali Packer (*in .gitignore)
 ├── terraform/                  # Provisioning VM cluster K8s
+│   ├── terraform.tfvars        # Configurazione cluster (tracciato)
+│   ├── terraform.auto.tfvars*  # Credenziali Proxmox (*in .gitignore, auto-generato)
+│   └── terraform.auto.tfvars.example  # Template credenziali
 ├── kubespray/                  # Deploy Kubernetes
 ├── ansible/playbooks/          # Configurazione base VM
 └── docs/                       # Documentazione dettagliata
 ```
+
+**Note su credenziali e Git:**
+- ✅ File tracciati: `terraform.tfvars`, `group_vars/all.yml` (Vault cifrato), documentazione
+- ❌ File ignorati: `*.auto.tfvars`, `packer.pkrvars.hcl` (contengono token)
+- 🔐 File `.example`: template per referenza e setup manuale
 
 ## Quick start
 
@@ -47,33 +57,40 @@ home-lab/
 # 1. Bastion — installa tutto il tooling
 bash setup-bastion.sh
 
-# 2. Proxmox — crea utente e token API
-ansible-playbook create_proxmox_user.yml --ask-vault-pass \
-  -e "proxmox_host=<IP_PROXMOX>"
+# 2. Inizializzazione — crea credenziali Proxmox e file di config
+bash init-project.sh
+# Domande: IP Proxmox, password root, nome automation user, password API, password Vault
 
-# 3. Packer — build template VM
-cd packer
-cp packer.pkrvars.hcl.example packer.pkrvars.hcl  # compila con le tue credenziali
-PACKER_ARGS="-var-file=packer.pkrvars.hcl" ./build.sh
+# 3. Verifica
+bash verify-init.sh
+# Controlla: file di config, vault, connessione API Proxmox, token
 
-# 4. Terraform — crea le VM
-cd ../terraform
-cp terraform.tfvars.example terraform.tfvars       # compila con le tue credenziali
-terraform init && terraform apply
+# 4. (Opzionale) Personalizza topologia cluster
+vim terraform/terraform.tfvars  # modifica control_plane_count, worker_count, risorse
 
-# 5. Kubespray — installa Kubernetes
-cd ../kubespray
-cp ../terraform/generated/kubespray-inventory.ini inventory/homelab/hosts.ini
-./deploy.sh
+# 5. Packer — build template VM
+cd packer && ./build.sh
 
-# 6. Verifica
+# 6. Terraform — crea le VM
+cd ../terraform && terraform apply
+
+# 7. Kubespray — installa Kubernetes
+cd ../kubespray && ./deploy.sh
+
+# 8. Verifica
 kubectl get nodes
+kubectl get svc -A  # verifica MetalLB
 ```
+
+**Nota:** `init-project.sh` automatizza la creazione di credenziali e token API. 
+Vedi [docs/init-project.md](docs/init-project.md) per dettagli.
 
 ## Documentazione
 
 | Documento | Contenuto |
 |-----------|-----------|
+| [docs/init-project.md](docs/init-project.md) | Setup iniziale: Proxmox user/token, Vault, credenziali |
+| [docs/cluster-configuration.md](docs/cluster-configuration.md) | Topologia cluster: 3 master + 3 worker, MetalLB, Dashboard |
 | [docs/end-to-end.md](docs/end-to-end.md) | Guida completa: architettura, fasi, cheatsheet operativo |
 | [docs/packer-ubuntu-base.md](docs/packer-ubuntu-base.md) | Template Packer: autoinstall Ubuntu, boot_command, cleanup |
 | [docs/terraform-k8s-cluster.md](docs/terraform-k8s-cluster.md) | Terraform: provider, moduli, cloud-init, scalabilità |

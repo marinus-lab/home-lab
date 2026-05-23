@@ -135,7 +135,7 @@ Dopo aver inserito tutti gli input, lo script:
    ↓
 4. Genera packer/packer.pkrvars.hcl con placeholder token
    ↓
-5. Genera terraform/terraform.tfvars con placeholder token
+5. Genera terraform/terraform.auto.tfvars con placeholder token (credenziali)
    ↓
 6. Ottiene ticket di sessione Proxmox (API ticket-based auth)
    ↓
@@ -151,7 +151,7 @@ Dopo aver inserito tutti gli input, lo script:
    ↓
 10. Aggiorna packer/packer.pkrvars.hcl con token vero
     ↓
-11. Aggiorna terraform/terraform.tfvars con token vero
+11. Aggiorna terraform/terraform.auto.tfvars con token vero
     ↓
 12. Mostra riepilogo con i prossimi passi
 ```
@@ -162,11 +162,13 @@ Dopo aver inserito tutti gli input, lo script:
 
 ### File creati/modificati
 
-| File | Contenuto | Gitignore? |
+| File | Contenuto | Tracciato? |
 |------|-----------|-----------|
-| `group_vars/all.yml` | Credenziali cifrate con Vault | ❌ Tracciato |
-| `packer/packer.pkrvars.hcl` | Token API e IP Proxmox | ✅ Ignorato |
-| `terraform/terraform.tfvars` | Token API e parametri cluster | ✅ Ignorato |
+| `group_vars/all.yml` | Credenziali Proxmox cifrate con Vault | ✅ Sì |
+| `packer/packer.pkrvars.hcl` | Token Packer + IP Proxmox | ❌ .gitignore |
+| `terraform/terraform.tfvars` | Topologia cluster (3M+3W, risorse) | ✅ Sì |
+| `terraform/terraform.auto.tfvars` | Credenziali Proxmox (token) | ❌ .gitignore |
+| `terraform/terraform.auto.tfvars.example` | Template credenziali | ✅ Sì |
 | `~/.vault_pass` | Password Vault (sul bastion) | — |
 
 ### Console output
@@ -179,9 +181,10 @@ Lo script mostra un riepilogo finale:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 File creati/aggiornati:
-  • group_vars/all.yml                    (credenziali cifrate)
-  • packer/packer.pkrvars.hcl             (configurazione Packer)
-  • terraform/terraform.tfvars            (configurazione Terraform)
+  • group_vars/all.yml                    (credenziali Proxmox cifrate)
+  • packer/packer.pkrvars.hcl             (token Packer - privato)
+  • terraform/terraform.auto.tfvars       (credenziali Terraform - privato)
+  • terraform/terraform.tfvars            (configurazione cluster - pubblico)
 
 Credenziali Vault salvate in:
   • /root/.vault_pass                   (proteggere!)
@@ -250,6 +253,32 @@ Se esegui lo script di nuovo:
 - ✅ Token esiste? → Lo elimina e ricrea con nuovo secret
 - ✅ File di config esistono? → Sovrascritti con nuovi valori
 - ✅ Vault già creato? → Mantiene gli stessi dati
+
+### Terraform: separazione credenziali e configurazione
+
+Per motivi di sicurezza e condivisione del codice, i file Terraform sono separati:
+
+**`terraform/terraform.tfvars`** (pubblico - tracciato in git)
+```hcl
+# Configurazione cluster
+control_plane_count = 3
+worker_count        = 3
+master_memory       = 16384
+# ... configurazione personalizzabile e versionata
+```
+
+**`terraform/terraform.auto.tfvars`** (privato - in .gitignore)
+```hcl
+# Credenziali Proxmox (generate da init-project.sh)
+proxmox_url          = "..."
+proxmox_token_id     = "..."
+proxmox_token_secret = "..."
+```
+
+Terraform carica automaticamente i file `*.auto.tfvars` dopo `*.tfvars`, quindi:
+- ✅ Configurazione cluster è versionata e condivisibile
+- ✅ Credenziali rimangono private (mai in git)
+- ✅ Team members usano lo stesso `terraform.tfvars` con loro credenziali
 
 ---
 
