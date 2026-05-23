@@ -1,10 +1,10 @@
 ---
-- name: "Provision Proxmox API user"
+- name: Provision Proxmox API user
   hosts: 127.0.0.1
   connection: local
   gather_facts: false
   vars:
-    proxmox_host: "{{ lookup('env', 'PROXMOX_HOST') | default('') }}"
+    proxmox_host: "{{ lookup('env', 'PROXMOX_HOST') }}"
     proxmox_user: "root@pam"
     proxmox_password: "{{ vault_proxmox_root_pw }}"
     api_username: "{{ api_username | default('automation') }}"
@@ -15,13 +15,13 @@
     api_token_id: "packer"
 
   pre_tasks:
-    - name: "Validate Proxmox host is set"
+    - name: Validate Proxmox host
       fail:
-        msg: "proxmox_host not set. Use -e 'proxmox_host=<IP>'"
+        msg: "proxmox_host not set"
       when: proxmox_host == ''
 
   tasks:
-    - name: "Create (or ensure) the API user via REST API"
+    - name: Create API user
       uri:
         url: "https://{{ proxmox_host }}:8006/api2/json/access/users"
         method: POST
@@ -33,17 +33,13 @@
         body:
           userid: "{{ api_username }}@{{ api_realm }}"
           password: "{{ api_password }}"
-          comment: "Automation user for Ansible VM provisioning"
+          comment: "Automation user"
       register: user_result
       failed_when:
         - user_result.status not in [200, 400]
       changed_when: user_result.status == 200
 
-    - name: "Display user creation result"
-      debug:
-        msg: "User {{ api_username }}@{{ api_realm }} {{ 'created' if user_result.status == 200 else 'already exists' }}"
-
-    - name: "Assign role to the user"
+    - name: Assign role to user
       uri:
         url: "https://{{ proxmox_host }}:8006/api2/json/access/acl"
         method: PUT
@@ -57,9 +53,10 @@
           roles: "{{ api_role }}"
           users: "{{ api_username }}@{{ api_realm }}"
       register: acl_result
-      changed_when: "'200' in acl_result.status"
+      failed_when:
+        - acl_result.status not in [200, 400]
 
-    - name: "Create an API token for the user"
+    - name: Create API token
       uri:
         url: "https://{{ proxmox_host }}:8006/api2/json/access/users/{{ api_username }}@{{ api_realm }}/token/{{ api_token_id }}"
         method: POST
@@ -69,18 +66,12 @@
         validate_certs: false
         body_format: form-urlencoded
         body:
-          comment: "Ansible-generated token for {{ api_token_id }}"
+          comment: "Token for {{ api_token_id }}"
       register: token_result
-      changed_when: "'200' in token_result.status"
       failed_when:
         - token_result.status not in [200, 400]
 
-    - name: "Display token (store securely)"
+    - name: Display token
       debug:
-        msg: "✅ Token created: {{ api_username }}@{{ api_realm }}!{{ api_token_id }}={{ token_result.json.data.value }}"
+        msg: "Token: {{ api_username }}@{{ api_realm }}!{{ api_token_id }}={{ token_result.json.data.value }}"
       when: token_result.status == 200
-
-    - name: "Display if token already exists"
-      debug:
-        msg: "ℹ️ Token {{ api_token_id }} already exists for user {{ api_username }}@{{ api_realm }}"
-      when: token_result.status == 400
