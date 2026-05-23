@@ -79,18 +79,18 @@ echo ""
 echo "🔌 CONNESSIONE PROXMOX"
 echo "───────────────────────────────────────────────────────────────────────────"
 
-# Estrai i dati dai file .tfvars
-PROXMOX_URL=$(grep "proxmox_url" "$SCRIPT_DIR/terraform/terraform.tfvars" | grep -oP '(?<="https://)[^:]+')
-PROXMOX_TOKEN_ID=$(grep "proxmox_token_id" "$SCRIPT_DIR/terraform/terraform.tfvars" | grep -oP '(?<=")\K[^"]+')
-PROXMOX_TOKEN_SECRET=$(grep "proxmox_token_secret" "$SCRIPT_DIR/terraform/terraform.tfvars" | grep -oP '(?<=")\K[^"]+')
+# Estrai credenziali da terraform.auto.tfvars (file privato con credenziali)
+PROXMOX_URL=$(grep "proxmox_url" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" 2>/dev/null | grep -oP '(?<="https://)[^:]+')
+PROXMOX_TOKEN_ID=$(grep "proxmox_token_id" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" 2>/dev/null | grep -oP '(?<=")\K[^"]+')
+PROXMOX_TOKEN_SECRET=$(grep "proxmox_token_secret" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" 2>/dev/null | grep -oP '(?<=")\K[^"]+')
 
-[ -n "$PROXMOX_URL" ] || fail "URL Proxmox non trovato in terraform.tfvars"
+[ -n "$PROXMOX_URL" ] || fail "terraform.auto.tfvars non trovato o URL Proxmox mancante"
 pass "URL Proxmox: $PROXMOX_URL"
 
-[ -n "$PROXMOX_TOKEN_ID" ] || fail "Token ID non trovato in terraform.tfvars"
+[ -n "$PROXMOX_TOKEN_ID" ] || fail "Token ID non trovato in terraform.auto.tfvars"
 pass "Token ID: $PROXMOX_TOKEN_ID"
 
-[ -n "$PROXMOX_TOKEN_SECRET" ] || fail "Token secret non trovato in terraform.tfvars"
+[ -n "$PROXMOX_TOKEN_SECRET" ] || fail "Token secret non trovato in terraform.auto.tfvars"
 pass "Token secret presente"
 
 # ── Test token API ────────────────────────────────────────────────────────────

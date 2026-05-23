@@ -1,0 +1,6 @@
+# CREDENZIALI PROXMOX — Generato automaticamente da init-project.sh
+# Copia questo file a terraform.auto.tfvars se lo generi manualmente
+
+proxmox_url          = "https://192.168.1.10:8006/api2/json"
+proxmox_token_id     = "automation@pve!terraform"
+proxmox_token_secret = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

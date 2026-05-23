@@ -113,25 +113,20 @@ EOF
 
 ok "packer/packer.pkrvars.hcl creato"
 
-# ── Genera terraform/terraform.tfvars ─────────────────────────────────────────
-info "Generazione terraform/terraform.tfvars..."
+# ── Genera terraform/terraform.auto.tfvars (credenziali) ────────────────────────
+info "Generazione terraform/terraform.auto.tfvars..."
 
-cat > "$SCRIPT_DIR/terraform/terraform.tfvars" << EOF
-# Generato automaticamente da init-project.sh
+cat > "$SCRIPT_DIR/terraform/terraform.auto.tfvars" << EOF
+# CREDENZIALI PROXMOX — Generato automaticamente da init-project.sh
+# NON tracciato in git (.gitignore)
 
 proxmox_url          = "https://$PROXMOX_HOST:8006/api2/json"
 proxmox_token_id     = "$API_USERNAME@pve!terraform"
 proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
-
-proxmox_node = "pve"
-k8s_subnet   = "192.168.1.0/24"
-k8s_gateway  = "192.168.1.1"
-
-control_plane_count = 1
-worker_count        = 2
 EOF
 
-ok "terraform/terraform.tfvars creato"
+ok "terraform/terraform.auto.tfvars creato (credenziali Proxmox)"
+info "Configurazione cluster: modifica terraform/terraform.tfvars per topologia"
 
 # ── Crea l'utente API su Proxmox con curl ─────────────────────────────────────
 echo ""
@@ -261,7 +256,7 @@ fi
 info "Aggiornamento file di configurazione con i token..."
 
 sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TOKEN_SECRET\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
-sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.tfvars"
+sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
 
 ok "Token inseriti nei file di configurazione"
 
@@ -272,9 +267,10 @@ echo "  ✅ INIZIALIZZAZIONE COMPLETATA"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "File creati/aggiornati:"
-echo "  • group_vars/all.yml                    (credenziali cifrate)"
-echo "  • packer/packer.pkrvars.hcl             (configurazione Packer)"
-echo "  • terraform/terraform.tfvars            (configurazione Terraform)"
+echo "  • group_vars/all.yml                    (credenziali Proxmox cifrate)"
+echo "  • packer/packer.pkrvars.hcl             (token Packer)"
+echo "  • terraform/terraform.auto.tfvars       (credenziali Terraform - privato)"
+echo "  • terraform/terraform.tfvars            (configurazione cluster - pubblico)"
 echo ""
 echo "Credenziali Vault salvate in:"
 echo "  • $VAULT_PASS_FILE                    (proteggere!)"
