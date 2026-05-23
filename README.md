@@ -120,8 +120,11 @@ I parametri del cluster sono concentrati in tre file:
 
 ### Default
 
-- **1 master** (minimal) — passare a 3 per HA: `control_plane_count = 3`
-- **2 worker** — scalabile incrementando `worker_count`
+- **3 master** (HA with etcd) — configurabile con `control_plane_count` in `terraform/terraform.tfvars`
+- **3 worker** — configurabile con `worker_count` in `terraform/terraform.tfvars`
+- **Risorse per nodo**: 16GB RAM + 4 CPU — modificabili in `terraform/terraform.tfvars`
+- **Storage**: 30GB disco per master, 50GB per worker
 - **Pod subnet**: `10.244.0.0/16`
 - **Service subnet**: `10.96.0.0/12`
-- **Rete**: `192.168.1.0/24`, master da `.210`, worker da `.220`
+- **Rete**: `192.168.1.0/24`, master da `.210-.212`, worker da `.220-.222`
+- **Load balancer**: MetalLB con range `192.168.0.120-192.168.0.135`
