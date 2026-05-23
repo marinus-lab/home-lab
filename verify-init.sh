@@ -103,7 +103,7 @@ info "Test token API Proxmox..."
 
 API_RESPONSE=$(curl -s -k -X GET \
   "https://$PROXMOX_URL:8006/api2/json/access/users/$AUTOMATION_USERNAME@pve/token" \
-  -u "$PROXMOX_TOKEN_ID:$PROXMOX_TOKEN_SECRET" 2>&1 || echo '{"data":[]}')
+  -H "Authorization: PVEAPIToken=$PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_SECRET" 2>&1 || echo '{"data":[]}')
 
 if echo "$API_RESPONSE" | grep -q "\"data\""; then
   pass "Token API funzionante"
