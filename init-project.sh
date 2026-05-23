@@ -34,13 +34,35 @@ echo ""
 # ── PROXMOX ────────────────────────────────────────────────────────────────────
 echo "🔌 CREDENZIALI PROXMOX"
 echo ""
-read -rp "IP/hostname Proxmox (es. 192.168.1.10): " PROXMOX_HOST
-[ -n "$PROXMOX_HOST" ] || error "IP Proxmox richiesto"
 
-echo ""
-read -rsp "Password utente root@pam di Proxmox: " PROXMOX_ROOT_PW
-echo ""
-[ -n "$PROXMOX_ROOT_PW" ] || error "Password richiesta"
+# IP/hostname Proxmox
+while true; do
+  read -rp "IP/hostname Proxmox (es. 192.168.1.10): " PROXMOX_HOST
+  echo ""
+
+  if [ -z "$PROXMOX_HOST" ]; then
+    warn "IP/hostname Proxmox richiesto"
+    continue
+  fi
+
+  ok "Proxmox host: $PROXMOX_HOST"
+  break
+done
+
+# Password root Proxmox
+while true; do
+  read -rsp "Password utente root@pam di Proxmox: " PROXMOX_ROOT_PW
+  echo ""
+
+  if [ -z "$PROXMOX_ROOT_PW" ]; then
+    warn "Password Proxmox richiesta"
+    echo ""
+    continue
+  fi
+
+  ok "Password Proxmox accettata"
+  break
+done
 
 # ── UTENTE AUTOMATION ──────────────────────────────────────────────────────────
 echo ""
@@ -175,9 +197,20 @@ ok "Rete Kubernetes configurata"
 echo ""
 echo "🔐 PASSWORD VAULT"
 echo ""
-read -rsp "Password per il Vault (proteggere bene!): " VAULT_PASSWORD
-echo ""
-[ -n "$VAULT_PASSWORD" ] || error "Password Vault richiesta"
+
+while true; do
+  read -rsp "Password per il Vault (proteggere bene!): " VAULT_PASSWORD
+  echo ""
+
+  if [ -z "$VAULT_PASSWORD" ]; then
+    warn "Password Vault richiesta"
+    echo ""
+    continue
+  fi
+
+  ok "Password Vault accettata"
+  break
+done
 
 # ── Salva password Vault ──────────────────────────────────────────────────────
 info "Salvataggio password Vault in $VAULT_PASS_FILE"
