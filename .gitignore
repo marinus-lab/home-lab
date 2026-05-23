@@ -14,10 +14,17 @@ override.tf.json
 *_override.tf.json
 
 # ── Packer ────────────────────────────────────────────────────────────────────
-packer.pkrvars.hcl        # contiene credenziali Proxmox
+packer.pkrvars.hcl              # contiene credenziali Proxmox
+packer/packer.pkrvars.hcl       # path completo per chiarezza
 packer_cache/
 packer-manifest.json
-packer/http/user-data     # generato da build.sh a partire da user-data.tpl
+packer/http/user-data           # generato da build.sh da ubuntu-user-data.tpl
+packer/http/rocky-ks.cfg        # generato da build.sh da rocky-ks.cfg.tpl
+
+# ── Backup / Temp ──────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
 
 # ── Ansible ───────────────────────────────────────────────────────────────────
 *.retry
