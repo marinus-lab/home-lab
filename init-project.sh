@@ -570,16 +570,16 @@ fi
 # ── Aggiorna i file con i token e il nodo ────────────────────────────────────
 info "Aggiornamento file di configurazione con token, nodo e storage Proxmox..."
 
-# Aggiorna token, nodo e storage in packer
-sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TOKEN_SECRET\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
-sed -i "s|proxmox_node = \"PLACEHOLDER_NODO\"|proxmox_node = \"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
-sed -i "s|iso_storage_pool      = \"PLACEHOLDER_ISO_POOL\"|iso_storage_pool      = \"$PACKER_ISO_POOL\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
-sed -i "s|template_storage_pool = \"PLACEHOLDER_TEMPLATE_POOL\"|template_storage_pool = \"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
+# Aggiorna placeholder in packer (sostituzione robusta, indipendente dagli spazi)
+sed -i "s|\"PLACEHOLDER_GENERATO_DA_CURL\"|\"$TOKEN_SECRET\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
+sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
+sed -i "s|\"PLACEHOLDER_ISO_POOL\"|\"$PACKER_ISO_POOL\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
+sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
 
-# Aggiorna token, nodo e storage in terraform
-sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
-sed -i "s|proxmox_node = \"PLACEHOLDER_NODO\"|proxmox_node = \"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
-sed -i "s|storage_pool = \"PLACEHOLDER_TEMPLATE_POOL\"|storage_pool = \"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
+# Aggiorna placeholder in terraform (sostituzione robusta, indipendente dagli spazi)
+sed -i "s|\"PLACEHOLDER_GENERATO_DA_CURL\"|\"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
+sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
+sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
 
 ok "Token, nodo e storage Proxmox inseriti nei file di configurazione"
 
