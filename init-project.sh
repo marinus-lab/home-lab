@@ -107,7 +107,7 @@ cat > "$SCRIPT_DIR/packer/packer.pkrvars.hcl" << EOF
 proxmox_url          = "https://$PROXMOX_HOST:8006/api2/json"
 proxmox_token_id     = "$API_USERNAME@pve!packer"
 proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
-proxmox_node         = "pve"
+proxmox_node         = "PLACEHOLDER_NODO"
 storage_pool         = "local-lvm"
 EOF
 
@@ -123,6 +123,7 @@ cat > "$SCRIPT_DIR/terraform/terraform.auto.tfvars" << EOF
 proxmox_url          = "https://$PROXMOX_HOST:8006/api2/json"
 proxmox_token_id     = "$API_USERNAME@pve!terraform"
 proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
+proxmox_node         = "PLACEHOLDER_NODO"
 EOF
 
 ok "terraform/terraform.auto.tfvars creato (credenziali Proxmox)"
@@ -150,6 +151,43 @@ if [ -z "$TICKET" ]; then
 fi
 
 ok "Ticket di sessione ottenuto"
+
+# ── Rileva il nodo Proxmox disponibile ─────────────────────────────────────────
+info "Rilevamento nodo Proxmox..."
+
+NODES_RESPONSE=$(curl -s -k -X GET \
+  "https://$PROXMOX_HOST:8006/api2/json/nodes" \
+  -b "PVEAuthCookie=$TICKET" \
+  -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null)
+
+# Estrai lista nodi dal JSON (prova con grep per robustezza)
+NODES_LIST=$(echo "$NODES_RESPONSE" | grep -oP '"node"\s*:\s*"\K[^"]+' | sort -u)
+
+# Conta nodi
+NODES_COUNT=$(echo "$NODES_LIST" | wc -l)
+
+if [ -z "$NODES_LIST" ]; then
+  error "Nessun nodo trovato in Proxmox. Risposta: $NODES_RESPONSE"
+fi
+
+if [ "$NODES_COUNT" -eq 1 ]; then
+  PROXMOX_NODE=$(echo "$NODES_LIST" | head -1)
+  ok "Nodo Proxmox rilevato: $PROXMOX_NODE"
+else
+  # Più nodi — chiedi all'utente
+  warn "Trovati $NODES_COUNT nodi Proxmox:"
+  echo ""
+  echo "Nodi disponibili:"
+  echo "$NODES_LIST" | nl
+  echo ""
+  read -rp "Seleziona il numero del nodo da usare: " NODE_NUM
+  PROXMOX_NODE=$(echo "$NODES_LIST" | sed -n "${NODE_NUM}p")
+
+  if [ -z "$PROXMOX_NODE" ]; then
+    error "Selezione nodo non valida"
+  fi
+  ok "Nodo selezionato: $PROXMOX_NODE"
+fi
 
 info "Creazione utente $API_USERNAME@pve su $PROXMOX_HOST..."
 
@@ -252,13 +290,18 @@ else
   ok "Token Terraform creato"
 fi
 
-# ── Aggiorna i file con i token ───────────────────────────────────────────────
-info "Aggiornamento file di configurazione con i token..."
+# ── Aggiorna i file con i token e il nodo ────────────────────────────────────
+info "Aggiornamento file di configurazione con i token e nodo Proxmox..."
 
+# Aggiorna token e nodo in packer
 sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TOKEN_SECRET\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
-sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
+sed -i "s|proxmox_node = \"PLACEHOLDER_NODO\"|proxmox_node = \"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
 
-ok "Token inseriti nei file di configurazione"
+# Aggiorna token e nodo in terraform
+sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
+sed -i "s|proxmox_node = \"PLACEHOLDER_NODO\"|proxmox_node = \"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
+
+ok "Token e nodo Proxmox inseriti nei file di configurazione"
 
 # ── Riepilogo ─────────────────────────────────────────────────────────────────
 echo ""

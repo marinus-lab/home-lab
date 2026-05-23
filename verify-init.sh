@@ -83,6 +83,7 @@ echo "────────────────────────�
 PROXMOX_URL=$(grep "proxmox_url" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" 2>/dev/null | grep -oP '(?<="https://)[^:]+')
 PROXMOX_TOKEN_ID=$(grep "proxmox_token_id" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" 2>/dev/null | grep -oP '(?<=")\K[^"]+')
 PROXMOX_TOKEN_SECRET=$(grep "proxmox_token_secret" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" 2>/dev/null | grep -oP '(?<=")\K[^"]+')
+PROXMOX_NODE=$(grep "proxmox_node" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" 2>/dev/null | grep -oP '(?<=")\K[^"]+')
 
 [ -n "$PROXMOX_URL" ] || fail "terraform.auto.tfvars non trovato o URL Proxmox mancante"
 pass "URL Proxmox: $PROXMOX_URL"
@@ -92,6 +93,9 @@ pass "Token ID: $PROXMOX_TOKEN_ID"
 
 [ -n "$PROXMOX_TOKEN_SECRET" ] || fail "Token secret non trovato in terraform.auto.tfvars"
 pass "Token secret presente"
+
+[ -n "$PROXMOX_NODE" ] || fail "Nodo Proxmox non trovato in terraform.auto.tfvars"
+pass "Nodo Proxmox: $PROXMOX_NODE"
 
 # ── Test token API ────────────────────────────────────────────────────────────
 # Estrai il nome utente dal token ID (prima del @)
