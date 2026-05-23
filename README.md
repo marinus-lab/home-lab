@@ -13,6 +13,8 @@ Infrastructure-as-Code per un cluster Kubernetes su Proxmox VE, costruito con Pa
 | Kubernetes | v1.30.4 | Container orchestration |
 | Calico | bundled | CNI (overlay IPIP) |
 | containerd | bundled | Container runtime |
+| MetalLB | latest | Load balancer bare-metal (Layer 2) |
+| Kubernetes Dashboard | latest | UI monitoraggio cluster |
 
 ## Architettura
 
