@@ -490,15 +490,34 @@ else
   error "Creazione utente fallita (HTTP $HTTP_CODE). Risposta: $CURL_RESPONSE"
 fi
 
+# ── Assegnazione ACL: ruolo PVEAdmin sull'intera root ─────────────────────────
+info "Assegnazione ruolo PVEAdmin a $API_USERNAME@pve..."
+
+ACL_OUTPUT=$(curl -s -k -w "\n%{http_code}" -X PUT \
+  "https://$PROXMOX_HOST:8006/api2/json/access/acl" \
+  -b "PVEAuthCookie=$TICKET" \
+  -H "CSRFPreventionToken: $CSRF_TOKEN" \
+  -d "path=/&users=$API_USERNAME@pve&roles=PVEAdmin&propagate=1" 2>/dev/null)
+
+ACL_HTTP=$(echo "$ACL_OUTPUT" | tail -n 1)
+
+if [ "$ACL_HTTP" = "200" ]; then
+  ok "Ruolo PVEAdmin assegnato a $API_USERNAME@pve su path '/'"
+else
+  ACL_BODY=$(echo "$ACL_OUTPUT" | head -n -1)
+  warn "Assegnazione ACL fallita (HTTP $ACL_HTTP): $ACL_BODY"
+fi
+
 # Crea il token packer
 info "Generazione token API per Packer..."
 
 # Prova a creare il token (potrebbe già esistere)
+# privsep=0 -> il token eredita TUTTI i permessi dell'utente
 TOKEN_RESPONSE=$(curl -s -k -w "\n%{http_code}" -X POST \
   "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/packer" \
   -b "PVEAuthCookie=$TICKET" \
   -H "CSRFPreventionToken: $CSRF_TOKEN" \
-  -d "comment=Packer%20token" 2>/dev/null || echo -e '{}\n500')
+  -d "comment=Packer%20token&privsep=0" 2>/dev/null || echo -e '{}\n500')
 
 TOKEN_BODY=$(echo "$TOKEN_RESPONSE" | head -n -1)
 TOKEN_HTTP=$(echo "$TOKEN_RESPONSE" | tail -n 1)
@@ -510,12 +529,12 @@ if [ "$TOKEN_HTTP" = "400" ] && echo "$TOKEN_BODY" | grep -q "already exists"; t
     -b "PVEAuthCookie=$TICKET" \
     -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null >/dev/null
 
-  # Ricrea il token
+  # Ricrea il token con privsep=0
   TOKEN_RESPONSE=$(curl -s -k -X POST \
     "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/packer" \
     -b "PVEAuthCookie=$TICKET" \
     -H "CSRFPreventionToken: $CSRF_TOKEN" \
-    -d "comment=Packer%20token" 2>/dev/null || echo '{}')
+    -d "comment=Packer%20token&privsep=0" 2>/dev/null || echo '{}')
   TOKEN_BODY="$TOKEN_RESPONSE"
 fi
 
@@ -532,11 +551,12 @@ ok "Token Packer creato"
 info "Generazione token API per Terraform..."
 
 # Prova a creare il token (potrebbe già esistere)
+# privsep=0 -> il token eredita TUTTI i permessi dell'utente
 TERRAFORM_RESPONSE=$(curl -s -k -w "\n%{http_code}" -X POST \
   "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/terraform" \
   -b "PVEAuthCookie=$TICKET" \
   -H "CSRFPreventionToken: $CSRF_TOKEN" \
-  -d "comment=Terraform%20token" 2>/dev/null || echo -e '{}\n500')
+  -d "comment=Terraform%20token&privsep=0" 2>/dev/null || echo -e '{}\n500')
 
 TERRAFORM_BODY=$(echo "$TERRAFORM_RESPONSE" | head -n -1)
 TERRAFORM_HTTP=$(echo "$TERRAFORM_RESPONSE" | tail -n 1)
@@ -548,12 +568,12 @@ if [ "$TERRAFORM_HTTP" = "400" ] && echo "$TERRAFORM_BODY" | grep -q "already ex
     -b "PVEAuthCookie=$TICKET" \
     -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null >/dev/null
 
-  # Ricrea il token
+  # Ricrea il token con privsep=0
   TERRAFORM_RESPONSE=$(curl -s -k -X POST \
     "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/terraform" \
     -b "PVEAuthCookie=$TICKET" \
     -H "CSRFPreventionToken: $CSRF_TOKEN" \
-    -d "comment=Terraform%20token" 2>/dev/null || echo '{}')
+    -d "comment=Terraform%20token&privsep=0" 2>/dev/null || echo '{}')
   TERRAFORM_BODY="$TERRAFORM_RESPONSE"
 fi
 
