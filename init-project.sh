@@ -21,6 +21,7 @@ error() { echo -e "${RED}[init]${NC} ❌ $*" >&2; exit 1; }
 info "Verifica prerequisiti..."
 command -v curl >/dev/null || error "curl non trovato"
 command -v ansible-vault >/dev/null || error "ansible-vault non trovato"
+command -v python3 >/dev/null || error "python3 non trovato (richiesto per parsing JSON storage Proxmox)"
 [ -f "$SCRIPT_DIR/requirements.yml" ] || error "requirements.yml non trovato"
 ok "Prerequisiti OK"
 
@@ -193,43 +194,8 @@ done
 
 ok "Rete Kubernetes configurata"
 
-# ── STORAGE PACKER ────────────────────────────────────────────────────────────
-echo ""
-echo "💾 STORAGE PACKER"
-echo ""
-
-# Storage pool per ISO
-while true; do
-  read -rp "Storage pool per ISO Packer (default: local): " PACKER_ISO_POOL
-  PACKER_ISO_POOL="${PACKER_ISO_POOL:-local}"
-  echo ""
-
-  if [ -z "$PACKER_ISO_POOL" ]; then
-    warn "Storage pool ISO richiesto"
-    continue
-  fi
-
-  ok "Storage pool ISO: $PACKER_ISO_POOL"
-  break
-done
-
-# Storage pool per template
-while true; do
-  echo ""
-  read -rp "Storage pool per template (default: local-lvm): " PACKER_TEMPLATE_POOL
-  PACKER_TEMPLATE_POOL="${PACKER_TEMPLATE_POOL:-local-lvm}"
-  echo ""
-
-  if [ -z "$PACKER_TEMPLATE_POOL" ]; then
-    warn "Storage pool template richiesto"
-    continue
-  fi
-
-  ok "Storage pool template: $PACKER_TEMPLATE_POOL"
-  break
-done
-
-ok "Storage Packer configurato"
+# NOTA: Gli storage pool Proxmox vengono rilevati dinamicamente dopo aver
+# ottenuto il ticket di sessione (vedi sezione "RILEVAMENTO STORAGE PROXMOX")
 
 # ── VAULT PASSWORD ────────────────────────────────────────────────────────────
 echo ""
@@ -293,9 +259,9 @@ proxmox_token_id     = "$API_USERNAME@pve!packer"
 proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
 proxmox_node         = "PLACEHOLDER_NODO"
 
-# ── Storage Packer ────────────────────────────────────────────────────────────
-iso_storage_pool      = "$PACKER_ISO_POOL"
-template_storage_pool = "$PACKER_TEMPLATE_POOL"
+# ── Storage Packer (rilevati dinamicamente da Proxmox API) ────────────────────
+iso_storage_pool      = "PLACEHOLDER_ISO_POOL"
+template_storage_pool = "PLACEHOLDER_TEMPLATE_POOL"
 EOF
 
 ok "packer/packer.pkrvars.hcl creato"
@@ -318,6 +284,9 @@ k8s_subnet      = "$K8S_SUBNET"
 k8s_gateway     = "$K8S_GATEWAY"
 master_ip_start = $MASTER_IP_OCTET
 worker_ip_start = $WORKER_IP_OCTET
+
+# ── Storage Proxmox (rilevati dinamicamente da Proxmox API) ───────────────────
+storage_pool = "PLACEHOLDER_TEMPLATE_POOL"
 EOF
 
 ok "terraform/terraform.auto.tfvars creato (credenziali + rete Kubernetes)"
@@ -381,6 +350,121 @@ else
   fi
   ok "Nodo selezionato: $PROXMOX_NODE"
 fi
+
+# ── Rilevamento storage Proxmox disponibili ────────────────────────────────────
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  💾 RILEVAMENTO STORAGE PROXMOX"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+info "Recupero storage disponibili sul nodo $PROXMOX_NODE..."
+
+STORAGE_RESPONSE=$(curl -s -k -X GET \
+  "https://$PROXMOX_HOST:8006/api2/json/nodes/$PROXMOX_NODE/storage" \
+  -b "PVEAuthCookie=$TICKET" \
+  -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null || echo '{"data":[]}')
+
+# Salva risposta per debug
+echo "$STORAGE_RESPONSE" > /tmp/proxmox_storage_debug.json
+
+# Parsing JSON: per ogni storage estraiamo storage_name|content|enabled|active
+# Usiamo python3 perché il JSON è complesso e ha array nested
+STORAGE_DATA=$(echo "$STORAGE_RESPONSE" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    for s in data.get('data', []):
+        name = s.get('storage', '')
+        content = s.get('content', '')
+        enabled = s.get('enabled', 1)
+        active = s.get('active', 1)
+        stype = s.get('type', '')
+        if enabled and active and name:
+            print(f'{name}|{content}|{stype}')
+except Exception as e:
+    print(f'ERROR: {e}', file=sys.stderr)
+" 2>/dev/null)
+
+if [ -z "$STORAGE_DATA" ]; then
+  error "Nessuno storage disponibile rilevato. Risposta: $STORAGE_RESPONSE"
+fi
+
+# Filtra storage che supportano ISO
+ISO_STORAGES=$(echo "$STORAGE_DATA" | while IFS='|' read -r name content stype; do
+  if echo "$content" | grep -q "iso"; then
+    echo "$name|$stype|$content"
+  fi
+done)
+
+# Filtra storage che supportano images (disk VM)
+IMAGE_STORAGES=$(echo "$STORAGE_DATA" | while IFS='|' read -r name content stype; do
+  if echo "$content" | grep -q "images"; then
+    echo "$name|$stype|$content"
+  fi
+done)
+
+if [ -z "$ISO_STORAGES" ]; then
+  error "Nessuno storage abilitato per ISO trovato"
+fi
+
+if [ -z "$IMAGE_STORAGES" ]; then
+  error "Nessuno storage abilitato per VM disk (images) trovato"
+fi
+
+# Selezione storage ISO
+echo ""
+echo "📀 Storage disponibili per ISO (download installer):"
+echo ""
+ISO_COUNT=$(echo "$ISO_STORAGES" | wc -l)
+echo "$ISO_STORAGES" | awk -F'|' '{printf "  %d) %-15s [tipo: %-10s content: %s]\n", NR, $1, $2, $3}'
+echo ""
+
+while true; do
+  read -rp "Seleziona storage per ISO (1-$ISO_COUNT): " ISO_NUM
+
+  if ! echo "$ISO_NUM" | grep -qE '^[0-9]+$'; then
+    warn "Inserisci un numero valido"
+    continue
+  fi
+
+  if [ "$ISO_NUM" -lt 1 ] || [ "$ISO_NUM" -gt "$ISO_COUNT" ]; then
+    warn "Numero fuori range (1-$ISO_COUNT)"
+    continue
+  fi
+
+  PACKER_ISO_POOL=$(echo "$ISO_STORAGES" | sed -n "${ISO_NUM}p" | cut -d'|' -f1)
+  ok "Storage ISO selezionato: $PACKER_ISO_POOL"
+  break
+done
+
+# Selezione storage Template
+echo ""
+echo "💿 Storage disponibili per VM disk (template):"
+echo ""
+IMAGE_COUNT=$(echo "$IMAGE_STORAGES" | wc -l)
+echo "$IMAGE_STORAGES" | awk -F'|' '{printf "  %d) %-15s [tipo: %-10s content: %s]\n", NR, $1, $2, $3}'
+echo ""
+
+while true; do
+  read -rp "Seleziona storage per template VM (1-$IMAGE_COUNT): " IMG_NUM
+
+  if ! echo "$IMG_NUM" | grep -qE '^[0-9]+$'; then
+    warn "Inserisci un numero valido"
+    continue
+  fi
+
+  if [ "$IMG_NUM" -lt 1 ] || [ "$IMG_NUM" -gt "$IMAGE_COUNT" ]; then
+    warn "Numero fuori range (1-$IMAGE_COUNT)"
+    continue
+  fi
+
+  PACKER_TEMPLATE_POOL=$(echo "$IMAGE_STORAGES" | sed -n "${IMG_NUM}p" | cut -d'|' -f1)
+  ok "Storage template selezionato: $PACKER_TEMPLATE_POOL"
+  break
+done
+
+ok "Storage Proxmox configurati"
 
 info "Creazione utente $API_USERNAME@pve su $PROXMOX_HOST..."
 
@@ -484,17 +568,20 @@ else
 fi
 
 # ── Aggiorna i file con i token e il nodo ────────────────────────────────────
-info "Aggiornamento file di configurazione con i token e nodo Proxmox..."
+info "Aggiornamento file di configurazione con token, nodo e storage Proxmox..."
 
-# Aggiorna token e nodo in packer
+# Aggiorna token, nodo e storage in packer
 sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TOKEN_SECRET\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
 sed -i "s|proxmox_node = \"PLACEHOLDER_NODO\"|proxmox_node = \"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
+sed -i "s|iso_storage_pool      = \"PLACEHOLDER_ISO_POOL\"|iso_storage_pool      = \"$PACKER_ISO_POOL\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
+sed -i "s|template_storage_pool = \"PLACEHOLDER_TEMPLATE_POOL\"|template_storage_pool = \"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
 
-# Aggiorna token e nodo in terraform
+# Aggiorna token, nodo e storage in terraform
 sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
 sed -i "s|proxmox_node = \"PLACEHOLDER_NODO\"|proxmox_node = \"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
+sed -i "s|storage_pool = \"PLACEHOLDER_TEMPLATE_POOL\"|storage_pool = \"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
 
-ok "Token e nodo Proxmox inseriti nei file di configurazione"
+ok "Token, nodo e storage Proxmox inseriti nei file di configurazione"
 
 # ── Riepilogo ─────────────────────────────────────────────────────────────────
 echo ""

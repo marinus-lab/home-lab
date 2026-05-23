@@ -37,26 +37,26 @@ Lo script è **interattivo** — pone domande in sequenza. Non è necessario agg
 
 **Validazione:** Tutti gli input vengono validati. Se un input non è accettato, lo script chiede di nuovo finché non inserisci un valore valido. Non puoi saltare nessun campo.
 
-Le domande sono organizzate per sezioni (Proxmox, Utente, Password, Rete) con **linee vuote di separazione** per maggiore leggibilità:
+Le domande sono organizzate per sezioni con **linee vuote di separazione** per maggiore leggibilità:
 
 ```
 🔌 CREDENZIALI PROXMOX
-[domanda 1]
+[IP, password root]
 
 👤 UTENTE AUTOMATION
-[domanda 2]
+[nome utente]
 
 🔐 PASSWORD UTENTE AUTOMATION
-[domanda 3]
+[password]
 
 🌐 RETE KUBERNETES
-[domanda 4]
-[domanda 5]
-[domanda 6]
-[domanda 7]
+[subnet, gateway, IP master, IP worker]
 
 🔐 PASSWORD VAULT
-[domanda 8]
+[password]
+
+💾 RILEVAMENTO STORAGE PROXMOX  (dopo connessione API)
+[selezione storage ISO e template da lista dinamica]
 ```
 
 ### Verifica il risultato
@@ -98,6 +98,8 @@ Lo script **controlla tutti gli input** e continua a chiedere finché non inseri
 | Master IP ottetto | Numero 0-253 | Chiede di nuovo |
 | Worker IP ottetto | Numero 0-253 + > Master+2 | Chiede di nuovo |
 | Password Vault | Non vuota | Chiede di nuovo |
+| Storage ISO | Numero in range (1-N opzioni rilevate da Proxmox) | Chiede di nuovo |
+| Storage template | Numero in range (1-N opzioni rilevate da Proxmox) | Chiede di nuovo |
 
 ---
 
@@ -234,7 +236,7 @@ Una password **per proteggere** tutte le credenziali Proxmox cifrate. Questa pas
 Dopo aver inserito tutti gli input, lo script:
 
 ```
-1. Verifica i prerequisiti (curl, ansible-vault presenti)
+1. Verifica i prerequisiti (curl, ansible-vault, python3 presenti)
    ↓
 2. Salva la password Vault in ~/.vault_pass (chmod 600)
    ↓
@@ -242,13 +244,13 @@ Dopo aver inserito tutti gli input, lo script:
    ├── vault_proxmox_root_pw (cifrata)
    └── vault_automation_user_pw (cifrata)
    ↓
-4. Genera packer/packer.pkrvars.hcl con placeholder token
+4. Genera packer/packer.pkrvars.hcl con placeholder
+   ├── Token (placeholder)
+   ├── Nodo (placeholder)
+   ├── Storage ISO (placeholder)
+   └── Storage template (placeholder)
    ↓
-5. Genera terraform/terraform.auto.tfvars con placeholder token + configurazione rete
-   ├── Credenziali Proxmox (token, URL)
-   ├── Subnet Kubernetes
-   ├── Gateway
-   └── IP base master e worker
+5. Genera terraform/terraform.auto.tfvars con placeholder + rete + storage
    ↓
 6. Ottiene ticket di sessione Proxmox (API ticket-based auth)
    ↓
@@ -256,21 +258,31 @@ Dopo aver inserito tutti gli input, lo script:
    ├── Se un solo nodo: lo seleziona automaticamente
    └── Se più nodi: chiede all'utente di scegliere
    ↓
-8. Crea/verifica utente <nome_scelto>@pve su Proxmox (con curl)
+8. 💾 Rileva storage Proxmox via API /nodes/<node>/storage
+   ├── Filtra storage abilitati (enabled=1, active=1)
+   ├── Mostra lista storage con tipo e content
+   ├── Chiede selezione storage per ISO (content include "iso")
+   └── Chiede selezione storage per template (content include "images")
    ↓
-9. Crea token packer (o lo rigenera se già esiste)
-   ├── Se token esiste: lo elimina e ricrea
-   └── Estrae il secret dal JSON di risposta
+9. Crea/verifica utente <nome_scelto>@pve su Proxmox (con curl)
    ↓
-10. Crea token terraform (o lo rigenera se già esiste)
+10. Crea token packer (o lo rigenera se già esiste)
+    ├── Se token esiste: lo elimina e ricrea
+    └── Estrae il secret dal JSON di risposta
+   ↓
+11. Crea token terraform (o lo rigenera se già esiste)
     ├── Se token esiste: lo elimina e ricrea
     └── Estrae il secret dal JSON di risposta
     ↓
-11. Aggiorna packer/packer.pkrvars.hcl con token vero e nodo
+12. Aggiorna packer/packer.pkrvars.hcl con valori reali
+    ├── Token, nodo
+    └── iso_storage_pool, template_storage_pool
     ↓
-12. Aggiorna terraform/terraform.auto.tfvars con token vero, nodo, rete
+13. Aggiorna terraform/terraform.auto.tfvars con valori reali
+    ├── Token, nodo, rete
+    └── storage_pool
     ↓
-13. Mostra riepilogo con i prossimi passi
+14. Mostra riepilogo con i prossimi passi
 ```
 
 ---
@@ -354,6 +366,35 @@ Lo script usa **ticket-based authentication** (metodo standard di Proxmox):
 1. **Ottiene il ticket**: POST a `/api2/json/access/ticket` con root@pam credentials
 2. **Usa il ticket**: Invia PVEAuthCookie (ticket) e CSRFPreventionToken header per operazioni API
 3. **Crea utente e token**: Con curl, non Ansible
+
+### Rilevamento storage dinamico
+
+Lo script **rileva automaticamente gli storage disponibili** su Proxmox via API:
+
+1. **Chiama** `GET /api2/json/nodes/<node>/storage` per ottenere la lista completa
+2. **Filtra** storage abilitati (`enabled=1`, `active=1`)
+3. **Filtra per ISO**: mostra solo storage con `content` che include `iso`
+4. **Filtra per template**: mostra solo storage con `content` che include `images`
+5. **Chiede selezione** all'utente tramite menu numerato
+
+Esempio di output:
+```
+📀 Storage disponibili per ISO (download installer):
+
+  1) local           [tipo: dir        content: iso,vztmpl,backup]
+  2) nfs-iso         [tipo: nfs        content: iso]
+
+Seleziona storage per ISO (1-2):
+
+💿 Storage disponibili per VM disk (template):
+
+  1) local-lvm       [tipo: lvmthin    content: images,rootdir]
+  2) ceph-pool       [tipo: rbd        content: images]
+
+Seleziona storage per template VM (1-2):
+```
+
+Questo evita di hardcodare valori che variano da setup a setup.
 
 ### Token API Proxmox
 
