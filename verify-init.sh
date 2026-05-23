@@ -42,9 +42,12 @@ pass "packer/packer.pkrvars.hcl contiene token valido"
 [ -f "$SCRIPT_DIR/terraform/terraform.tfvars" ] || fail "terraform/terraform.tfvars non esiste"
 pass "terraform/terraform.tfvars esiste"
 
-grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/terraform/terraform.tfvars" || \
-  fail "terraform/terraform.tfvars token non valido o vuoto"
-pass "terraform/terraform.tfvars contiene token valido"
+[ -f "$SCRIPT_DIR/terraform/terraform.auto.tfvars" ] || fail "terraform/terraform.auto.tfvars non esiste"
+pass "terraform/terraform.auto.tfvars esiste"
+
+grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
+  fail "terraform/terraform.auto.tfvars token non valido o vuoto"
+pass "terraform/terraform.auto.tfvars contiene token valido"
 
 # ───────────────────────────────────────────────────────────────────────────────
 echo ""
