@@ -68,14 +68,17 @@ bash verify-init.sh
 ```
 
 Lo script controlla:
-- ✅ File di configurazione `packer/packer.pkrvars.hcl` (token presente)
-- ✅ File di configurazione `terraform/terraform.auto.tfvars` (token + credenziali)
+- ✅ File di configurazione `packer/packer.pkrvars.hcl` (token, iso_storage_pool, template_storage_pool)
+- ✅ File di configurazione `terraform/terraform.auto.tfvars` (token, credenziali, rete K8s, storage)
+- ✅ Parametri rete K8s presenti (k8s_subnet, k8s_gateway, master_ip_start, worker_ip_start)
+- ✅ Storage pool senza PLACEHOLDER residui
 - ✅ Password Vault salvata con permessi corretti
 - ✅ Credenziali cifrate presenti nel Vault
 - ✅ Connessione API Proxmox funzionante
 - ✅ Token API valido e funzionante
 - ✅ Nodo Proxmox rilevato e valido
-- ✅ Dipendenze (curl, ansible-vault, terraform, packer) disponibili
+- ✅ **Storage Proxmox esistono realmente** (verifica via API che gli storage selezionati siano disponibili sul nodo)
+- ✅ Dipendenze (curl, ansible-vault, terraform, packer, python3) disponibili
 
 **Nota importante:** `verify-init.sh` controlla il token in `terraform.auto.tfvars` (file privato con credenziali), **non** in `terraform.tfvars` (file pubblico con solo configurazione).
 

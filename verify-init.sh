@@ -38,6 +38,19 @@ grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/packer/packer.pkrv
   fail "packer/packer.pkrvars.hcl token non valido o vuoto"
 pass "packer/packer.pkrvars.hcl contiene token valido"
 
+# Verifica storage pool in packer
+grep -q "iso_storage_pool" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" || \
+  fail "packer/packer.pkrvars.hcl manca iso_storage_pool"
+grep -q "iso_storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" && \
+  fail "packer/packer.pkrvars.hcl ha PLACEHOLDER non sostituito per iso_storage_pool"
+pass "packer/packer.pkrvars.hcl contiene iso_storage_pool valido"
+
+grep -q "template_storage_pool" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" || \
+  fail "packer/packer.pkrvars.hcl manca template_storage_pool"
+grep -q "template_storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" && \
+  fail "packer/packer.pkrvars.hcl ha PLACEHOLDER non sostituito per template_storage_pool"
+pass "packer/packer.pkrvars.hcl contiene template_storage_pool valido"
+
 # Verifica terraform.tfvars
 [ -f "$SCRIPT_DIR/terraform/terraform.tfvars" ] || fail "terraform/terraform.tfvars non esiste"
 pass "terraform/terraform.tfvars esiste"
@@ -48,6 +61,30 @@ pass "terraform/terraform.auto.tfvars esiste"
 grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
   fail "terraform/terraform.auto.tfvars token non valido o vuoto"
 pass "terraform/terraform.auto.tfvars contiene token valido"
+
+# Verifica parametri rete K8s in terraform.auto.tfvars
+grep -q "k8s_subnet" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
+  fail "terraform/terraform.auto.tfvars manca k8s_subnet"
+pass "terraform/terraform.auto.tfvars contiene k8s_subnet"
+
+grep -q "k8s_gateway" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
+  fail "terraform/terraform.auto.tfvars manca k8s_gateway"
+pass "terraform/terraform.auto.tfvars contiene k8s_gateway"
+
+grep -q "master_ip_start" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
+  fail "terraform/terraform.auto.tfvars manca master_ip_start"
+pass "terraform/terraform.auto.tfvars contiene master_ip_start"
+
+grep -q "worker_ip_start" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
+  fail "terraform/terraform.auto.tfvars manca worker_ip_start"
+pass "terraform/terraform.auto.tfvars contiene worker_ip_start"
+
+# Verifica storage pool in terraform
+grep -q "storage_pool" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
+  fail "terraform/terraform.auto.tfvars manca storage_pool"
+grep -q "storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" && \
+  fail "terraform/terraform.auto.tfvars ha PLACEHOLDER non sostituito per storage_pool"
+pass "terraform/terraform.auto.tfvars contiene storage_pool valido"
 
 # ───────────────────────────────────────────────────────────────────────────────
 echo ""
@@ -120,10 +157,59 @@ fi
 
 # ───────────────────────────────────────────────────────────────────────────────
 echo ""
+echo "💾 STORAGE PROXMOX"
+echo "───────────────────────────────────────────────────────────────────────────"
+
+# Estrai storage pool dai file di configurazione
+PACKER_ISO_POOL=$(grep "iso_storage_pool" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" | grep -oP '"\K[^"]+' | head -1)
+PACKER_TEMPLATE_POOL=$(grep "template_storage_pool" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" | grep -oP '"\K[^"]+' | head -1)
+TERRAFORM_STORAGE=$(grep "^storage_pool" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" | grep -oP '"\K[^"]+' | head -1)
+
+pass "Storage Packer ISO:       $PACKER_ISO_POOL"
+pass "Storage Packer template:  $PACKER_TEMPLATE_POOL"
+pass "Storage Terraform:        $TERRAFORM_STORAGE"
+
+# Verifica che gli storage esistano realmente su Proxmox via API
+info "Verifica esistenza storage su Proxmox..."
+
+STORAGE_API_RESPONSE=$(curl -s -k -X GET \
+  "https://$PROXMOX_URL:8006/api2/json/nodes/$PROXMOX_NODE/storage" \
+  -H "Authorization: PVEAPIToken=$PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_SECRET" 2>&1 || echo '{"data":[]}')
+
+# Lista storage disponibili
+AVAILABLE_STORAGES=$(echo "$STORAGE_API_RESPONSE" | grep -oP '"storage"\s*:\s*"\K[^"]+' | sort -u)
+
+if [ -z "$AVAILABLE_STORAGES" ]; then
+  warn "Impossibile recuperare lista storage da Proxmox (verifica permessi token)"
+else
+  # Verifica che PACKER_ISO_POOL esista
+  if echo "$AVAILABLE_STORAGES" | grep -qx "$PACKER_ISO_POOL"; then
+    pass "Storage ISO '$PACKER_ISO_POOL' esiste su Proxmox"
+  else
+    fail "Storage ISO '$PACKER_ISO_POOL' NON esiste su Proxmox. Disponibili: $(echo "$AVAILABLE_STORAGES" | tr '\n' ' ')"
+  fi
+
+  # Verifica che PACKER_TEMPLATE_POOL esista
+  if echo "$AVAILABLE_STORAGES" | grep -qx "$PACKER_TEMPLATE_POOL"; then
+    pass "Storage template '$PACKER_TEMPLATE_POOL' esiste su Proxmox"
+  else
+    fail "Storage template '$PACKER_TEMPLATE_POOL' NON esiste su Proxmox. Disponibili: $(echo "$AVAILABLE_STORAGES" | tr '\n' ' ')"
+  fi
+
+  # Verifica che TERRAFORM_STORAGE esista
+  if echo "$AVAILABLE_STORAGES" | grep -qx "$TERRAFORM_STORAGE"; then
+    pass "Storage Terraform '$TERRAFORM_STORAGE' esiste su Proxmox"
+  else
+    fail "Storage Terraform '$TERRAFORM_STORAGE' NON esiste su Proxmox. Disponibili: $(echo "$AVAILABLE_STORAGES" | tr '\n' ' ')"
+  fi
+fi
+
+# ───────────────────────────────────────────────────────────────────────────────
+echo ""
 echo "📦 DIPENDENZE"
 echo "───────────────────────────────────────────────────────────────────────────"
 
-for cmd in curl ansible-vault terraform packer; do
+for cmd in curl ansible-vault terraform packer python3; do
   command -v "$cmd" >/dev/null || fail "$cmd non trovato"
   VERSION=$($cmd --version 2>&1 | head -1 | cut -d' ' -f1-3)
   pass "$cmd disponibile"
