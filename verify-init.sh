@@ -63,17 +63,34 @@ pass "~/.vault_pass ha permessi corretti (600)"
 [ -f "$SCRIPT_DIR/group_vars/all.yml" ] || fail "group_vars/all.yml non esiste"
 pass "group_vars/all.yml esiste"
 
-# Prova a decifrare
-if ! ansible-vault view "$SCRIPT_DIR/group_vars/all.yml" --vault-password-file "$VAULT_PASS_FILE" >/dev/null 2>&1; then
-  fail "group_vars/all.yml non è decifrabile (password Vault sbagliata?)"
+# Verifica che il file contiene variabili Vault cifrate (marker !vault)
+grep -q "!vault" "$SCRIPT_DIR/group_vars/all.yml" || fail "group_vars/all.yml non contiene credenziali cifrate"
+pass "group_vars/all.yml contiene credenziali cifrate"
+
+# Testa la password Vault caricando il file con ansible
+# (ansible-vault view è per file completamente cifrati; il nostro ha variabili individuali con !vault)
+VAULT_TEST=$(ansible localhost -m debug \
+  -e "@$SCRIPT_DIR/group_vars/all.yml" \
+  -e "ansible_connection=local" \
+  --vault-password-file "$VAULT_PASS_FILE" \
+  -a "var=vault_proxmox_root_pw" 2>&1)
+
+if echo "$VAULT_TEST" | grep -q "ERROR\|fatal\|Failed"; then
+  fail "Password Vault non valida o file corrotto"
 fi
-pass "group_vars/all.yml è decifrabile"
+pass "Password Vault valida"
 
-# Estrai le credenziali dal Vault
-VAULT_CONTENT=$(ansible-vault view "$SCRIPT_DIR/group_vars/all.yml" --vault-password-file "$VAULT_PASS_FILE")
+# Estrai le credenziali decifrate direttamente dal file (ansible le ha già decodificate)
+# Usa ansible per ottenere i valori
+PROXMOX_ROOT_PW=$(ansible localhost -m debug \
+  -e "@$SCRIPT_DIR/group_vars/all.yml" \
+  --vault-password-file "$VAULT_PASS_FILE" \
+  -a "var=vault_proxmox_root_pw" 2>/dev/null | grep -oP '(?<=")[^"]+' | head -1)
 
-PROXMOX_ROOT_PW=$(echo "$VAULT_CONTENT" | grep "^vault_proxmox_root_pw:" -A 10 | grep -oP '(?<= )\S+' | head -1 || echo "")
-AUTOMATION_USER_PW=$(echo "$VAULT_CONTENT" | grep "^vault_automation_user_pw:" -A 10 | grep -oP '(?<= )\S+' | head -1 || echo "")
+AUTOMATION_USER_PW=$(ansible localhost -m debug \
+  -e "@$SCRIPT_DIR/group_vars/all.yml" \
+  --vault-password-file "$VAULT_PASS_FILE" \
+  -a "var=vault_automation_user_pw" 2>/dev/null | grep -oP '(?<=")[^"]+' | head -1)
 
 [ -n "$PROXMOX_ROOT_PW" ] || fail "vault_proxmox_root_pw non trovata nel Vault"
 pass "vault_proxmox_root_pw estratta dal Vault"

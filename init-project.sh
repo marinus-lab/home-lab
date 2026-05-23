@@ -183,26 +183,37 @@ fi
 # Crea il token packer
 info "Generazione token API per Packer..."
 
-TOKEN_RESPONSE=$(curl -s -k -X POST \
+# Prova a creare il token (potrebbe già esistere)
+TOKEN_RESPONSE=$(curl -s -k -w "\n%{http_code}" -X POST \
   "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/packer" \
   -b "PVEAuthCookie=$TICKET" \
   -H "CSRFPreventionToken: $CSRF_TOKEN" \
-  -d "comment=Packer%20token" 2>/dev/null || echo '{}')
+  -d "comment=Packer%20token" 2>/dev/null || echo -e '{}\n500')
 
-# Debug: salva la risposta completa
-echo "$TOKEN_RESPONSE" > /tmp/packer_token_debug.json
+TOKEN_BODY=$(echo "$TOKEN_RESPONSE" | head -n -1)
+TOKEN_HTTP=$(echo "$TOKEN_RESPONSE" | tail -n 1)
 
-# Estrai il token dal JSON (prova multiple formati)
-TOKEN_SECRET=$(echo "$TOKEN_RESPONSE" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
+if [ "$TOKEN_HTTP" = "400" ] && echo "$TOKEN_BODY" | grep -q "already exists"; then
+  warn "Token packer esiste già — elimino e ricrei..."
+  curl -s -k -X DELETE \
+    "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/packer" \
+    -b "PVEAuthCookie=$TICKET" \
+    -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null
 
-if [ -z "$TOKEN_SECRET" ]; then
-  # Se non trova con la regex, prova a cercare direttamente nel JSON
-  TOKEN_SECRET=$(echo "$TOKEN_RESPONSE" | grep -oP 'value["\s:]+\K[a-f0-9\-]+' | head -1)
+  # Ricrea il token
+  TOKEN_RESPONSE=$(curl -s -k -X POST \
+    "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/packer" \
+    -b "PVEAuthCookie=$TICKET" \
+    -H "CSRFPreventionToken: $CSRF_TOKEN" \
+    -d "comment=Packer%20token" 2>/dev/null || echo '{}')
+  TOKEN_BODY="$TOKEN_RESPONSE"
 fi
 
+# Estrai il token dal JSON
+TOKEN_SECRET=$(echo "$TOKEN_BODY" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
+
 if [ -z "$TOKEN_SECRET" ]; then
-  error "Token Packer non generato. Risposta salvata in /tmp/packer_token_debug.json:
-$TOKEN_RESPONSE"
+  error "Token Packer non generato. Risposta: $TOKEN_BODY"
 fi
 
 ok "Token Packer creato"
@@ -211,14 +222,34 @@ echo "Token: $API_USERNAME@pve!packer=$TOKEN_SECRET"
 # Crea il token terraform
 info "Generazione token API per Terraform..."
 
-TERRAFORM_TOKEN=$(curl -s -k -X POST \
+# Prova a creare il token (potrebbe già esistere)
+TERRAFORM_RESPONSE=$(curl -s -k -w "\n%{http_code}" -X POST \
   "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/terraform" \
   -b "PVEAuthCookie=$TICKET" \
   -H "CSRFPreventionToken: $CSRF_TOKEN" \
-  -d "comment=Terraform%20token" 2>/dev/null || echo '{}')
+  -d "comment=Terraform%20token" 2>/dev/null || echo -e '{}\n500')
+
+TERRAFORM_BODY=$(echo "$TERRAFORM_RESPONSE" | head -n -1)
+TERRAFORM_HTTP=$(echo "$TERRAFORM_RESPONSE" | tail -n 1)
+
+if [ "$TERRAFORM_HTTP" = "400" ] && echo "$TERRAFORM_BODY" | grep -q "already exists"; then
+  warn "Token terraform esiste già — elimino e ricrei..."
+  curl -s -k -X DELETE \
+    "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/terraform" \
+    -b "PVEAuthCookie=$TICKET" \
+    -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null
+
+  # Ricrea il token
+  TERRAFORM_RESPONSE=$(curl -s -k -X POST \
+    "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/terraform" \
+    -b "PVEAuthCookie=$TICKET" \
+    -H "CSRFPreventionToken: $CSRF_TOKEN" \
+    -d "comment=Terraform%20token" 2>/dev/null || echo '{}')
+  TERRAFORM_BODY="$TERRAFORM_RESPONSE"
+fi
 
 # Estrai il token dal JSON
-TERRAFORM_SECRET=$(echo "$TERRAFORM_TOKEN" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
+TERRAFORM_SECRET=$(echo "$TERRAFORM_BODY" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
 
 if [ -z "$TERRAFORM_SECRET" ]; then
   warn "Token Terraform non generato — usa lo stesso di Packer"
