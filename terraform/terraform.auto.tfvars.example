@@ -1,6 +1,14 @@
-# CREDENZIALI PROXMOX — Generato automaticamente da init-project.sh
+# CREDENZIALI E CONFIGURAZIONE RETE — Generato automaticamente da init-project.sh
 # Copia questo file a terraform.auto.tfvars se lo generi manualmente
 
+# ── Credenziali Proxmox ────────────────────────────────────────────────────────
 proxmox_url          = "https://192.168.1.10:8006/api2/json"
 proxmox_token_id     = "automation@pve!terraform"
 proxmox_token_secret = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+proxmox_node         = "pve"
+
+# ── Rete Kubernetes ────────────────────────────────────────────────────────────
+k8s_subnet      = "192.168.0.0/24"
+k8s_gateway     = "192.168.0.1"
+master_ip_start = 210
+worker_ip_start = 220
