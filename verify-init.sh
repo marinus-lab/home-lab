@@ -211,7 +211,6 @@ echo "────────────────────────�
 
 for cmd in curl ansible-vault terraform packer python3; do
   command -v "$cmd" >/dev/null || fail "$cmd non trovato"
-  VERSION=$($cmd --version 2>&1 | head -1 | cut -d' ' -f1-3)
   pass "$cmd disponibile"
 done
 
