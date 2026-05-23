@@ -1,14 +1,5 @@
 #!/usr/bin/env bash
 # Inizializzazione progetto homelab — setup credenziali e configurazione
-#
-# Esecuzione:
-#   bash init-project.sh
-#
-# Questo script:
-# 1. Chiede le credenziali Proxmox (una sola volta)
-# 2. Cifra tutto in Ansible Vault
-# 3. Genera packer.pkrvars.hcl e terraform.tfvars
-# 4. Crea l'utente API automation su Proxmox
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,7 +19,7 @@ error() { echo -e "${RED}[init]${NC} ❌ $*" >&2; exit 1; }
 
 # ── Verifica prerequisiti ─────────────────────────────────────────────────────
 info "Verifica prerequisiti..."
-command -v ansible >/dev/null || error "ansible non trovato — esegui setup-bastion.sh"
+command -v curl >/dev/null || error "curl non trovato"
 command -v ansible-vault >/dev/null || error "ansible-vault non trovato"
 [ -f "$SCRIPT_DIR/requirements.yml" ] || error "requirements.yml non trovato"
 ok "Prerequisiti OK"
@@ -61,80 +52,62 @@ read -rsp "Password per il Vault (proteggere bene!): " VAULT_PASSWORD
 echo ""
 [ -n "$VAULT_PASSWORD" ] || error "Password Vault richiesta"
 
-# ── Salva password Vault in file locale ───────────────────────────────────────
+# ── Salva password Vault ──────────────────────────────────────────────────────
 info "Salvataggio password Vault in $VAULT_PASS_FILE"
 echo "$VAULT_PASSWORD" > "$VAULT_PASS_FILE"
 chmod 600 "$VAULT_PASS_FILE"
 ok "Password Vault salvata"
 
-# ── Crea/aggiorna group_vars/all.yml con credenziali cifrate ──────────────────
+# ── Crea group_vars/all.yml con credenziali cifrate ──────────────────────────
 info "Cifratura credenziali Ansible Vault..."
 
-# Backup se esiste
 if [ -f "$SCRIPT_DIR/group_vars/all.yml" ]; then
   cp "$SCRIPT_DIR/group_vars/all.yml" "$SCRIPT_DIR/group_vars/all.yml.bak"
   warn "Backup creato: group_vars/all.yml.bak"
 fi
 
-# Crea il file con le variabili cifrate
 cat > "$SCRIPT_DIR/group_vars/all.yml" << EOF
 ---
 # Credenziali Proxmox — CIFRATE CON ANSIBLE VAULT
-# Per decifrare: ansible-vault view group_vars/all.yml --vault-password-file ~/.vault_pass
 EOF
 
 # Cifra vault_proxmox_root_pw
-ENCRYPTED_ROOT=$(echo "$PROXMOX_ROOT_PW" | \
+echo "$PROXMOX_ROOT_PW" | \
   ansible-vault encrypt_string --vault-password-file "$VAULT_PASS_FILE" \
-  --name vault_proxmox_root_pw 2>/dev/null | grep -v "^\$ANSIBLE_VAULT")
-echo "" >> "$SCRIPT_DIR/group_vars/all.yml"
-echo "$ENCRYPTED_ROOT" >> "$SCRIPT_DIR/group_vars/all.yml"
+  --name vault_proxmox_root_pw >> "$SCRIPT_DIR/group_vars/all.yml" 2>/dev/null
 
 # Cifra vault_automation_user_pw
-ENCRYPTED_API=$(echo "$API_PASSWORD" | \
+echo "$API_PASSWORD" | \
   ansible-vault encrypt_string --vault-password-file "$VAULT_PASS_FILE" \
-  --name vault_automation_user_pw 2>/dev/null | grep -v "^\$ANSIBLE_VAULT")
-echo "" >> "$SCRIPT_DIR/group_vars/all.yml"
-echo "$ENCRYPTED_API" >> "$SCRIPT_DIR/group_vars/all.yml"
+  --name vault_automation_user_pw >> "$SCRIPT_DIR/group_vars/all.yml" 2>/dev/null
 
 ok "Credenziali cifrate in group_vars/all.yml"
 
 # ── Genera packer/packer.pkrvars.hcl ──────────────────────────────────────────
 info "Generazione packer/packer.pkrvars.hcl..."
 
-PACKER_VARS="$SCRIPT_DIR/packer/packer.pkrvars.hcl"
-cat > "$PACKER_VARS" << 'EOF'
+cat > "$SCRIPT_DIR/packer/packer.pkrvars.hcl" << EOF
 # Generato automaticamente da init-project.sh
-# Contiene i dati di connessione a Proxmox per Packer
 
-EOF
-
-cat >> "$PACKER_VARS" << EOF
 proxmox_url          = "https://$PROXMOX_HOST:8006/api2/json"
 proxmox_token_id     = "$API_USERNAME@pve!packer"
-proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_ANSIBLE"
+proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
 proxmox_node         = "pve"
 storage_pool         = "local-lvm"
 EOF
 
-ok "packer/packer.pkrvars.hcl creato (token sarà riempito dopo)"
+ok "packer/packer.pkrvars.hcl creato"
 
 # ── Genera terraform/terraform.tfvars ─────────────────────────────────────────
 info "Generazione terraform/terraform.tfvars..."
 
-TERRAFORM_VARS="$SCRIPT_DIR/terraform/terraform.tfvars"
-cat > "$TERRAFORM_VARS" << 'EOF'
+cat > "$SCRIPT_DIR/terraform/terraform.tfvars" << EOF
 # Generato automaticamente da init-project.sh
-# Contiene i dati di connessione a Proxmox per Terraform
 
-EOF
-
-cat >> "$TERRAFORM_VARS" << EOF
 proxmox_url          = "https://$PROXMOX_HOST:8006/api2/json"
 proxmox_token_id     = "$API_USERNAME@pve!terraform"
-proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_ANSIBLE"
+proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
 
-# Rete e VMs — adatta ai tuoi valori se necessario
 proxmox_node = "pve"
 k8s_subnet   = "192.168.1.0/24"
 k8s_gateway  = "192.168.1.1"
@@ -143,14 +116,9 @@ control_plane_count = 1
 worker_count        = 2
 EOF
 
-ok "terraform/terraform.tfvars creato (token sarà riempito dopo)"
+ok "terraform/terraform.tfvars creato"
 
-# ── Installa collezioni Ansible ───────────────────────────────────────────────
-info "Installazione collezioni Ansible..."
-ansible-galaxy collection install -r "$SCRIPT_DIR/requirements.yml" >/dev/null 2>&1
-ok "Collezioni Ansible installate"
-
-# ── Crea l'utente API su Proxmox ──────────────────────────────────────────────
+# ── Crea l'utente API su Proxmox con curl ─────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  CREAZIONE UTENTE API SU PROXMOX"
@@ -159,40 +127,60 @@ echo ""
 
 info "Creazione utente $API_USERNAME@pve su $PROXMOX_HOST..."
 
-# Esegui il playbook
-ANSIBLE_VAULT_PASSWORD_FILE="$VAULT_PASS_FILE" \
-ansible-playbook "$SCRIPT_DIR/create_proxmox_user.yml" \
-  -e "proxmox_host=$PROXMOX_HOST" \
-  -e "api_username=$API_USERNAME" \
-  -e "api_token_id=packer" \
-  --vault-password-file "$VAULT_PASS_FILE" 2>&1 | tee /tmp/ansible-output.log
+# Crea l'utente
+CURL_RESPONSE=$(curl -s -k -X POST \
+  "https://$PROXMOX_HOST:8006/api2/json/access/users" \
+  -u "root@pam:$PROXMOX_ROOT_PW" \
+  -d "userid=$API_USERNAME@pve&password=$API_PASSWORD&comment=Automation%20user" 2>/dev/null || echo '{}')
 
-# Estrai il token dal log di Ansible
-TOKEN_VALUE=$(grep -oP "Value: \K[^ ]+" /tmp/ansible-output.log | head -1)
-
-if [ -z "$TOKEN_VALUE" ]; then
-  error "Token non generato — controlla il log sopra"
+# Ignora se l'utente esiste già
+if echo "$CURL_RESPONSE" | grep -q "already exists"; then
+  warn "Utente $API_USERNAME@pve esiste già"
+elif echo "$CURL_RESPONSE" | grep -q "\"data\""; then
+  ok "Utente $API_USERNAME@pve creato"
 fi
 
-ok "Utente API creato con successo"
-echo ""
-echo "Token generato:"
-echo "  $TOKEN_VALUE"
-echo ""
+# Crea il token packer
+info "Generazione token API per Packer..."
 
-# ── Aggiorna i file .tfvars e .pkrvars con il token ──────────────────────────
-info "Aggiornamento file di configurazione con il token..."
+TOKEN_RESPONSE=$(curl -s -k -X POST \
+  "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/packer" \
+  -u "root@pam:$PROXMOX_ROOT_PW" \
+  -d "comment=Packer%20token" 2>/dev/null || echo '{}')
 
-# Estrai solo il secret UUID dal token (parte dopo il =)
-TOKEN_SECRET="${TOKEN_VALUE##*=}"
+TOKEN_SECRET=$(echo "$TOKEN_RESPONSE" | grep -oP '"value":"?\K[^"]+' | head -1)
 
-# Aggiorna packer.pkrvars.hcl
-sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_ANSIBLE\"|proxmox_token_secret = \"$TOKEN_SECRET\"|g" "$PACKER_VARS"
+if [ -z "$TOKEN_SECRET" ]; then
+  error "Token non generato. Risposta: $TOKEN_RESPONSE"
+fi
 
-# Aggiorna terraform.tfvars
-sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_ANSIBLE\"|proxmox_token_secret = \"$TOKEN_SECRET\"|g" "$TERRAFORM_VARS"
+ok "Token Packer creato"
+echo "Token: $API_USERNAME@pve!packer=$TOKEN_SECRET"
 
-ok "Token inserito nei file di configurazione"
+# Crea il token terraform
+info "Generazione token API per Terraform..."
+
+TERRAFORM_TOKEN=$(curl -s -k -X POST \
+  "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/terraform" \
+  -u "root@pam:$PROXMOX_ROOT_PW" \
+  -d "comment=Terraform%20token" 2>/dev/null || echo '{}')
+
+TERRAFORM_SECRET=$(echo "$TERRAFORM_TOKEN" | grep -oP '"value":"?\K[^"]+' | head -1)
+
+if [ -z "$TERRAFORM_SECRET" ]; then
+  warn "Token Terraform non generato — usa lo stesso di Packer"
+  TERRAFORM_SECRET="$TOKEN_SECRET"
+else
+  ok "Token Terraform creato"
+fi
+
+# ── Aggiorna i file con i token ───────────────────────────────────────────────
+info "Aggiornamento file di configurazione con i token..."
+
+sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TOKEN_SECRET\"|g" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"
+sed -i "s|proxmox_token_secret = \"PLACEHOLDER_GENERATO_DA_CURL\"|proxmox_token_secret = \"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.tfvars"
+
+ok "Token inseriti nei file di configurazione"
 
 # ── Riepilogo ─────────────────────────────────────────────────────────────────
 echo ""
@@ -212,7 +200,4 @@ echo "Prossimi passi:"
 echo "  1. cd packer && ./build.sh              (crea template VM)"
 echo "  2. cd ../terraform && terraform apply   (crea VM K8s)"
 echo "  3. cd ../kubespray && ./deploy.sh       (installa Kubernetes)"
-echo ""
-echo "Per decifrare le credenziali:"
-echo "  ansible-vault view group_vars/all.yml --vault-password-file ~/.vault_pass"
 echo ""
