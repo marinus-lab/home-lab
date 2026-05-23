@@ -176,8 +176,8 @@ STORAGE_API_RESPONSE=$(curl -s -k -X GET \
   "https://$PROXMOX_URL:8006/api2/json/nodes/$PROXMOX_NODE/storage" \
   -H "Authorization: PVEAPIToken=$PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_SECRET" 2>&1 || echo '{"data":[]}')
 
-# Lista storage disponibili
-AVAILABLE_STORAGES=$(echo "$STORAGE_API_RESPONSE" | grep -oP '"storage"\s*:\s*"\K[^"]+' | sort -u)
+# Lista storage disponibili (|| true per evitare pipe failure con set -e)
+AVAILABLE_STORAGES=$(echo "$STORAGE_API_RESPONSE" | grep -oP '"storage"\s*:\s*"\K[^"]+' | sort -u || true)
 
 if [ -z "$AVAILABLE_STORAGES" ]; then
   warn "Impossibile recuperare lista storage da Proxmox (verifica permessi token)"
