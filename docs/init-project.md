@@ -139,21 +139,25 @@ Dopo aver inserito tutti gli input, lo script:
    ↓
 6. Ottiene ticket di sessione Proxmox (API ticket-based auth)
    ↓
-7. Crea/verifica utente <nome_scelto>@pve su Proxmox (con curl)
+7. Rileva nodo Proxmox disponibile via API
+   ├── Se un solo nodo: lo seleziona automaticamente
+   └── Se più nodi: chiede all'utente di scegliere
    ↓
-8. Crea token packer (o lo rigenera se già esiste)
+8. Crea/verifica utente <nome_scelto>@pve su Proxmox (con curl)
+   ↓
+9. Crea token packer (o lo rigenera se già esiste)
    ├── Se token esiste: lo elimina e ricrea
    └── Estrae il secret dal JSON di risposta
    ↓
-9. Crea token terraform (o lo rigenera se già esiste)
-   ├── Se token esiste: lo elimina e ricrea
-   └── Estrae il secret dal JSON di risposta
-   ↓
-10. Aggiorna packer/packer.pkrvars.hcl con token vero
+10. Crea token terraform (o lo rigenera se già esiste)
+    ├── Se token esiste: lo elimina e ricrea
+    └── Estrae il secret dal JSON di risposta
     ↓
-11. Aggiorna terraform/terraform.auto.tfvars con token vero
+11. Aggiorna packer/packer.pkrvars.hcl con token vero e nodo
     ↓
-12. Mostra riepilogo con i prossimi passi
+12. Aggiorna terraform/terraform.auto.tfvars con token vero e nodo
+    ↓
+13. Mostra riepilogo con i prossimi passi
 ```
 
 ---
