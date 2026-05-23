@@ -193,6 +193,44 @@ done
 
 ok "Rete Kubernetes configurata"
 
+# ── STORAGE PACKER ────────────────────────────────────────────────────────────
+echo ""
+echo "💾 STORAGE PACKER"
+echo ""
+
+# Storage pool per ISO
+while true; do
+  read -rp "Storage pool per ISO Packer (default: local): " PACKER_ISO_POOL
+  PACKER_ISO_POOL="${PACKER_ISO_POOL:-local}"
+  echo ""
+
+  if [ -z "$PACKER_ISO_POOL" ]; then
+    warn "Storage pool ISO richiesto"
+    continue
+  fi
+
+  ok "Storage pool ISO: $PACKER_ISO_POOL"
+  break
+done
+
+# Storage pool per template
+while true; do
+  echo ""
+  read -rp "Storage pool per template (default: local-lvm): " PACKER_TEMPLATE_POOL
+  PACKER_TEMPLATE_POOL="${PACKER_TEMPLATE_POOL:-local-lvm}"
+  echo ""
+
+  if [ -z "$PACKER_TEMPLATE_POOL" ]; then
+    warn "Storage pool template richiesto"
+    continue
+  fi
+
+  ok "Storage pool template: $PACKER_TEMPLATE_POOL"
+  break
+done
+
+ok "Storage Packer configurato"
+
 # ── VAULT PASSWORD ────────────────────────────────────────────────────────────
 echo ""
 echo "🔐 PASSWORD VAULT"
@@ -249,11 +287,15 @@ info "Generazione packer/packer.pkrvars.hcl..."
 cat > "$SCRIPT_DIR/packer/packer.pkrvars.hcl" << EOF
 # Generato automaticamente da init-project.sh
 
+# ── Credenziali Proxmox ────────────────────────────────────────────────────────
 proxmox_url          = "https://$PROXMOX_HOST:8006/api2/json"
 proxmox_token_id     = "$API_USERNAME@pve!packer"
 proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
 proxmox_node         = "PLACEHOLDER_NODO"
-storage_pool         = "local-lvm"
+
+# ── Storage Packer ────────────────────────────────────────────────────────────
+iso_storage_pool      = "$PACKER_ISO_POOL"
+template_storage_pool = "$PACKER_TEMPLATE_POOL"
 EOF
 
 ok "packer/packer.pkrvars.hcl creato"
@@ -471,6 +513,10 @@ echo "  • Subnet: $K8S_SUBNET"
 echo "  • Gateway: $K8S_GATEWAY"
 echo "  • Master IP: $MASTER_IP_OCTET-$((MASTER_IP_OCTET+2))"
 echo "  • Worker IP: $WORKER_IP_OCTET-$((WORKER_IP_OCTET+2))"
+echo ""
+echo "Configurazione Packer:"
+echo "  • Storage ISO: $PACKER_ISO_POOL"
+echo "  • Storage template: $PACKER_TEMPLATE_POOL"
 echo ""
 echo "Credenziali Vault salvate in:"
 echo "  • $VAULT_PASS_FILE                    (proteggere!)"

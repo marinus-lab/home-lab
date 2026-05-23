@@ -75,3 +75,16 @@ variable "ssh_password" {
   description = "Password root impostata dall'autoinstall, usata da Packer per connettersi"
   default     = "packer"
 }
+
+# ── Storage ─────────────────────────────────────────────────────────────────
+variable "iso_storage_pool" {
+  type        = string
+  description = "Storage pool Proxmox per le ISO scaricate"
+  default     = "local"
+}
+
+variable "template_storage_pool" {
+  type        = string
+  description = "Storage pool Proxmox per il disco template finale"
+  default     = "local-lvm"
+}
