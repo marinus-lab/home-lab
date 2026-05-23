@@ -2,7 +2,7 @@
 
 ## Panoramica
 
-`init-project.sh` è uno script interattivo che automatizza tutta la configurazione iniziale del progetto. Eseguito una sola volta, prepara:
+`init-project.sh` è uno script interattivo che automatizza tutta la configurazione iniziale del progetto. Prepara:
 
 - Credenziali Proxmox cifrate con Ansible Vault
 - Utente API automation su Proxmox (personalizzabile)
@@ -10,6 +10,8 @@
 - File di configurazione pronti (`packer.pkrvars.hcl`, `terraform.tfvars`)
 
 Dopo il suo completamento, **tutta la pipeline è automatica** — niente più input manuale di credenziali.
+
+**⚠️ Idempotente:** Lo script può essere eseguito **più volte** in sicurezza. Se utente o token già esistono, vengono rigenerati automaticamente (non fallisce).
 
 ---
 
@@ -32,6 +34,24 @@ bash init-project.sh
 ```
 
 Lo script è **interattivo** — pone domande in sequenza. Non è necessario aggiungere argomenti da linea di comando.
+
+### Verifica il risultato
+
+Dopo l'esecuzione, verifica che tutto è stato configurato correttamente:
+
+```bash
+bash verify-init.sh
+```
+
+Lo script controlla:
+- ✅ File di configurazione esistono e contengono token validi
+- ✅ Password Vault salvata con permessi corretti
+- ✅ Credenziali cifrate presenti nel Vault
+- ✅ Connessione API Proxmox funzionante
+- ✅ Token API valido e funzionante
+- ✅ Dipendenze (curl, ansible-vault, terraform, packer) disponibili
+
+Se tutto passa, sei pronto per procedere con Packer/Terraform/Kubespray! ✅
 
 ---
 
@@ -78,10 +98,10 @@ Lasciar vuoto usa il default `automation`. Il nome può contenere solo caratteri
 ### 4. Password utente automation
 
 ```
-Password per utente <nome_scelto>:
+Password per utente <nome_scelto> (min 8 caratteri):
 ```
 
-Una password per il nuovo utente automation che verrà creato su Proxmox. Scegline una sicura (almeno 12 caratteri). Questa password:
+Una password per il nuovo utente automation che verrà creato su Proxmox. Deve avere **almeno 8 caratteri** (vincolo Proxmox). Scegline una complessa e lunga. Questa password:
 - Non verrà usata per login manuali (il token API è quello che conta)
 - Viene cifrata in Vault insieme alle altre credenziali
 
@@ -105,32 +125,35 @@ Una password **per proteggere** tutte le credenziali Proxmox cifrate. Questa pas
 Dopo aver inserito tutti gli input, lo script:
 
 ```
-1. Verifica i prerequisiti (ansible, ansible-vault presenti)
+1. Verifica i prerequisiti (curl, ansible-vault presenti)
    ↓
 2. Salva la password Vault in ~/.vault_pass (chmod 600)
    ↓
 3. Cifra le credenziali Proxmox in group_vars/all.yml
-   ├── vault_proxmox_root_pw
-   └── vault_automation_user_pw
+   ├── vault_proxmox_root_pw (cifrata)
+   └── vault_automation_user_pw (cifrata)
    ↓
-4. Genera packer/packer.pkrvars.hcl (versione preliminare)
+4. Genera packer/packer.pkrvars.hcl con placeholder token
    ↓
-5. Genera terraform/terraform.tfvars (versione preliminare)
+5. Genera terraform/terraform.tfvars con placeholder token
    ↓
-6. Installa collezioni Ansible (community.proxmox)
+6. Ottiene ticket di sessione Proxmox (API ticket-based auth)
    ↓
-7. Esegue create_proxmox_user.yml
-   ├── Crea utente <nome_scelto>@pve su Proxmox
-   ├── Assegna ruolo PVEAdmin
-   └── Genera token API
+7. Crea/verifica utente <nome_scelto>@pve su Proxmox (con curl)
    ↓
-8. Estrae il token dal log di Ansible
+8. Crea token packer (o lo rigenera se già esiste)
+   ├── Se token esiste: lo elimina e ricrea
+   └── Estrae il secret dal JSON di risposta
    ↓
-9. Aggiorna packer/packer.pkrvars.hcl con il token
+9. Crea token terraform (o lo rigenera se già esiste)
+   ├── Se token esiste: lo elimina e ricrea
+   └── Estrae il secret dal JSON di risposta
    ↓
-10. Aggiorna terraform/terraform.tfvars con il token
-   ↓
-11. Mostra riepilogo con i prossimi passi
+10. Aggiorna packer/packer.pkrvars.hcl con token vero
+    ↓
+11. Aggiorna terraform/terraform.tfvars con token vero
+    ↓
+12. Mostra riepilogo con i prossimi passi
 ```
 
 ---
@@ -178,16 +201,14 @@ Per decifrare le credenziali:
 
 ### Ansible Vault
 
-Lo script cifra le credenziali usando `ansible-vault`:
+Lo script cifra le credenziali usando `ansible-vault encrypt_string`:
 
 ```bash
-# Leggi come fa il script
-ansible-vault encrypt_string --vault-password-file ~/.vault_pass \
-  --name vault_proxmox_root_pw \
-  "<password>"
+# Per ogni variabile, lo script cattura l'output di encrypt_string
+echo "password" | ansible-vault encrypt_string --vault-password-file ~/.vault_pass
 ```
 
-Il risultato nel file `group_vars/all.yml`:
+Il risultato nel file `group_vars/all.yml` è YAML con variabili individuali cifrate:
 
 ```yaml
 ---
@@ -195,29 +216,40 @@ vault_proxmox_root_pw: !vault |
   $ANSIBLE_VAULT;1.1;AES256
   66386d8c2e8d8c8d8c8d8c8d8c8d8c8d8c8d8c8d8c8d8c8d8c8d8c8d8c8d8c8d
   8c8d8c8d8c8d8c8d8c8d8c8d8c8d8c8d
-  ...
+vault_automation_user_pw: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  37646166363165653832636434613032336337626136653330346666333536383037...
 ```
 
-Solo chi ha la password Vault (`~/.vault_pass`) può decifrare il contenuto.
+Solo chi ha la password Vault (`~/.vault_pass`) può decifrare il contenuto. Per visualizzare:
 
-### Creazione utente Proxmox
+```bash
+ansible-vault view group_vars/all.yml --vault-password-file ~/.vault_pass
+```
 
-Lo script esegue il playbook `create_proxmox_user.yml` che:
+### Autenticazione Proxmox
 
-1. Si autentica come `root@pam` su Proxmox
-2. Crea l'utente `<nome_scelto>@pve`
-3. Assegna il ruolo `PVEAdmin`
-4. Genera un token API permanente
+Lo script usa **ticket-based authentication** (metodo standard di Proxmox):
 
-Il token ha formato: `<nome_scelto>@pve!<tokenid>=<secret_uuid>`
+1. **Ottiene il ticket**: POST a `/api2/json/access/ticket` con root@pam credentials
+2. **Usa il ticket**: Invia PVEAuthCookie (ticket) e CSRFPreventionToken header per operazioni API
+3. **Crea utente e token**: Con curl, non Ansible
 
-### Token per Packer e Terraform
+### Token API Proxmox
 
-Lo script crea **un unico token** e lo usa per entrambi:
+Lo script crea **due token separati**:
 - Packer: `<nome_scelto>@pve!packer=<secret_uuid>`
 - Terraform: `<nome_scelto>@pve!terraform=<secret_uuid>`
 
-Se preferisci separare, modifica manualmente in `create_proxmox_user.yml` la variabile `api_token_id`.
+Se un token esiste già (da una precedente esecuzione), viene **eliminato e ricreato** automaticamente con un nuovo secret.
+
+### Idempotenza
+
+Se esegui lo script di nuovo:
+- ✅ Utente esiste? → Continua (non fallisce)
+- ✅ Token esiste? → Lo elimina e ricrea con nuovo secret
+- ✅ File di config esistono? → Sovrascritti con nuovi valori
+- ✅ Vault già creato? → Mantiene gli stessi dati
 
 ---
 
