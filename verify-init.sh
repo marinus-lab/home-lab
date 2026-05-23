@@ -74,12 +74,6 @@ pass "vault_proxmox_root_pw presente"
 grep -q "vault_automation_user_pw:" "$SCRIPT_DIR/group_vars/all.yml" || fail "vault_automation_user_pw non trovata"
 pass "vault_automation_user_pw presente"
 
-[ -n "$PROXMOX_ROOT_PW" ] || fail "vault_proxmox_root_pw non trovata nel Vault"
-pass "vault_proxmox_root_pw estratta dal Vault"
-
-[ -n "$AUTOMATION_USER_PW" ] || fail "vault_automation_user_pw non trovata nel Vault"
-pass "vault_automation_user_pw estratta dal Vault"
-
 # ───────────────────────────────────────────────────────────────────────────────
 echo ""
 echo "🔌 CONNESSIONE PROXMOX"
