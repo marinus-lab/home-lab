@@ -35,6 +35,8 @@ bash init-project.sh
 
 Lo script è **interattivo** — pone domande in sequenza. Non è necessario aggiungere argomenti da linea di comando.
 
+**Validazione:** Tutti gli input vengono validati. Se un input non è accettato, lo script chiede di nuovo finché non inserisci un valore valido. Non puoi saltare nessun campo.
+
 Le domande sono organizzate per sezioni (Proxmox, Utente, Password, Rete) con **linee vuote di separazione** per maggiore leggibilità:
 
 ```
@@ -81,6 +83,24 @@ Se tutto passa, sei pronto per procedere con Packer/Terraform/Kubespray! ✅
 
 ---
 
+## Validazione input
+
+Lo script **controlla tutti gli input** e continua a chiedere finché non inserisci un valore valido:
+
+| Input | Validazione | Azione se invalido |
+|-------|-------------|-------------------|
+| IP/hostname Proxmox | Non vuoto | Chiede di nuovo |
+| Password root Proxmox | Non vuota | Chiede di nuovo |
+| Nome utente automation | Ha default `automation` | Non richiesto se vuoto |
+| Password utente automation | Min 8 caratteri | Chiede di nuovo |
+| Subnet Kubernetes | Formato CIDR valido (X.X.X.X/XX) | Chiede di nuovo |
+| Gateway Kubernetes | Formato IP valido (X.X.X.X) | Chiede di nuovo |
+| Master IP ottetto | Numero 0-253 | Chiede di nuovo |
+| Worker IP ottetto | Numero 0-253 + > Master+2 | Chiede di nuovo |
+| Password Vault | Non vuota | Chiede di nuovo |
+
+---
+
 ## Input richiesti
 
 ### 1. IP/hostname Proxmox
@@ -94,6 +114,8 @@ Inserisci l'indirizzo IP della macchina Proxmox. Esempi validi:
 - `proxmox.homelab.local`
 - `pve.mio.lan`
 
+**Validazione:** Non può essere vuoto.
+
 ### 2. Password root Proxmox
 
 ```
@@ -104,6 +126,8 @@ La password dell'utente `root` su Proxmox (non verrà visualizzata mentre digiti
 - Autenticarsi all'API Proxmox
 - Creare l'utente `automation`
 - Generare il token API
+
+**Validazione:** Non può essere vuota.
 
 **⚠️ Nota:** questa password viene cifrata in `group_vars/all.yml` con Ansible Vault e non rimane in chiaro.
 
@@ -119,7 +143,7 @@ Scegli il nome dell'utente che verrà creato su Proxmox per le operazioni automa
 - `packer-bot`
 - `homelab-ops`
 
-Lasciar vuoto usa il default `automation`. Il nome può contenere solo caratteri alfanumerici e underscore.
+**Validazione:** Se lasciato vuoto, usa il default `automation`. Il nome dovrebbe contenere solo caratteri alfanumerici e underscore.
 
 ### 4. Password utente automation
 
@@ -130,6 +154,8 @@ Password per utente <nome_scelto> (min 8 caratteri):
 Una password per il nuovo utente automation che verrà creato su Proxmox. Deve avere **almeno 8 caratteri** (vincolo Proxmox). Scegline una complessa e lunga. Questa password:
 - Non verrà usata per login manuali (il token API è quello che conta)
 - Viene cifrata in Vault insieme alle altre credenziali
+
+**Validazione:** Minimo 8 caratteri obbligatorio. Se troppo corta, lo script chiede di nuovo.
 
 ### 5. Subnet Kubernetes
 
@@ -144,6 +170,8 @@ La subnet dove verranno posizionate le VM del cluster Kubernetes. Esempi validi:
 
 Questa subnet deve essere raggiungibile dalla macchina dove esegui Terraform.
 
+**Validazione:** Deve essere in formato CIDR valido (`X.X.X.X/XX`). Se il formato non è corretto, lo script chiede di nuovo.
+
 ### 6. Gateway Kubernetes
 
 ```
@@ -151,6 +179,8 @@ Gateway Kubernetes (es. 192.168.0.1):
 ```
 
 L'indirizzo IP del gateway per la subnet Kubernetes. Di solito è il primo indirizzo disponibile (`.1`) oppure il router della tua rete.
+
+**Validazione:** Deve essere in formato IP valido (`X.X.X.X`). Se il formato non è corretto, lo script chiede di nuovo.
 
 ### 7. Ultimo ottetto IP primo master
 
@@ -165,6 +195,8 @@ Gli IP dei 3 master verranno calcolati automaticamente incrementando questo valo
 
 Scegli un valore che non crei conflitti con altri host nella subnet.
 
+**Validazione:** Deve essere un numero tra 0 e 253. Se non valido, lo script chiede di nuovo.
+
 ### 8. Ultimo ottetto IP primo worker
 
 ```
@@ -178,6 +210,8 @@ Gli IP dei 3 worker verranno calcolati automaticamente incrementando questo valo
 
 Scegli un valore superiore al range dei master per evitare conflitti.
 
+**Validazione:** Deve essere un numero tra 0 e 253, e **deve essere maggiore di `Master IP + 2`** per evitare sovrapposizioni. Se non valido, lo script chiede di nuovo.
+
 ### 9. Password Vault
 
 ```
@@ -188,6 +222,8 @@ Una password **per proteggere** tutte le credenziali Proxmox cifrate. Questa pas
 - **Non deve essere dimenticata** — è l'unica che permette di decifrare i segreti
 - Viene salvata in `~/.vault_pass` sul bastion
 - Deve essere **lunga e complessa** (almeno 16 caratteri)
+
+**Validazione:** Non può essere vuota. Lo script chiede di nuovo finché non la inserisci.
 
 **⚠️ Importante:** questa password è come la master key — proteggi il file `~/.vault_pass`!
 
