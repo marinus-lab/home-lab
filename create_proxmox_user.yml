@@ -1,77 +1,41 @@
 ---
-- name: Provision Proxmox API user
-  hosts: 127.0.0.1
+- name: Create Proxmox API user
+  hosts: localhost
   connection: local
   gather_facts: false
   vars:
     proxmox_host: "{{ lookup('env', 'PROXMOX_HOST') }}"
-    proxmox_user: "root@pam"
-    proxmox_password: "{{ vault_proxmox_root_pw }}"
-    api_username: "{{ api_username | default('automation') }}"
-    api_realm: "pve"
-    api_password: "{{ vault_automation_user_pw }}"
-    api_role: "PVEAdmin"
-    api_path: "/"
-    api_token_id: "packer"
-
-  pre_tasks:
-    - name: Validate Proxmox host
-      fail:
-        msg: "proxmox_host not set"
-      when: proxmox_host == ''
-
   tasks:
-    - name: Create API user
+    - name: Create user
       uri:
         url: "https://{{ proxmox_host }}:8006/api2/json/access/users"
         method: POST
-        user: "{{ proxmox_user }}"
-        password: "{{ proxmox_password }}"
+        user: "root@pam"
+        password: "{{ vault_proxmox_root_pw }}"
         force_basic_auth: true
         validate_certs: false
         body_format: form-urlencoded
         body:
-          userid: "{{ api_username }}@{{ api_realm }}"
-          password: "{{ api_password }}"
+          userid: "{{ api_username }}@pve"
+          password: "{{ vault_automation_user_pw }}"
           comment: "Automation user"
       register: user_result
-      failed_when:
-        - user_result.status not in [200, 400]
-      changed_when: user_result.status == 200
+      failed_when: user_result.status not in [200, 400]
 
-    - name: Assign role to user
+    - name: Create token
       uri:
-        url: "https://{{ proxmox_host }}:8006/api2/json/access/acl"
-        method: PUT
-        user: "{{ proxmox_user }}"
-        password: "{{ proxmox_password }}"
-        force_basic_auth: true
-        validate_certs: false
-        body_format: form-urlencoded
-        body:
-          path: "{{ api_path }}"
-          roles: "{{ api_role }}"
-          users: "{{ api_username }}@{{ api_realm }}"
-      register: acl_result
-      failed_when:
-        - acl_result.status not in [200, 400]
-
-    - name: Create API token
-      uri:
-        url: "https://{{ proxmox_host }}:8006/api2/json/access/users/{{ api_username }}@{{ api_realm }}/token/{{ api_token_id }}"
+        url: "https://{{ proxmox_host }}:8006/api2/json/access/users/{{ api_username }}@pve/token/packer"
         method: POST
-        user: "{{ proxmox_user }}"
-        password: "{{ proxmox_password }}"
+        user: "root@pam"
+        password: "{{ vault_proxmox_root_pw }}"
         force_basic_auth: true
         validate_certs: false
         body_format: form-urlencoded
         body:
-          comment: "Token for {{ api_token_id }}"
+          comment: "Packer token"
       register: token_result
-      failed_when:
-        - token_result.status not in [200, 400]
+      failed_when: token_result.status not in [200, 400]
 
-    - name: Display token
+    - name: Show token
       debug:
-        msg: "Token: {{ api_username }}@{{ api_realm }}!{{ api_token_id }}={{ token_result.json.data.value }}"
-      when: token_result.status == 200
+        msg: "{{ api_username }}@pve!packer={{ token_result.json.data.value }}"
