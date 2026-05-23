@@ -31,18 +31,28 @@ echo "  INIZIALIZZAZIONE HOMELAB KUBERNETES"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Proxmox
+# ── PROXMOX ────────────────────────────────────────────────────────────────────
+echo "🔌 CREDENZIALI PROXMOX"
+echo ""
 read -rp "IP/hostname Proxmox (es. 192.168.1.10): " PROXMOX_HOST
 [ -n "$PROXMOX_HOST" ] || error "IP Proxmox richiesto"
 
+echo ""
 read -rsp "Password utente root@pam di Proxmox: " PROXMOX_ROOT_PW
 echo ""
 [ -n "$PROXMOX_ROOT_PW" ] || error "Password richiesta"
 
-# Utente automation
+# ── UTENTE AUTOMATION ──────────────────────────────────────────────────────────
+echo ""
+echo "👤 UTENTE AUTOMATION"
+echo ""
 read -rp "Nome utente automation (default: automation): " API_USERNAME
 API_USERNAME="${API_USERNAME:-automation}"
 
+# ── PASSWORD API USER ──────────────────────────────────────────────────────────
+echo ""
+echo "🔐 PASSWORD UTENTE AUTOMATION"
+echo ""
 # Leggi password API finché non è valida (min 8 caratteri)
 while true; do
   read -rsp "Password per utente $API_USERNAME (min 8 caratteri): " API_PASSWORD
@@ -50,11 +60,13 @@ while true; do
 
   if [ -z "$API_PASSWORD" ]; then
     warn "Password richiesta"
+    echo ""
     continue
   fi
 
   if [ ${#API_PASSWORD} -lt 8 ]; then
     warn "Password troppo corta (${#API_PASSWORD} caratteri) — richiesti almeno 8 caratteri"
+    echo ""
     continue
   fi
 
@@ -62,7 +74,10 @@ while true; do
   break
 done
 
-# Vault (nessun vincolo di lunghezza)
+# ── VAULT PASSWORD ────────────────────────────────────────────────────────────
+echo ""
+echo "🔐 PASSWORD VAULT"
+echo ""
 read -rsp "Password per il Vault (proteggere bene!): " VAULT_PASSWORD
 echo ""
 [ -n "$VAULT_PASSWORD" ] || error "Password Vault richiesta"
