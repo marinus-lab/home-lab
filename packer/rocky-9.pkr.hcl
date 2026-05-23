@@ -11,11 +11,6 @@ packer {
   }
 }
 
-locals {
-  iso_filename = "Rocky-9.4-x86_64-dvd.iso"
-  vm_name      = "rocky-9-base"
-}
-
 source "proxmox-iso" "rocky" {
   # ── Connessione Proxmox ─────────────────────────────────────────────────────
   proxmox_url              = var.proxmox_url
@@ -26,14 +21,14 @@ source "proxmox-iso" "rocky" {
 
   # ── Identità template ───────────────────────────────────────────────────────
   vm_id                = var.vm_id
-  vm_name              = local.vm_name
-  template_name        = local.vm_name
+  vm_name              = "rocky-9-base"
+  template_name        = "rocky-9-base"
   template_description = "Rocky Linux 9 base — built by Packer on ${formatdate("YYYY-MM-DD", timestamp())}"
   os                   = "l26"
   qemu_agent           = true
 
   # ── ISO ─────────────────────────────────────────────────────────────────────
-  iso_url          = "https://download.rockylinux.org/pub/rocky/9/isos/x86_64/${local.iso_filename}"
+  iso_url          = "https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9.4-x86_64-dvd.iso"
   iso_checksum     = "file:https://download.rockylinux.org/pub/rocky/9/isos/x86_64/CHECKSUM"
   iso_storage_pool = var.iso_storage_pool
   unmount_iso      = true

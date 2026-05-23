@@ -24,24 +24,11 @@ variable "proxmox_node" {
   default     = "pve"
 }
 
-# ── Ubuntu ISO ────────────────────────────────────────────────────────────────
-variable "ubuntu_version" {
-  type        = string
-  description = "Versione Ubuntu da utilizzare (es. 22.04)"
-  default     = "22.04"
-}
-
 # ── Template VM ───────────────────────────────────────────────────────────────
 variable "vm_id" {
   type        = number
   description = "VM ID Proxmox per il template"
   default     = 9000
-}
-
-variable "storage_pool" {
-  type        = string
-  description = "Storage pool Proxmox per disco e drive cloud-init"
-  default     = "local-lvm"
 }
 
 variable "network_bridge" {

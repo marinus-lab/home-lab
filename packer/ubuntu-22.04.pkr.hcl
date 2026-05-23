@@ -11,11 +11,6 @@ packer {
   }
 }
 
-locals {
-  iso_filename = "ubuntu-22.04-live-server-amd64.iso"
-  vm_name      = "ubuntu-22.04-base"
-}
-
 source "proxmox-iso" "ubuntu_2204" {
   # ── Connessione Proxmox ─────────────────────────────────────────────────────
   proxmox_url              = var.proxmox_url
@@ -26,14 +21,14 @@ source "proxmox-iso" "ubuntu_2204" {
 
   # ── Identità template ───────────────────────────────────────────────────────
   vm_id                = var.vm_id
-  vm_name              = local.vm_name
-  template_name        = local.vm_name
+  vm_name              = "ubuntu-22.04-base"
+  template_name        = "ubuntu-22.04-base"
   template_description = "Ubuntu 22.04 LTS base — built by Packer on ${formatdate("YYYY-MM-DD", timestamp())}"
   os                   = "l26"
   qemu_agent           = true
 
   # ── ISO ─────────────────────────────────────────────────────────────────────
-  iso_url          = "https://releases.ubuntu.com/22.04/${local.iso_filename}"
+  iso_url          = "https://releases.ubuntu.com/22.04/ubuntu-22.04-live-server-amd64.iso"
   iso_checksum     = "file:https://releases.ubuntu.com/22.04/SHA256SUMS"
   iso_storage_pool = var.iso_storage_pool
   unmount_iso      = true
