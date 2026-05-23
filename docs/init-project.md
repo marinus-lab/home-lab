@@ -35,6 +35,22 @@ bash init-project.sh
 
 Lo script è **interattivo** — pone domande in sequenza. Non è necessario aggiungere argomenti da linea di comando.
 
+Le domande sono organizzate per sezioni (Proxmox, Utente, Password) con **linee vuote di separazione** per maggiore leggibilità:
+
+```
+🔌 CREDENZIALI PROXMOX
+[domanda 1]
+
+👤 UTENTE AUTOMATION
+[domanda 2]
+
+🔐 PASSWORD UTENTE AUTOMATION
+[domanda 3]
+
+🔐 PASSWORD VAULT
+[domanda 4]
+```
+
 ### Verifica il risultato
 
 Dopo l'esecuzione, verifica che tutto è stato configurato correttamente:
