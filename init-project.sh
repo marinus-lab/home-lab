@@ -217,7 +217,6 @@ if [ -z "$TOKEN_SECRET" ]; then
 fi
 
 ok "Token Packer creato"
-echo "Token: $API_USERNAME@pve!packer=$TOKEN_SECRET"
 
 # Crea il token terraform
 info "Generazione token API per Terraform..."
