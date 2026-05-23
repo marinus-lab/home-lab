@@ -60,12 +60,16 @@ bash verify-init.sh
 ```
 
 Lo script controlla:
-- ✅ File di configurazione esistono e contengono token validi
+- ✅ File di configurazione `packer/packer.pkrvars.hcl` (token presente)
+- ✅ File di configurazione `terraform/terraform.auto.tfvars` (token + credenziali)
 - ✅ Password Vault salvata con permessi corretti
 - ✅ Credenziali cifrate presenti nel Vault
 - ✅ Connessione API Proxmox funzionante
 - ✅ Token API valido e funzionante
+- ✅ Nodo Proxmox rilevato e valido
 - ✅ Dipendenze (curl, ansible-vault, terraform, packer) disponibili
+
+**Nota importante:** `verify-init.sh` controlla il token in `terraform.auto.tfvars` (file privato con credenziali), **non** in `terraform.tfvars` (file pubblico con solo configurazione).
 
 Se tutto passa, sei pronto per procedere con Packer/Terraform/Kubespray! ✅
 
