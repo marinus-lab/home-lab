@@ -81,7 +81,12 @@ bash verify-init.sh
 vim terraform/terraform.tfvars  # modifica control_plane_count, worker_count, risorse (se desiderato)
 
 # 5. Packer — build template VM
-cd packer && ./build.sh
+# Supporta: Ubuntu 22.04 LTS, Ubuntu 24.04 LTS, Rocky Linux 9
+cd packer && ./build.sh    # Menu interattivo per scegliere distribuzione
+# Oppure:
+# ./build.sh ubuntu-22.04
+# ./build.sh ubuntu-24.04
+# ./build.sh rocky-9
 
 # 6. Terraform — crea le VM
 cd ../terraform && terraform apply
@@ -103,8 +108,8 @@ Vedi [docs/init-project.md](docs/init-project.md) per dettagli.
 |-----------|-----------|
 | [docs/init-project.md](docs/init-project.md) | Setup iniziale: Proxmox user/token, Vault, credenziali |
 | [docs/cluster-configuration.md](docs/cluster-configuration.md) | Topologia cluster: 3 master + 3 worker, MetalLB, Dashboard |
+| [docs/packer-multiple-distributions.md](docs/packer-multiple-distributions.md) | Packer: buildare Ubuntu 22.04 / 24.04 / Rocky 9 templates |
 | [docs/end-to-end.md](docs/end-to-end.md) | Guida completa: architettura, fasi, cheatsheet operativo |
-| [docs/packer-ubuntu-base.md](docs/packer-ubuntu-base.md) | Template Packer: autoinstall Ubuntu, boot_command, cleanup |
 | [docs/terraform-k8s-cluster.md](docs/terraform-k8s-cluster.md) | Terraform: provider, moduli, cloud-init, scalabilità |
 | [docs/kubespray-deploy.md](docs/kubespray-deploy.md) | Kubespray: group_vars, Calico, gestione nodi |
 | [docs/proxmox-api-user.md](docs/proxmox-api-user.md) | Utente API Proxmox: Vault, permessi, token |
