@@ -81,20 +81,20 @@ if [ -f "$SCRIPT_DIR/group_vars/all.yml" ]; then
   warn "Backup creato: group_vars/all.yml.bak"
 fi
 
+# Genera il file YAML con variabili cifrate
+# Usa encrypt_string per ogni variabile e formatta il YAML manualmente
+PROXMOX_ROOT_ENCRYPTED=$(echo "$PROXMOX_ROOT_PW" | \
+  ansible-vault encrypt_string --vault-password-file "$VAULT_PASS_FILE" 2>/dev/null)
+
+API_PASSWORD_ENCRYPTED=$(echo "$API_PASSWORD" | \
+  ansible-vault encrypt_string --vault-password-file "$VAULT_PASS_FILE" 2>/dev/null)
+
 cat > "$SCRIPT_DIR/group_vars/all.yml" << EOF
 ---
 # Credenziali Proxmox — CIFRATE CON ANSIBLE VAULT
+vault_proxmox_root_pw: $PROXMOX_ROOT_ENCRYPTED
+vault_automation_user_pw: $API_PASSWORD_ENCRYPTED
 EOF
-
-# Cifra vault_proxmox_root_pw
-echo "$PROXMOX_ROOT_PW" | \
-  ansible-vault encrypt_string --vault-password-file "$VAULT_PASS_FILE" \
-  --name vault_proxmox_root_pw >> "$SCRIPT_DIR/group_vars/all.yml" 2>/dev/null
-
-# Cifra vault_automation_user_pw
-echo "$API_PASSWORD" | \
-  ansible-vault encrypt_string --vault-password-file "$VAULT_PASS_FILE" \
-  --name vault_automation_user_pw >> "$SCRIPT_DIR/group_vars/all.yml" 2>/dev/null
 
 ok "Credenziali cifrate in group_vars/all.yml"
 
@@ -198,7 +198,7 @@ if [ "$TOKEN_HTTP" = "400" ] && echo "$TOKEN_BODY" | grep -q "already exists"; t
   curl -s -k -X DELETE \
     "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/packer" \
     -b "PVEAuthCookie=$TICKET" \
-    -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null
+    -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null >/dev/null
 
   # Ricrea il token
   TOKEN_RESPONSE=$(curl -s -k -X POST \
@@ -237,7 +237,7 @@ if [ "$TERRAFORM_HTTP" = "400" ] && echo "$TERRAFORM_BODY" | grep -q "already ex
   curl -s -k -X DELETE \
     "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/terraform" \
     -b "PVEAuthCookie=$TICKET" \
-    -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null
+    -H "CSRFPreventionToken: $CSRF_TOKEN" 2>/dev/null >/dev/null
 
   # Ricrea il token
   TERRAFORM_RESPONSE=$(curl -s -k -X POST \
