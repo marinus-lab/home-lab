@@ -31,7 +31,7 @@ source "proxmox-iso" "rocky" {
   # ── ISO ─────────────────────────────────────────────────────────────────────
   iso_url          = "https://download.rockylinux.org/pub/rocky/9/isos/x86_64/${local.iso_filename}"
   iso_checksum     = "file:https://download.rockylinux.org/pub/rocky/9/isos/x86_64/CHECKSUM"
-  iso_storage_pool = "local"
+  iso_storage_pool = var.iso_storage_pool
   unmount_iso      = true
 
   # ── CPU e RAM ───────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ source "proxmox-iso" "rocky" {
   disks {
     type         = "scsi"
     disk_size    = var.disk_size
-    storage_pool = var.storage_pool
+    storage_pool = var.template_storage_pool
     format       = "raw"
     discard      = true
     io_thread    = true
@@ -57,7 +57,7 @@ source "proxmox-iso" "rocky" {
 
   # ── Drive cloud-init (usato da Terraform dopo il clone) ─────────────────────
   cloud_init              = true
-  cloud_init_storage_pool = var.storage_pool
+  cloud_init_storage_pool = var.template_storage_pool
 
   # ── HTTP server per il kickstart ─────────────────────────────────────────────
   http_directory    = "http"

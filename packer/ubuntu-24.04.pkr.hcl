@@ -31,7 +31,7 @@ source "proxmox-iso" "ubuntu" {
   # ── ISO ─────────────────────────────────────────────────────────────────────
   iso_url          = "https://releases.ubuntu.com/24.04/${local.iso_filename}"
   iso_checksum     = "file:https://releases.ubuntu.com/24.04/SHA256SUMS"
-  iso_storage_pool = "local"
+  iso_storage_pool = var.iso_storage_pool
   unmount_iso      = true
 
   # ── CPU e RAM ───────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ source "proxmox-iso" "ubuntu" {
   disks {
     type         = "scsi"
     disk_size    = var.disk_size
-    storage_pool = var.storage_pool
+    storage_pool = var.template_storage_pool
     format       = "raw"   # raw per LVM; usare "qcow2" per storage NFS/ZFS
     discard      = true
     io_thread    = true
@@ -57,7 +57,7 @@ source "proxmox-iso" "ubuntu" {
 
   # ── Drive cloud-init (usato da Terraform dopo il clone) ─────────────────────
   cloud_init              = true
-  cloud_init_storage_pool = var.storage_pool
+  cloud_init_storage_pool = var.template_storage_pool
 
   # ── HTTP server per l'autoinstall ────────────────────────────────────────────
   # Packer avvia un server HTTP locale; la VM ci accede durante il boot.
