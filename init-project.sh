@@ -74,6 +74,27 @@ while true; do
   break
 done
 
+# ── RETE KUBERNETES ───────────────────────────────────────────────────────────
+echo ""
+echo "🌐 RETE KUBERNETES"
+echo ""
+read -rp "Subnet Kubernetes (es. 192.168.0.0/24): " K8S_SUBNET
+[ -n "$K8S_SUBNET" ] || error "Subnet Kubernetes richiesta"
+
+echo ""
+read -rp "Gateway Kubernetes (es. 192.168.0.1): " K8S_GATEWAY
+[ -n "$K8S_GATEWAY" ] || error "Gateway Kubernetes richiesto"
+
+echo ""
+read -rp "Ultimo ottetto IP primo master (es. 210): " MASTER_IP_OCTET
+[ -n "$MASTER_IP_OCTET" ] || error "IP master richiesto"
+
+echo ""
+read -rp "Ultimo ottetto IP primo worker (es. 220): " WORKER_IP_OCTET
+[ -n "$WORKER_IP_OCTET" ] || error "IP worker richiesto"
+
+ok "Rete Kubernetes configurata"
+
 # ── VAULT PASSWORD ────────────────────────────────────────────────────────────
 echo ""
 echo "🔐 PASSWORD VAULT"
@@ -132,17 +153,23 @@ ok "packer/packer.pkrvars.hcl creato"
 info "Generazione terraform/terraform.auto.tfvars..."
 
 cat > "$SCRIPT_DIR/terraform/terraform.auto.tfvars" << EOF
-# CREDENZIALI PROXMOX — Generato automaticamente da init-project.sh
+# CREDENZIALI E CONFIGURAZIONE RETE — Generato automaticamente da init-project.sh
 # NON tracciato in git (.gitignore)
 
+# ── Credenziali Proxmox ────────────────────────────────────────────────────────
 proxmox_url          = "https://$PROXMOX_HOST:8006/api2/json"
 proxmox_token_id     = "$API_USERNAME@pve!terraform"
 proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
 proxmox_node         = "PLACEHOLDER_NODO"
+
+# ── Rete Kubernetes ────────────────────────────────────────────────────────────
+k8s_subnet      = "$K8S_SUBNET"
+k8s_gateway     = "$K8S_GATEWAY"
+master_ip_start = $MASTER_IP_OCTET
+worker_ip_start = $WORKER_IP_OCTET
 EOF
 
-ok "terraform/terraform.auto.tfvars creato (credenziali Proxmox)"
-info "Configurazione cluster: modifica terraform/terraform.tfvars per topologia"
+ok "terraform/terraform.auto.tfvars creato (credenziali + rete Kubernetes)"
 
 # ── Crea l'utente API su Proxmox con curl ─────────────────────────────────────
 echo ""
@@ -327,14 +354,21 @@ echo ""
 echo "File creati/aggiornati:"
 echo "  • group_vars/all.yml                    (credenziali Proxmox cifrate)"
 echo "  • packer/packer.pkrvars.hcl             (token Packer)"
-echo "  • terraform/terraform.auto.tfvars       (credenziali Terraform - privato)"
-echo "  • terraform/terraform.tfvars            (configurazione cluster - pubblico)"
+echo "  • terraform/terraform.auto.tfvars       (credenziali + rete Kubernetes)"
+echo "  • terraform/terraform.tfvars            (topologia cluster - pubblico)"
+echo ""
+echo "Configurazione Kubernetes:"
+echo "  • Subnet: $K8S_SUBNET"
+echo "  • Gateway: $K8S_GATEWAY"
+echo "  • Master IP: $MASTER_IP_OCTET-$((MASTER_IP_OCTET+2))"
+echo "  • Worker IP: $WORKER_IP_OCTET-$((WORKER_IP_OCTET+2))"
 echo ""
 echo "Credenziali Vault salvate in:"
 echo "  • $VAULT_PASS_FILE                    (proteggere!)"
 echo ""
 echo "Prossimi passi:"
-echo "  1. cd packer && ./build.sh              (crea template VM)"
-echo "  2. cd ../terraform && terraform apply   (crea VM K8s)"
-echo "  3. cd ../kubespray && ./deploy.sh       (installa Kubernetes)"
+echo "  1. (Opzionale) Modifica topologia: vim terraform/terraform.tfvars"
+echo "  2. cd packer && ./build.sh              (crea template VM)"
+echo "  3. cd ../terraform && terraform apply   (crea VM K8s)"
+echo "  4. cd ../kubespray && ./deploy.sh       (installa Kubernetes)"
 echo ""

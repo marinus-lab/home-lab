@@ -68,16 +68,17 @@ home-lab/
 # 1. Bastion — installa tutto il tooling
 bash setup-bastion.sh
 
-# 2. Inizializzazione — crea credenziali Proxmox e file di config
+# 2. Inizializzazione — crea credenziali Proxmox e configurazione rete
 bash init-project.sh
-# Domande: IP Proxmox, password root, nome automation user, password API, password Vault
+# Domande: IP Proxmox, password root, nome automation user, password API, subnet K8s, IP master/worker, password Vault
 
 # 3. Verifica
 bash verify-init.sh
 # Controlla: file di config, vault, connessione API Proxmox, token
 
 # 4. (Opzionale) Personalizza topologia cluster
-vim terraform/terraform.tfvars  # modifica control_plane_count, worker_count, risorse
+# Nota: Subnet K8s e IP master/worker sono già configurati da init-project.sh
+vim terraform/terraform.tfvars  # modifica control_plane_count, worker_count, risorse (se desiderato)
 
 # 5. Packer — build template VM
 cd packer && ./build.sh
@@ -110,13 +111,14 @@ Vedi [docs/init-project.md](docs/init-project.md) per dettagli.
 
 ## Configurazione cluster
 
-I parametri del cluster sono concentrati in tre file:
+I parametri del cluster sono distribuiti in quattro file:
 
-| File | Cosa configura |
-|------|----------------|
-| `terraform/terraform.tfvars` | IP nodi, sizing VM, conteggio master/worker |
-| `kubespray/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml` | Versione K8s, CIDR, proxy mode |
-| `kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml` | Helm, MetalLB, Ingress, Cert-manager |
+| File | Cosa configura | Generato da |
+|------|----------------|-------------|
+| `terraform/terraform.auto.tfvars` | Subnet K8s, gateway, IP base master/worker | `init-project.sh` |
+| `terraform/terraform.tfvars` | Conteggio master/worker, risorse VM (CPU/RAM), storage | Manuale |
+| `kubespray/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml` | Versione K8s, CIDR pod, proxy mode | Manuale |
+| `kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml` | Helm, MetalLB, Ingress, Dashboard | Manuale |
 
 ### Default
 
@@ -124,7 +126,10 @@ I parametri del cluster sono concentrati in tre file:
 - **3 worker** — configurabile con `worker_count` in `terraform/terraform.tfvars`
 - **Risorse per nodo**: 16GB RAM + 4 CPU — modificabili in `terraform/terraform.tfvars`
 - **Storage**: 30GB disco per master, 50GB per worker
+- **Subnet Kubernetes**: `192.168.0.0/24` — configurabile in `init-project.sh`, salvato in `terraform/terraform.auto.tfvars`
+- **Gateway**: `192.168.0.1` — configurabile in `init-project.sh`
+- **Master IP**: primo da `.210` (es. `.210`, `.211`, `.212`) — configurabile in `init-project.sh`
+- **Worker IP**: primo da `.220` (es. `.220`, `.221`, `.222`) — configurabile in `init-project.sh`
 - **Pod subnet**: `10.244.0.0/16`
 - **Service subnet**: `10.96.0.0/12`
-- **Rete**: `192.168.1.0/24`, master da `.210-.212`, worker da `.220-.222`
 - **Load balancer**: MetalLB con range `192.168.0.120-192.168.0.135`

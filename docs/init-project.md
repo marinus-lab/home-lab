@@ -35,7 +35,7 @@ bash init-project.sh
 
 Lo script è **interattivo** — pone domande in sequenza. Non è necessario aggiungere argomenti da linea di comando.
 
-Le domande sono organizzate per sezioni (Proxmox, Utente, Password) con **linee vuote di separazione** per maggiore leggibilità:
+Le domande sono organizzate per sezioni (Proxmox, Utente, Password, Rete) con **linee vuote di separazione** per maggiore leggibilità:
 
 ```
 🔌 CREDENZIALI PROXMOX
@@ -47,8 +47,14 @@ Le domande sono organizzate per sezioni (Proxmox, Utente, Password) con **linee 
 🔐 PASSWORD UTENTE AUTOMATION
 [domanda 3]
 
-🔐 PASSWORD VAULT
+🌐 RETE KUBERNETES
 [domanda 4]
+[domanda 5]
+[domanda 6]
+[domanda 7]
+
+🔐 PASSWORD VAULT
+[domanda 8]
 ```
 
 ### Verifica il risultato
@@ -125,7 +131,54 @@ Una password per il nuovo utente automation che verrà creato su Proxmox. Deve a
 - Non verrà usata per login manuali (il token API è quello che conta)
 - Viene cifrata in Vault insieme alle altre credenziali
 
-### 5. Password Vault
+### 5. Subnet Kubernetes
+
+```
+Subnet Kubernetes (es. 192.168.0.0/24):
+```
+
+La subnet dove verranno posizionate le VM del cluster Kubernetes. Esempi validi:
+- `192.168.0.0/24` (ipotesi default, stesso range di MetalLB)
+- `10.0.0.0/24`
+- `172.16.0.0/24`
+
+Questa subnet deve essere raggiungibile dalla macchina dove esegui Terraform.
+
+### 6. Gateway Kubernetes
+
+```
+Gateway Kubernetes (es. 192.168.0.1):
+```
+
+L'indirizzo IP del gateway per la subnet Kubernetes. Di solito è il primo indirizzo disponibile (`.1`) oppure il router della tua rete.
+
+### 7. Ultimo ottetto IP primo master
+
+```
+Ultimo ottetto IP primo master (es. 210):
+```
+
+Gli IP dei 3 master verranno calcolati automaticamente incrementando questo valore:
+- Master 1: `<subnet>.210`
+- Master 2: `<subnet>.211`
+- Master 3: `<subnet>.212`
+
+Scegli un valore che non crei conflitti con altri host nella subnet.
+
+### 8. Ultimo ottetto IP primo worker
+
+```
+Ultimo ottetto IP primo worker (es. 220):
+```
+
+Gli IP dei 3 worker verranno calcolati automaticamente incrementando questo valore:
+- Worker 1: `<subnet>.220`
+- Worker 2: `<subnet>.221`
+- Worker 3: `<subnet>.222`
+
+Scegli un valore superiore al range dei master per evitare conflitti.
+
+### 9. Password Vault
 
 ```
 Password per il Vault (proteggere bene!):
@@ -155,7 +208,11 @@ Dopo aver inserito tutti gli input, lo script:
    ↓
 4. Genera packer/packer.pkrvars.hcl con placeholder token
    ↓
-5. Genera terraform/terraform.auto.tfvars con placeholder token (credenziali)
+5. Genera terraform/terraform.auto.tfvars con placeholder token + configurazione rete
+   ├── Credenziali Proxmox (token, URL)
+   ├── Subnet Kubernetes
+   ├── Gateway
+   └── IP base master e worker
    ↓
 6. Ottiene ticket di sessione Proxmox (API ticket-based auth)
    ↓
@@ -175,7 +232,7 @@ Dopo aver inserito tutti gli input, lo script:
     ↓
 11. Aggiorna packer/packer.pkrvars.hcl con token vero e nodo
     ↓
-12. Aggiorna terraform/terraform.auto.tfvars con token vero e nodo
+12. Aggiorna terraform/terraform.auto.tfvars con token vero, nodo, rete
     ↓
 13. Mostra riepilogo con i prossimi passi
 ```
@@ -190,9 +247,9 @@ Dopo aver inserito tutti gli input, lo script:
 |------|-----------|-----------|
 | `group_vars/all.yml` | Credenziali Proxmox cifrate con Vault | ✅ Sì |
 | `packer/packer.pkrvars.hcl` | Token Packer + IP Proxmox | ❌ .gitignore |
-| `terraform/terraform.tfvars` | Topologia cluster (3M+3W, risorse) | ✅ Sì |
-| `terraform/terraform.auto.tfvars` | Credenziali Proxmox (token) | ❌ .gitignore |
-| `terraform/terraform.auto.tfvars.example` | Template credenziali | ✅ Sì |
+| `terraform/terraform.tfvars` | Topologia cluster (3M+3W, risorse, SSH key path) | ✅ Sì |
+| `terraform/terraform.auto.tfvars` | Credenziali Proxmox + configurazione rete | ❌ .gitignore |
+| `terraform/terraform.auto.tfvars.example` | Template credenziali + rete | ✅ Sì |
 | `~/.vault_pass` | Password Vault (sul bastion) | — |
 
 ### Console output
