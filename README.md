@@ -21,12 +21,21 @@ Bastion ──API──▶ Proxmox VE
                     │
                     ├─ Template VMID 9000  (Packer)
                     │       │
-                    │       ├─ clone ──▶ k8s-master-1  192.168.1.210
-                    │       ├─ clone ──▶ k8s-worker-1  192.168.1.220
-                    │       └─ clone ──▶ k8s-worker-2  192.168.1.221
+                    │       ├─ clone ──▶ k8s-master-1  192.168.1.210  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-2  192.168.1.211  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-3  192.168.1.212  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-1  192.168.1.220  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-2  192.168.1.221  (16GB RAM, 4 CPU)
+                    │       └─ clone ──▶ k8s-worker-3  192.168.1.222  (16GB RAM, 4 CPU)
                     │
-Bastion ──SSH──▶ nodi K8s  (Kubespray installa il cluster)
+Bastion ──SSH──▶ 6 nodi K8s  (Kubespray installa il cluster HA)
+                    └─ MetalLB: 192.168.0.120-192.168.0.135 (load balancing)
 ```
+
+**Topologia cluster:**
+- **3 nodi Control Plane** (HA etcd): k8s-master-1/2/3
+- **3 nodi Worker**: k8s-worker-1/2/3
+- **Totale**: 6 VM, ognuna con 16GB RAM + 4 CPU
 
 ## Struttura del repository
 
