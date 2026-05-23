@@ -16,7 +16,7 @@ locals {
   vm_name      = "ubuntu-24.04-base"
 }
 
-source "proxmox-iso" "ubuntu" {
+source "proxmox-iso" "ubuntu_2404" {
   # ── Connessione Proxmox ─────────────────────────────────────────────────────
   proxmox_url              = var.proxmox_url
   username                 = var.proxmox_token_id
@@ -90,8 +90,8 @@ source "proxmox-iso" "ubuntu" {
 }
 
 build {
-  name    = "ubuntu-24.04"
-  sources = ["source.proxmox-iso.ubuntu"]
+  name    = "ubuntu-2404"
+  sources = ["source.proxmox-iso.ubuntu_2404"]
 
   # Aggiornamento sistema + cleanup apt
   provisioner "shell" {

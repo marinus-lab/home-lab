@@ -16,7 +16,7 @@ locals {
   vm_name      = "ubuntu-22.04-base"
 }
 
-source "proxmox-iso" "ubuntu" {
+source "proxmox-iso" "ubuntu_2204" {
   # ── Connessione Proxmox ─────────────────────────────────────────────────────
   proxmox_url              = var.proxmox_url
   username                 = var.proxmox_token_id
@@ -90,8 +90,8 @@ source "proxmox-iso" "ubuntu" {
 }
 
 build {
-  name    = "ubuntu-22.04"
-  sources = ["source.proxmox-iso.ubuntu"]
+  name    = "ubuntu-2204"
+  sources = ["source.proxmox-iso.ubuntu_2204"]
 
   # Aggiornamento sistema + cleanup apt
   provisioner "shell" {
