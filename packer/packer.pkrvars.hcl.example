@@ -1,0 +1,15 @@
+# Copia in packer.pkrvars.hcl e compila con i tuoi valori.
+# Oppure esporta le variabili d'ambiente equivalenti (PROXMOX_URL, ecc.).
+
+proxmox_url          = "https://192.168.1.10:8006/api2/json"
+proxmox_token_id     = "automation@pve!packer"
+proxmox_token_secret = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+proxmox_node         = "pve"
+
+ubuntu_version = "22.04"
+vm_id          = 9000
+storage_pool   = "local-lvm"
+network_bridge = "vmbr0"
+disk_size      = "20G"
+cores          = 2
+memory         = 2048

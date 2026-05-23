@@ -1,0 +1,10 @@
+---
+# ── Calico ─────────────────────────────────────────────────────────────────────
+# IPIP (IP-in-IP): incapsula il traffico tra nodi — funziona su qualsiasi
+# infrastruttura L2/L3 senza routing BGP esterno, ideale per homelab.
+calico_ipip_mode: Always
+calico_vxlan_mode: Never
+calico_network_backend: bird
+
+# MTU ottimale per IPIP su interfacce Ethernet standard (1500 - 20 byte header IPIP)
+calico_mtu: 1480

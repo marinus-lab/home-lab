@@ -1,0 +1,40 @@
+---
+# ── Plugin di rete ─────────────────────────────────────────────────────────────
+kube_network_plugin: calico
+
+# ── CIDR ───────────────────────────────────────────────────────────────────────
+# ATTENZIONE: questi range NON devono sovrapporsi con la rete homelab
+# (default 192.168.1.0/24) né tra loro.
+#
+# Services: accessibili internamente al cluster via ClusterIP
+kube_service_addresses: 10.96.0.0/12
+
+# Pods: uno /24 per nodo viene allocato da questo pool
+kube_pods_subnet: 10.244.0.0/16
+
+# ── kube-proxy ─────────────────────────────────────────────────────────────────
+# ipvs è più performante di iptables per cluster con molti servizi.
+kube_proxy_mode: ipvs
+
+# ── NodePort range ─────────────────────────────────────────────────────────────
+kube_apiserver_node_port_range: "30000-32767"
+
+# ── CoreDNS ────────────────────────────────────────────────────────────────────
+# Con 1 solo master, 1 replica è sufficiente. Aumentare a 2 con cluster HA.
+dns_min_replicas: 1
+
+# ── Certificati ────────────────────────────────────────────────────────────────
+# Rinnovo automatico dei certificati K8s (scadono ogni anno di default).
+auto_renew_certificates: true
+auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:00:00"
+
+# ── kubeconfig ─────────────────────────────────────────────────────────────────
+# Scarica il kubeconfig sul bastion dopo il deploy in:
+# ~/.kube/config (kubeconfig localhost)
+# /usr/local/bin/kubectl (kubectl localhost)
+kubeconfig_localhost: true
+kubectl_localhost: true
+
+# ── Audit logging ──────────────────────────────────────────────────────────────
+# Abilitare per ambienti che richiedono tracciabilità delle chiamate API.
+kubernetes_audit: false

@@ -1,0 +1,11 @@
+---
+# Container runtime: containerd è il runtime raccomandato da Kubernetes 1.24+
+# (Docker è stato rimosso come runtime diretto).
+container_manager: containerd
+
+# Configurazione containerd
+containerd_registries_mirrors: {}
+# Esempio per mirror locale (es. Harbor):
+# containerd_registries_mirrors:
+#   "docker.io":
+#     - "https://mirror.homelab.local"

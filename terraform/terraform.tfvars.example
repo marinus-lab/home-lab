@@ -1,0 +1,41 @@
+# Copia in terraform.tfvars e compila con i valori del tuo ambiente.
+# terraform.tfvars NON deve essere committato su git (contiene segreti).
+
+# ── Connessione Proxmox ────────────────────────────────────────────────────────
+proxmox_url          = "https://192.168.1.10:8006/api2/json"
+proxmox_token_id     = "automation@pve!terraform"
+proxmox_token_secret = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+proxmox_node         = "pve"
+
+# ── Template (prodotto da Packer) ──────────────────────────────────────────────
+template_vm_id = 9000
+
+# ── Rete ───────────────────────────────────────────────────────────────────────
+network_bridge = "vmbr0"
+k8s_subnet     = "192.168.1.0/24"
+k8s_gateway    = "192.168.1.1"
+dns_servers    = ["1.1.1.1", "8.8.8.8"]
+domain         = "homelab.local"
+
+# ── SSH ────────────────────────────────────────────────────────────────────────
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# ── Storage ────────────────────────────────────────────────────────────────────
+storage_pool = "local-lvm"
+
+# ── Control plane ──────────────────────────────────────────────────────────────
+# 1 = setup minimal  |  3 = HA (richiede numero dispari per etcd quorum)
+control_plane_count = 1
+master_vm_id_start  = 201
+master_ip_start     = 210   # → 192.168.1.210, 192.168.1.211, ...
+master_cpu_cores    = 2
+master_memory       = 2048
+master_disk_size    = 30
+
+# ── Worker ─────────────────────────────────────────────────────────────────────
+worker_count       = 2
+worker_vm_id_start = 211
+worker_ip_start    = 220   # → 192.168.1.220, 192.168.1.221, ...
+worker_cpu_cores   = 4
+worker_memory      = 4096
+worker_disk_size   = 50
