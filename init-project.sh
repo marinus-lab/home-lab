@@ -143,18 +143,26 @@ ok "Ticket di sessione ottenuto"
 
 info "Creazione utente $API_USERNAME@pve su $PROXMOX_HOST..."
 
-# Crea l'utente usando il ticket
-CURL_RESPONSE=$(curl -s -k -X POST \
+# Crea l'utente usando il ticket (con verbose per il codice HTTP)
+CURL_OUTPUT=$(curl -s -k -w "\n%{http_code}" -X POST \
   "https://$PROXMOX_HOST:8006/api2/json/access/users" \
   -b "PVEAuthCookie=$TICKET" \
   -H "CSRFPreventionToken: $CSRF_TOKEN" \
-  -d "userid=$API_USERNAME@pve&password=$API_PASSWORD&comment=Automation%20user" 2>/dev/null || echo '{}')
+  -d "userid=$API_USERNAME@pve&password=$API_PASSWORD&comment=Automation%20user" 2>/dev/null)
 
-# Ignora se l'utente esiste già
-if echo "$CURL_RESPONSE" | grep -q "already exists"; then
-  warn "Utente $API_USERNAME@pve esiste già"
-elif echo "$CURL_RESPONSE" | grep -q "\"data\""; then
+CURL_RESPONSE=$(echo "$CURL_OUTPUT" | head -n -1)
+HTTP_CODE=$(echo "$CURL_OUTPUT" | tail -n 1)
+
+# Debug
+echo "$CURL_RESPONSE" > /tmp/user_creation_debug.json
+
+# Controlla il codice HTTP
+if [ "$HTTP_CODE" = "200" ]; then
   ok "Utente $API_USERNAME@pve creato"
+elif echo "$CURL_RESPONSE" | grep -q "already exists"; then
+  warn "Utente $API_USERNAME@pve esiste già"
+else
+  error "Creazione utente fallita (HTTP $HTTP_CODE). Risposta: $CURL_RESPONSE"
 fi
 
 # Crea il token packer
@@ -166,11 +174,20 @@ TOKEN_RESPONSE=$(curl -s -k -X POST \
   -H "CSRFPreventionToken: $CSRF_TOKEN" \
   -d "comment=Packer%20token" 2>/dev/null || echo '{}')
 
-# Estrai il token dal JSON
+# Debug: salva la risposta completa
+echo "$TOKEN_RESPONSE" > /tmp/packer_token_debug.json
+
+# Estrai il token dal JSON (prova multiple formati)
 TOKEN_SECRET=$(echo "$TOKEN_RESPONSE" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
 
 if [ -z "$TOKEN_SECRET" ]; then
-  error "Token Packer non generato. Risposta: $TOKEN_RESPONSE"
+  # Se non trova con la regex, prova a cercare direttamente nel JSON
+  TOKEN_SECRET=$(echo "$TOKEN_RESPONSE" | grep -oP 'value["\s:]+\K[a-f0-9\-]+' | head -1)
+fi
+
+if [ -z "$TOKEN_SECRET" ]; then
+  error "Token Packer non generato. Risposta salvata in /tmp/packer_token_debug.json:
+$TOKEN_RESPONSE"
 fi
 
 ok "Token Packer creato"
