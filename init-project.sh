@@ -125,12 +125,29 @@ echo "  CREAZIONE UTENTE API SU PROXMOX"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+info "Ottenimento ticket di sessione Proxmox..."
+
+# Ottieni il ticket di sessione (richiesto per le operazioni API)
+TICKET_RESPONSE=$(curl -s -k -X POST \
+  "https://$PROXMOX_HOST:8006/api2/json/access/ticket" \
+  -d "username=root@pam&password=$PROXMOX_ROOT_PW" 2>/dev/null || echo '{}')
+
+TICKET=$(echo "$TICKET_RESPONSE" | grep -oP '"ticket"\s*:\s*"\K[^"]+' | head -1)
+CSRF_TOKEN=$(echo "$TICKET_RESPONSE" | grep -oP '"CSRFPreventionToken"\s*:\s*"\K[^"]+' | head -1)
+
+if [ -z "$TICKET" ]; then
+  error "Impossibile ottenere ticket di sessione. Risposta: $TICKET_RESPONSE"
+fi
+
+ok "Ticket di sessione ottenuto"
+
 info "Creazione utente $API_USERNAME@pve su $PROXMOX_HOST..."
 
-# Crea l'utente
+# Crea l'utente usando il ticket
 CURL_RESPONSE=$(curl -s -k -X POST \
   "https://$PROXMOX_HOST:8006/api2/json/access/users" \
-  -u "root@pam:$PROXMOX_ROOT_PW" \
+  -b "PVEAuthCookie=$TICKET" \
+  -H "CSRFPreventionToken: $CSRF_TOKEN" \
   -d "userid=$API_USERNAME@pve&password=$API_PASSWORD&comment=Automation%20user" 2>/dev/null || echo '{}')
 
 # Ignora se l'utente esiste già
@@ -145,18 +162,15 @@ info "Generazione token API per Packer..."
 
 TOKEN_RESPONSE=$(curl -s -k -X POST \
   "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/packer" \
-  -u "root@pam:$PROXMOX_ROOT_PW" \
+  -b "PVEAuthCookie=$TICKET" \
+  -H "CSRFPreventionToken: $CSRF_TOKEN" \
   -d "comment=Packer%20token" 2>/dev/null || echo '{}')
 
-# Debug: salva la risposta per ispezione
-echo "$TOKEN_RESPONSE" > /tmp/packer_token_response.json
-
-# Estrai il token dal JSON (supporta formati diversi)
+# Estrai il token dal JSON
 TOKEN_SECRET=$(echo "$TOKEN_RESPONSE" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
 
 if [ -z "$TOKEN_SECRET" ]; then
-  error "Token non generato. Risposta completa salvata in /tmp/packer_token_response.json:
-$TOKEN_RESPONSE"
+  error "Token Packer non generato. Risposta: $TOKEN_RESPONSE"
 fi
 
 ok "Token Packer creato"
@@ -167,10 +181,11 @@ info "Generazione token API per Terraform..."
 
 TERRAFORM_TOKEN=$(curl -s -k -X POST \
   "https://$PROXMOX_HOST:8006/api2/json/access/users/$API_USERNAME@pve/token/terraform" \
-  -u "root@pam:$PROXMOX_ROOT_PW" \
+  -b "PVEAuthCookie=$TICKET" \
+  -H "CSRFPreventionToken: $CSRF_TOKEN" \
   -d "comment=Terraform%20token" 2>/dev/null || echo '{}')
 
-# Estrai il token dal JSON (supporta formati diversi)
+# Estrai il token dal JSON
 TERRAFORM_SECRET=$(echo "$TERRAFORM_TOKEN" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
 
 if [ -z "$TERRAFORM_SECRET" ]; then
