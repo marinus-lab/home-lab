@@ -63,19 +63,16 @@ pass "~/.vault_pass ha permessi corretti (600)"
 [ -f "$SCRIPT_DIR/group_vars/all.yml" ] || fail "group_vars/all.yml non esiste"
 pass "group_vars/all.yml esiste"
 
-# Verifica che il file contiene variabili Vault cifrate (marker !vault)
+# Verifica che il file contiene variabili Vault cifrate
 grep -q "!vault" "$SCRIPT_DIR/group_vars/all.yml" || fail "group_vars/all.yml non contiene credenziali cifrate"
 pass "group_vars/all.yml contiene credenziali cifrate"
 
-# Verifica che il file YAML è valido e contiene le variabili attese
-python3 << PYTHON 2>/dev/null || fail "group_vars/all.yml non valido o variabili mancanti"
-import yaml
-with open("$SCRIPT_DIR/group_vars/all.yml") as f:
-    data = yaml.safe_load(f)
-    if not data or 'vault_proxmox_root_pw' not in data or 'vault_automation_user_pw' not in data:
-        exit(1)
-PYTHON
-pass "Variabili Vault presenti e valide"
+# Verifica che le variabili attese sono presenti nel file
+grep -q "vault_proxmox_root_pw:" "$SCRIPT_DIR/group_vars/all.yml" || fail "vault_proxmox_root_pw non trovata"
+pass "vault_proxmox_root_pw presente"
+
+grep -q "vault_automation_user_pw:" "$SCRIPT_DIR/group_vars/all.yml" || fail "vault_automation_user_pw non trovata"
+pass "vault_automation_user_pw presente"
 
 [ -n "$PROXMOX_ROOT_PW" ] || fail "vault_proxmox_root_pw non trovata nel Vault"
 pass "vault_proxmox_root_pw estratta dal Vault"
