@@ -76,6 +76,13 @@ for dist in "${DISTRIBUTIONS[@]}"; do
   info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
+  # Mappa distribuzione -> filtro -only di Packer (<build_name>.<source>)
+  case "$dist" in
+    ubuntu-22.04) ONLY_FILTER="ubuntu-2204.proxmox-iso.ubuntu_2204" ;;
+    ubuntu-24.04) ONLY_FILTER="ubuntu-2404.proxmox-iso.ubuntu_2404" ;;
+    rocky-9)      ONLY_FILTER="rocky-9.proxmox-iso.rocky" ;;
+  esac
+
   case "$dist" in
     ubuntu-22.04|ubuntu-24.04)
       # Genera user-data per Ubuntu
@@ -85,12 +92,6 @@ for dist in "${DISTRIBUTIONS[@]}"; do
         http/ubuntu-user-data.tpl > http/user-data
 
       ok "http/user-data generato (Ubuntu)"
-
-      # Inizializza plugin Packer
-      packer init "${dist}.pkr.hcl"
-
-      # Build con var-file
-      packer build -var-file="$PKRVARS_FILE" ${PACKER_ARGS:-} "${dist}.pkr.hcl"
       ;;
 
     rocky-9)
@@ -101,14 +102,19 @@ for dist in "${DISTRIBUTIONS[@]}"; do
         http/rocky-ks.cfg.tpl > http/rocky-ks.cfg
 
       ok "http/rocky-ks.cfg generato (Rocky)"
-
-      # Inizializza plugin Packer
-      packer init rocky-9.pkr.hcl
-
-      # Build con var-file
-      packer build -var-file="$PKRVARS_FILE" ${PACKER_ARGS:-} rocky-9.pkr.hcl
       ;;
   esac
+
+  # Inizializza plugins Packer (legge tutta la directory)
+  packer init "$SCRIPT_DIR"
+
+  # Build: passa la directory così Packer carica variables.pkr.hcl + tutti i .pkr.hcl
+  # Usa -only per limitare la build alla distribuzione selezionata
+  packer build \
+    -var-file="$PKRVARS_FILE" \
+    -only="$ONLY_FILTER" \
+    ${PACKER_ARGS:-} \
+    "$SCRIPT_DIR"
 
   echo ""
 done
