@@ -78,20 +78,96 @@ done
 echo ""
 echo "🌐 RETE KUBERNETES"
 echo ""
-read -rp "Subnet Kubernetes (es. 192.168.0.0/24): " K8S_SUBNET
-[ -n "$K8S_SUBNET" ] || error "Subnet Kubernetes richiesta"
 
-echo ""
-read -rp "Gateway Kubernetes (es. 192.168.0.1): " K8S_GATEWAY
-[ -n "$K8S_GATEWAY" ] || error "Gateway Kubernetes richiesto"
+# Subnet Kubernetes
+while true; do
+  read -rp "Subnet Kubernetes (es. 192.168.0.0/24): " K8S_SUBNET
+  echo ""
 
-echo ""
-read -rp "Ultimo ottetto IP primo master (es. 210): " MASTER_IP_OCTET
-[ -n "$MASTER_IP_OCTET" ] || error "IP master richiesto"
+  if [ -z "$K8S_SUBNET" ]; then
+    warn "Subnet Kubernetes richiesta"
+    continue
+  fi
 
-echo ""
-read -rp "Ultimo ottetto IP primo worker (es. 220): " WORKER_IP_OCTET
-[ -n "$WORKER_IP_OCTET" ] || error "IP worker richiesto"
+  if ! echo "$K8S_SUBNET" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}$'; then
+    warn "Formato subnet non valido (usa CIDR, es. 192.168.0.0/24)"
+    echo ""
+    continue
+  fi
+
+  ok "Subnet Kubernetes: $K8S_SUBNET"
+  break
+done
+
+# Gateway Kubernetes
+while true; do
+  echo ""
+  read -rp "Gateway Kubernetes (es. 192.168.0.1): " K8S_GATEWAY
+  echo ""
+
+  if [ -z "$K8S_GATEWAY" ]; then
+    warn "Gateway Kubernetes richiesto"
+    continue
+  fi
+
+  if ! echo "$K8S_GATEWAY" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    warn "Formato gateway non valido (usa formato IP, es. 192.168.0.1)"
+    echo ""
+    continue
+  fi
+
+  ok "Gateway Kubernetes: $K8S_GATEWAY"
+  break
+done
+
+# Ultimo ottetto IP primo master
+while true; do
+  echo ""
+  read -rp "Ultimo ottetto IP primo master (es. 210): " MASTER_IP_OCTET
+  echo ""
+
+  if [ -z "$MASTER_IP_OCTET" ]; then
+    warn "Ultimo ottetto master richiesto"
+    continue
+  fi
+
+  if ! echo "$MASTER_IP_OCTET" | grep -qE '^[0-9]{1,3}$' || [ "$MASTER_IP_OCTET" -lt 0 ] || [ "$MASTER_IP_OCTET" -gt 253 ]; then
+    warn "Ottetto non valido (deve essere un numero tra 0 e 253)"
+    echo ""
+    continue
+  fi
+
+  ok "IP primo master: ultimo ottetto $MASTER_IP_OCTET"
+  break
+done
+
+# Ultimo ottetto IP primo worker
+while true; do
+  echo ""
+  read -rp "Ultimo ottetto IP primo worker (es. 220): " WORKER_IP_OCTET
+  echo ""
+
+  if [ -z "$WORKER_IP_OCTET" ]; then
+    warn "Ultimo ottetto worker richiesto"
+    continue
+  fi
+
+  if ! echo "$WORKER_IP_OCTET" | grep -qE '^[0-9]{1,3}$' || [ "$WORKER_IP_OCTET" -lt 0 ] || [ "$WORKER_IP_OCTET" -gt 253 ]; then
+    warn "Ottetto non valido (deve essere un numero tra 0 e 253)"
+    echo ""
+    continue
+  fi
+
+  # Verifica che worker IP non sia troppo vicino a master IP
+  if [ "$WORKER_IP_OCTET" -le "$((MASTER_IP_OCTET + 2))" ]; then
+    warn "Ultimo ottetto worker deve essere > $((MASTER_IP_OCTET + 2)) per evitare conflitti con master"
+    echo ""
+    continue
+  fi
+
+  ok "IP primo worker: ultimo ottetto $WORKER_IP_OCTET"
+  break
+done
 
 ok "Rete Kubernetes configurata"
 
