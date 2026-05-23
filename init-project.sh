@@ -148,10 +148,15 @@ TOKEN_RESPONSE=$(curl -s -k -X POST \
   -u "root@pam:$PROXMOX_ROOT_PW" \
   -d "comment=Packer%20token" 2>/dev/null || echo '{}')
 
-TOKEN_SECRET=$(echo "$TOKEN_RESPONSE" | grep -oP '"value":"?\K[^"]+' | head -1)
+# Debug: salva la risposta per ispezione
+echo "$TOKEN_RESPONSE" > /tmp/packer_token_response.json
+
+# Estrai il token dal JSON (supporta formati diversi)
+TOKEN_SECRET=$(echo "$TOKEN_RESPONSE" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
 
 if [ -z "$TOKEN_SECRET" ]; then
-  error "Token non generato. Risposta: $TOKEN_RESPONSE"
+  error "Token non generato. Risposta completa salvata in /tmp/packer_token_response.json:
+$TOKEN_RESPONSE"
 fi
 
 ok "Token Packer creato"
@@ -165,7 +170,8 @@ TERRAFORM_TOKEN=$(curl -s -k -X POST \
   -u "root@pam:$PROXMOX_ROOT_PW" \
   -d "comment=Terraform%20token" 2>/dev/null || echo '{}')
 
-TERRAFORM_SECRET=$(echo "$TERRAFORM_TOKEN" | grep -oP '"value":"?\K[^"]+' | head -1)
+# Estrai il token dal JSON (supporta formati diversi)
+TERRAFORM_SECRET=$(echo "$TERRAFORM_TOKEN" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
 
 if [ -z "$TERRAFORM_SECRET" ]; then
   warn "Token Terraform non generato — usa lo stesso di Packer"
