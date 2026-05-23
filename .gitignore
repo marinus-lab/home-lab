@@ -1,7 +1,8 @@
 # ── Terraform ─────────────────────────────────────────────────────────────────
 .terraform/
 .terraform.lock.hcl
-terraform.tfvars          # contiene credenziali Proxmox
+terraform.auto.tfvars     # credenziali Proxmox (generato da init-project.sh)
+terraform/terraform.auto.tfvars
 *.tfstate
 *.tfstate.backup
 terraform/generated/      # inventory Kubespray generato da terraform apply
