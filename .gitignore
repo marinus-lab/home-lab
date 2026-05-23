@@ -1,11 +1,13 @@
 # ── Terraform ─────────────────────────────────────────────────────────────────
 .terraform/
 .terraform.lock.hcl
-terraform.auto.tfvars     # credenziali Proxmox (generato da init-project.sh)
+# credenziali Proxmox (generato da init-project.sh)
+terraform.auto.tfvars
 terraform/terraform.auto.tfvars
 *.tfstate
 *.tfstate.backup
-terraform/generated/      # inventory Kubespray generato da terraform apply
+# inventory Kubespray generato da terraform apply
+terraform/generated/
 crash.log
 crash.*.log
 override.tf
@@ -14,12 +16,15 @@ override.tf.json
 *_override.tf.json
 
 # ── Packer ────────────────────────────────────────────────────────────────────
-packer.pkrvars.hcl              # contiene credenziali Proxmox
-packer/packer.pkrvars.hcl       # path completo per chiarezza
+# contiene credenziali Proxmox
+packer.pkrvars.hcl
+packer/packer.pkrvars.hcl
 packer_cache/
 packer-manifest.json
-packer/http/user-data           # generato da build.sh da ubuntu-user-data.tpl
-packer/http/rocky-ks.cfg        # generato da build.sh da rocky-ks.cfg.tpl
+# generato da build.sh da ubuntu-user-data.tpl
+packer/http/user-data
+# generato da build.sh da rocky-ks.cfg.tpl
+packer/http/rocky-ks.cfg
 
 # ── Backup / Temp ──────────────────────────────────────────────────────────────
 *.bak
