@@ -1,0 +1,8 @@
+# Place your secrets in an Ansible Vault file.
+# Example (encrypt with `ansible-vault encrypt_string`):
+# vault_proxmox_root_pw: !vault |
+#          $ANSIBLE_VAULT;1.1;AES256
+#          ...
+# vault_automation_user_pw: !vault |
+#          $ANSIBLE_VAULT;1.1;AES256
+#          ...

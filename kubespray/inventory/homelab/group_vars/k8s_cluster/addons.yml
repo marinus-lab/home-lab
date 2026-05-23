@@ -1,0 +1,35 @@
+---
+# ── Helm ───────────────────────────────────────────────────────────────────────
+helm_enabled: true
+
+# ── Metrics Server ─────────────────────────────────────────────────────────────
+# Necessario per `kubectl top nodes/pods` e per l'HorizontalPodAutoscaler.
+metrics_server_enabled: true
+metrics_server_resizer_nanny_cpu: "5m"
+metrics_server_resizer_nanny_mem: "32Mi"
+
+# ── Kubernetes Dashboard ────────────────────────────────────────────────────────
+# Disabilitato di default (richiede configurazione RBAC aggiuntiva per sicurezza).
+dashboard_enabled: false
+
+# ── Ingress Controller (nginx) ─────────────────────────────────────────────────
+# Abilitare per esporre servizi all'esterno del cluster.
+# Richiede una porta libera su ogni nodo worker (80/443).
+ingress_nginx_enabled: false
+# ingress_nginx_host_network: true
+
+# ── Cert Manager ───────────────────────────────────────────────────────────────
+# Gestione automatica certificati TLS (Let's Encrypt o CA interna).
+cert_manager_enabled: false
+# cert_manager_namespace: cert-manager
+
+# ── MetalLB ────────────────────────────────────────────────────────────────────
+# Load Balancer per homelab (sostituisce il cloud provider LB).
+# Abilitare e configurare il range IP da assegnare ai LoadBalancer services.
+metallb_enabled: false
+# metallb_ip_range: "192.168.1.240-192.168.1.250"
+# metallb_protocol: layer2
+
+# ── Local Path Provisioner ──────────────────────────────────────────────────────
+# Storage class basata su hostPath — utile per homelab senza storage esterno.
+local_volume_provisioner_enabled: false

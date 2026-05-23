@@ -1,0 +1,32 @@
+---
+# ── Cluster ────────────────────────────────────────────────────────────────────
+cluster_name: homelab
+
+# ── Versione Kubernetes ────────────────────────────────────────────────────────
+# Verificare la compatibilità con la versione Kubespray in uso:
+# https://github.com/kubernetes-sigs/kubespray#supported-components
+kube_version: v1.30.4
+
+# ── DNS upstream ───────────────────────────────────────────────────────────────
+upstream_dns_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+# ── Ottimizzazione download binari ────────────────────────────────────────────
+# Scarica i binari una sola volta e li distribuisce ai nodi (più veloce).
+download_run_once: true
+download_localhost: false
+
+# ── NTP ────────────────────────────────────────────────────────────────────────
+# La sincronizzazione temporale è critica per etcd e i certificati TLS.
+ntp_enabled: true
+ntp_manage_config: true
+ntp_servers:
+  - 0.it.pool.ntp.org
+  - 1.it.pool.ntp.org
+  - 2.it.pool.ntp.org
+
+# ── SSH ────────────────────────────────────────────────────────────────────────
+# Kubespray si connette ai nodi come utente ubuntu con escalation sudo.
+ansible_user: ubuntu
+ansible_become: true

@@ -1,0 +1,21 @@
+# Generato automaticamente da Terraform — non modificare manualmente.
+# Copiare in: kubespray/inventory/homelab/hosts.ini
+
+[kube_control_plane]
+%{~ for name, ip in control_plane }
+${name} ansible_host=${ip} ansible_user=ubuntu
+%{~ endfor }
+
+[kube_node]
+%{~ for name, ip in workers }
+${name} ansible_host=${ip} ansible_user=ubuntu
+%{~ endfor }
+
+[etcd:children]
+kube_control_plane
+
+[k8s_cluster:children]
+kube_control_plane
+kube_node
+
+[calico_rr]
