@@ -38,7 +38,7 @@
           roleid: "{{ api_role }}"
           user: "{{ api_username }}@{{ api_realm }}"
       register: acl_result
-      changed_when: "200" in acl_result.status
+      changed_when: "'200' in acl_result.status"
 
     - name: "Create an API token for the user"
       uri:
@@ -52,7 +52,7 @@
         body:
           comment: "Ansible‑generated token"
       register: token_result
-      changed_when: "200" in token_result.status
+      changed_when: "'200' in token_result.status"
 
     - name: "Show token (store securely)"
       debug:
