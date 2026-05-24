@@ -4,7 +4,7 @@
 container_manager: containerd
 
 # Configurazione containerd
-containerd_registries_mirrors: {}
+containerd_registries_mirrors: []
 # Esempio per mirror locale (es. Harbor):
 # containerd_registries_mirrors:
 #   "docker.io":
