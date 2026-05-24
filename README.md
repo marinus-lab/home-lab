@@ -107,6 +107,11 @@ home-lab/
 │   ├── terraform.tfvars.example           # Template completo con tutti i parametri
 │   ├── terraform.auto.tfvars*             # Credenziali + rete (*in .gitignore, da init-project.sh)
 │   ├── terraform.auto.tfvars.example      # Template credenziali
+│   ├── create-vm.sh                       # Script interattivo: crea una VM singola di test
+│   ├── single-vm/                         # Root module Terraform per VM singola
+│   │   ├── main.tf                        # Provider + modulo proxmox-vm
+│   │   ├── variables.tf                   # Parametri VM
+│   │   └── outputs.tf                     # IP, nome, VM ID
 │   ├── modules/proxmox-vm/                # Modulo riutilizzabile per singola VM
 │   │   ├── main.tf                        # Clone, cloud-init, disco, rete, QEMU agent
 │   │   ├── variables.tf                   # 18 variabili (nome, risorse, rete, SSH)
@@ -181,13 +186,18 @@ cd packer && ./download-isos.sh    # Menu interattivo (usa aria2c + API Proxmox)
 # ./build.sh ubuntu-24.04
 # ./build.sh rocky-9
 
-# 7. Terraform — crea le VM
-cd ../terraform && terraform apply
+# 7. (Opzionale) Test singola VM prima del cluster
+# Crea una VM singola per verificare che template e rete funzionino
+cd ../terraform && bash create-vm.sh
+# Dopo il test: cd single-vm && terraform destroy
 
-# 8. Kubespray — installa Kubernetes
+# 8. Terraform — crea il cluster K8s (6 VM)
+terraform apply
+
+# 9. Kubespray — installa Kubernetes
 cd ../kubespray && ./deploy.sh
 
-# 9. Verifica
+# 10. Verifica
 kubectl get nodes
 kubectl get svc -A  # verifica MetalLB
 ```
