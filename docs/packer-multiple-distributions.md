@@ -281,21 +281,24 @@ packer/
 
 3. Avvia VM Proxmox con ISO
 
-4. Kernel boot con parametri preseed
-   └── Installa via debian-preseed.cfg da Packer HTTP server
+4. ESC×2 al menu ISOLINUX → prompt `boot:`
 
-5. Debian Installer esegue installazione preseed (fully automated)
+5. Comando di boot: `auto url=http://<PACKER_IP>:<PORT>/debian-preseed.cfg`
+   └── Sintassi scoperta sperimentalmente: `auto url=...` (NON `preseed/url=...`)
+   └── L'installer ignora `preseed/url` e richiede `auto url=...` per caricare il preseed
+
+6. Debian Installer esegue installazione preseed (fully automated)
    └── LVM + XFS, pacchetti di base, qemu-guest-agent, cloud-init
 
-6. VM reboota, Packer si connette via SSH (root)
+7. VM reboota, Packer si connette via SSH (root)
 
-7. Esegue post-provisioning:
+8. Esegue post-provisioning:
    ├── shell script (install-tools.sh) — aggiornamenti apt
    └── Ansible playbook (base.yml) — configurazione template
 
-8. Cloud-init reset (per Terraform clone)
+9. Cloud-init reset (per Terraform clone)
 
-9. VM converge in template (VMID 9003, immutabile)
+10. VM converge in template (VMID 9003, immutabile)
 ```
 
 ---
@@ -393,6 +396,37 @@ provisioner "ansible" {
 ```
 
 Con `use_proxy = false` Ansible si connette direttamente alla VM (non al proxy locale). Packer genera una chiave SSH temporanea in formato non compatibile con la libcrypto di sistema (`error in libcrypto`), ma Ansible esegue il fallback a password auth. Le operazioni SFTP/SCP vanno direttamente al demone SSH della VM senza intermediari.
+
+### "Debian 13 preseed non caricato — installer interattivo"
+
+Il template Debian 13 non riesce a caricare il preseed e l'installer parte in modalità interattiva (richiede lingua).
+
+**Causa:** l'installer Debian 13 (Trixie) ignora il parametro `preseed/url=` tradizionale quando digitato al prompt `boot:`.
+
+**Soluzione:** usare la sintassi `auto url=http://...`:
+
+```
+boot: auto url=http://192.168.0.219:8000/debian-preseed.cfg
+```
+
+**Dettaglio:** `auto` abilita la modalità automatica, `url=...` specifica il preseed. Non serve anteporre `install` o aggiungere `preseed/url=`. Non funziona nemmeno via CLI ISOLINUX (`c` → `linux`/`initrd`/`boot`). L'unica combinazione funzionante è ESC×2 al menu ISOLINUX + `auto url=...` + Enter.
+
+### "VM already exists — Packer non parte"
+
+Il VM ID della distribuzione è già occupato su Proxmox.
+
+**Soluzione:** `build.sh` rileva automaticamente il conflitto via API Proxmox e chiede:
+```
+⚠️  VM 9003 (debian-13) already exists on node 'prox-dell1'
+   Packer non può creare una VM con lo stesso ID.
+Overwrite with -force? (y/N):
+```
+Rispondi `y` per eseguire con `-force` (elimina e ricrea la VM). Rispondi `n` per abortire.
+
+Se vuoi forzare direttamente senza prompt:
+```bash
+PACKER_ARGS="-force" ./build.sh debian-13
+```
 
 ### "Cloud-init not available"
 
