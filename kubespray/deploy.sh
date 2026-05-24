@@ -77,6 +77,31 @@ if [ -n "${EXTRA_ARGS:-}" ]; then
   ANSIBLE_CMD+=($EXTRA_ARGS)
 fi
 
+# ── SSH ping test pre-deploy ──────────────────────────────────────────────────
+_ssh_ping_test() {
+  local fail=0
+  info "Verifica connettività SSH verso tutti i nodi..."
+  while IFS= read -r line; do
+    host=$(echo "$line" | awk '{print $1}')
+    ip=$(echo "$line" | grep -oP 'ansible_host=\K[0-9.]+')
+    [ -z "$ip" ] && continue
+    echo -n "  $host ($ip) ... "
+    if ssh -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@"$ip" "echo OK" 2>/dev/null; then
+      echo "OK"
+    else
+      echo "NO"
+      fail=1
+    fi
+  done < <(grep 'ansible_host=' "$INVENTORY")
+  if [ "$fail" -eq 1 ]; then
+    warn "Uno o più nodi non sono raggiungibili via SSH."
+    read -r -p "  Procedere comunque con l'installazione? (s/N): " confirm
+    [[ "$confirm" =~ ^[sSyY] ]] || error "Annullato"
+  else
+    ok "Tutti i nodi raggiungibili"
+  fi
+}
+
 # ── Esegui il comando richiesto ───────────────────────────────────────────────
 case "$COMMAND" in
 
@@ -125,31 +150,6 @@ case "$COMMAND" in
     ;;
 
 esac
-
-# ── SSH ping test pre-deploy ──────────────────────────────────────────────────
-_ssh_ping_test() {
-  local fail=0
-  info "Verifica connettività SSH verso tutti i nodi..."
-  while IFS= read -r line; do
-    host=$(echo "$line" | awk '{print $1}')
-    ip=$(echo "$line" | grep -oP 'ansible_host=\K[0-9.]+')
-    [ -z "$ip" ] && continue
-    echo -n "  $host ($ip) ... "
-    if ssh -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@"$ip" "echo OK" 2>/dev/null; then
-      echo "OK"
-    else
-      echo "NO"
-      fail=1
-    fi
-  done < <(grep 'ansible_host=' "$INVENTORY")
-  if [ "$fail" -eq 1 ]; then
-    warn "Uno o più nodi non sono raggiungibili via SSH."
-    read -r -p "  Procedere comunque con l'installazione? (s/N): " confirm
-    [[ "$confirm" =~ ^[sSyY] ]] || error "Annullato"
-  else
-    ok "Tutti i nodi raggiungibili"
-  fi
-}
 
 # ── Info post-installazione ────────────────────────────────────────────────────
 _print_post_install() {
