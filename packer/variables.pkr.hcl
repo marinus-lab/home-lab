@@ -53,19 +53,19 @@ variable "network_bridge" {
 variable "disk_size" {
   type        = string
   description = "Dimensione disco del template"
-  default     = "20G"
+  default     = "32G"
 }
 
 variable "cores" {
   type        = number
   description = "Core CPU della VM di build"
-  default     = 2
+  default     = 4
 }
 
 variable "memory" {
   type        = number
   description = "RAM in MB della VM di build"
-  default     = 2048
+  default     = 8192
 }
 
 # ── SSH access durante la build ───────────────────────────────────────────────
