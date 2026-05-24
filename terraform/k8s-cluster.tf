@@ -1,23 +1,21 @@
 # ── Topologia del cluster ──────────────────────────────────────────────────────
 #
-# IP e VM ID vengono calcolati dinamicamente dalle variabili:
+# Nomi, VM ID e IP vengono calcolati dalle variabili:
 #
-#   master_vm_id_start=201  master_ip_start=210  control_plane_count=1
-#     → k8s-master-1  VMID=201  IP=192.168.1.210
+#   master_name_prefix="cp" master_vm_id_start=101 master_ip_start=10 count=3
+#     → cp-1  VMID=101  IP=192.168.1.10
+#     → cp-2  VMID=102  IP=192.168.1.11
+#     → cp-3  VMID=103  IP=192.168.1.12
 #
-#   master_vm_id_start=201  master_ip_start=210  control_plane_count=3
-#     → k8s-master-1  VMID=201  IP=192.168.1.210
-#     → k8s-master-2  VMID=202  IP=192.168.1.211
-#     → k8s-master-3  VMID=203  IP=192.168.1.212
-#
-#   worker_vm_id_start=211  worker_ip_start=220  worker_count=2
-#     → k8s-worker-1  VMID=211  IP=192.168.1.220
-#     → k8s-worker-2  VMID=212  IP=192.168.1.221
+#   worker_name_prefix="node" worker_vm_id_start=201 worker_ip_start=20 count=3
+#     → node-1  VMID=201  IP=192.168.1.20
+#     → node-2  VMID=202  IP=192.168.1.21
+#     → node-3  VMID=203  IP=192.168.1.22
 
 locals {
   control_plane_nodes = {
     for i in range(var.control_plane_count) :
-    format("k8s-master-%d", i + 1) => {
+    format("%s-%d", var.master_name_prefix, i + 1) => {
       vm_id      = var.master_vm_id_start + i
       ip_address = cidrhost(var.k8s_subnet, var.master_ip_start + i)
     }
@@ -25,7 +23,7 @@ locals {
 
   worker_nodes = {
     for i in range(var.worker_count) :
-    format("k8s-worker-%d", i + 1) => {
+    format("%s-%d", var.worker_name_prefix, i + 1) => {
       vm_id      = var.worker_vm_id_start + i
       ip_address = cidrhost(var.k8s_subnet, var.worker_ip_start + i)
     }
