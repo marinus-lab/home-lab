@@ -3,6 +3,7 @@
 
 ### Localization
 d-i debian-installer/locale string en_US.UTF-8
+d-i console-setup/ask_detect boolean false
 d-i keyboard-configuration/xkb-keymap select it
 d-i time/zone string Europe/Rome
 d-i clock-setup/utc boolean true
@@ -34,13 +35,13 @@ d-i passwd/user-default-groups string sudo audio cdrom video
 ### Partitioning — LVM + XFS
 d-i partman-auto/disk string /dev/sda
 d-i partman-auto/method string lvm
-d-i partman-auto-lvm/guided_size string max
 d-i partman-lvm/device_remove_lvm boolean true
 d-i partman-md/device_remove_md boolean true
 d-i partman-lvm/confirm boolean true
 d-i partman-lvm/confirm_nooverwrite boolean true
+d-i partman-auto/choose_recipe select boot-root
 
-# Expert recipe: /boot XFS 1GB, root XFS LVM (rest), swap LVM 1GB
+# Expert recipe: /boot XFS 1GB, root XFS LVM (rest via VG vg00), swap LVM 1GB
 d-i partman-auto/expert_recipe string \
       boot-root :: \
               1000 1000 1000 xfs \
@@ -50,13 +51,21 @@ d-i partman-auto/expert_recipe string \
                       mountpoint{ /boot } \
               . \
               500 10000 -1 xfs \
+                      method{ lvm } \
+                      vg_name{ vg00 } \
+              . \
+              500 8000 -1 xfs \
                       $lvmok{ } \
+                      in_vg{ vg00 } \
+                      lv_name{ root } \
                       method{ format } format{ } \
                       use_filesystem{ } filesystem{ xfs } \
                       mountpoint{ / } \
               . \
-              512 512 1024 linux-swap \
+              512 1024 1024 linux-swap \
                       $lvmok{ } \
+                      in_vg{ vg00 } \
+                      lv_name{ swap } \
                       method{ swap } format{ } \
               .
 
@@ -76,6 +85,7 @@ d-i apt-setup/services-select multiselect security, updates
 ### Package selection
 tasksel tasksel/first multiselect standard
 d-i pkgsel/include string openssh-server qemu-guest-agent cloud-init cloud-utils curl wget git vim python3 python3-pip xfsprogs
+d-i pkgsel/install-language-support boolean false
 d-i pkgsel/upgrade select none
 
 ### Boot loader — GRUB on /dev/sda

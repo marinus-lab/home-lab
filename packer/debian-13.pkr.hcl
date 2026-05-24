@@ -52,17 +52,12 @@ source "proxmox-iso" "debian_13" {
   http_bind_address = "0.0.0.0"
 
   # ── Boot: Debian installer con preseed ──────────────────────────────────────
-  # '<esc>' esce dal menu ISOLINUX (vesamenu) e va al prompt 'boot:'.
-  # Selezioniamo il label 'install' con parametri preseed.
-  boot_wait = "10s"
-  # TEST DIAGNOSTICO: solo auto + priority=critical + noninteractive,
-  # SENZA preseed/url. Se l'installer parte in automatico (con default
-  # en_US, ext4, ecc.) il boot_command funziona e il problema è la URL.
+  # ESC×2 → prompt boot:. Poi "auto http://URL" basta per avviare il preseed.
+  boot_wait = "15s"
   boot_command = [
-    "<esc><wait3>",
-    "install<wait>",
-    " auto<wait>",
-    " priority=critical debconf/frontend=noninteractive<enter>"
+    "<esc><wait>",
+    "<esc><wait>",
+    "auto http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian-preseed.cfg<enter>"
   ]
 
   # ── SSH ─────────────────────────────────────────────────────────────────────
