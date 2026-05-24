@@ -15,6 +15,8 @@ kube_pods_subnet: 10.244.0.0/16
 # ── kube-proxy ─────────────────────────────────────────────────────────────────
 # ipvs è più performante di iptables per cluster con molti servizi.
 kube_proxy_mode: ipvs
+# Necessario con ipvs + MetalLB (strictARP per ARP annunci)
+kube_proxy_strict_arp: true
 
 # ── NodePort range ─────────────────────────────────────────────────────────────
 kube_apiserver_node_port_range: "30000-32767"
