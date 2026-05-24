@@ -7,8 +7,8 @@
 3. [Flusso di build](#flusso-di-build)
 4. [File di configurazione](#file-di-configurazione)
    - [variables.pkr.hcl](#variablespkrhcl)
-   - [ubuntu-base.pkr.hcl](#ubuntu-basepkrhcl)
-   - [http/user-data.tpl](#httpuser-datatpl)
+   - [Template .pkr.hcl](#template-pkrhcl-es-ubuntu-2404pkrhcl)
+   - [http/ubuntu-user-data.tpl](#httpubuntu-user-datatpl)
    - [http/meta-data](#httpmeta-data)
    - [scripts/install-tools.sh](#scriptsinstall-toolssh)
    - [ansible/playbooks/base.yml](#ansibleplaybooksbaseyml)
@@ -23,7 +23,9 @@
 
 ## Panoramica
 
-Questo setup utilizza **HashiCorp Packer** per costruire un template VM Ubuntu 22.04 su Proxmox VE. Il template viene poi usato da Terraform per clonare rapidamente le VM del cluster Kubernetes.
+Questo setup utilizza **HashiCorp Packer** per costruire template VM su Proxmox VE — supporta Ubuntu 22.04, 24.04, Debian 13 e Rocky 9. I template vengono poi usati da Terraform per clonare rapidamente le VM del cluster Kubernetes.
+
+> **Nota:** Questo documento descrive il funzionamento generale dei template Packer. Per la procedura di build multi-distribuzione, vedi [packer-multiple-distributions.md](packer-multiple-distributions.md).
 
 Il processo di build esegue in sequenza:
 
@@ -44,15 +46,21 @@ Il template risultante ha queste caratteristiche:
 
 ```
 packer/
-├── ubuntu-base.pkr.hcl          # Template principale Packer
-├── variables.pkr.hcl            # Definizione di tutte le variabili
-├── build.sh                     # Script di avvio build
-├── packer.pkrvars.hcl.example   # Esempio file variabili (da non committare con i valori reali)
+├── variables.pkr.hcl              # Definizione di tutte le variabili
+├── ubuntu-22.04.pkr.hcl           # Build Ubuntu 22.04
+├── ubuntu-24.04.pkr.hcl           # Build Ubuntu 24.04
+├── debian-13.pkr.hcl              # Build Debian 13
+├── rocky-9.pkr.hcl                # Build Rocky 9
+├── build.sh                       # Script di avvio build (interattivo)
+├── download-isos.sh               # Pre-download ISO su Proxmox
+├── packer.pkrvars.hcl.example     # Esempio file variabili
 ├── http/
-│   ├── user-data.tpl            # Template autoinstall Ubuntu (con segnaposto password)
-│   └── meta-data                # File vuoto richiesto dal protocollo nocloud
+│   ├── ubuntu-user-data.tpl       # Template autoinstall Ubuntu (con segnaposto password)
+│   ├── debian-preseed.cfg.tpl     # Config preseed per Debian
+│   ├── rocky-ks.cfg.tpl           # Kickstart per Rocky Linux
+│   └── meta-data                  # File vuoto richiesto dal protocollo nocloud
 └── scripts/
-    └── install-tools.sh         # Script shell eseguito da Packer post-install
+    └── install-tools.sh           # Script shell eseguito da Packer post-install
 ```
 
 ---
@@ -63,10 +71,10 @@ packer/
 ┌─────────────────────────────────────────────────────────┐
 │  build.sh                                               │
 │  1. Genera hash SHA-512 della password ubuntu           │
-│  2. Sostituisce i segnaposto in user-data.tpl           │
+│  2. Sostituisce i segnaposto in ubuntu-user-data.tpl     │
 │     → produce http/user-data                           │
-│  3. packer init  (scarica il plugin proxmox)            │
-│  4. packer build ubuntu-base.pkr.hcl                    │
+│  3. packer init  (scarica i plugin proxmox + ansible)   │
+│  4. packer build ubuntu-24.04.pkr.hcl (o altra distro)  │
 └─────────────────────────────┬───────────────────────────┘
                               │
                               ▼
@@ -143,22 +151,25 @@ Centralizza tutte le variabili. Ogni variabile può essere sovrascritta tramite:
 | `proxmox_token_id` | `$PROXMOX_TOKEN_ID` | Token ID (es. `automation@pve!packer`) |
 | `proxmox_token_secret` | `$PROXMOX_TOKEN_SECRET` | Secret UUID del token |
 | `proxmox_node` | `pve` | Nome del nodo Proxmox |
-| `ubuntu_version` | `22.04` | Versione Ubuntu da buildare |
-| `vm_id` | `9000` | ID VM del template su Proxmox |
-| `storage_pool` | `local-lvm` | Storage per disco e cloud-init |
+| `vm_id_ubuntu_2204` | `9001` | VM ID per Ubuntu 22.04 |
+| `vm_id_ubuntu_2404` | `9002` | VM ID per Ubuntu 24.04 |
+| `vm_id_debian_13` | `9003` | VM ID per Debian 13 |
+| `vm_id_rocky_9` | `9000` | VM ID per Rocky 9 |
+| `template_storage_pool` | `local-lvm` | Storage per disco VM |
+| `iso_storage_pool` | `local` | Storage per ISO installer |
 | `network_bridge` | `vmbr0` | Bridge di rete Proxmox |
-| `disk_size` | `20G` | Dimensione disco |
-| `cores` | `2` | Core CPU della VM di build |
-| `memory` | `2048` | RAM in MB della VM di build |
+| `disk_size` | `32G` | Dimensione disco |
+| `cores` | `4` | Core CPU della VM di build |
+| `memory` | `8192` | RAM in MB della VM di build |
 | `ssh_password` | `packer` | Password root per la connessione SSH di Packer |
 
 Le variabili delle credenziali Proxmox usano `env("VAR_NAME")` come default: se la variabile d'ambiente è impostata, Packer la legge automaticamente senza bisogno di passarla esplicitamente.
 
 ---
 
-### `ubuntu-base.pkr.hcl`
+### Template `.pkr.hcl` (es. `ubuntu-24.04.pkr.hcl`)
 
-Il template principale. Definisce il `source` (come costruire la VM) e il `build` (cosa fare una volta avviata).
+Ogni distribuzione ha il suo file `.pkr.hcl`. Definisce il `source` (come costruire la VM) e il `build` (cosa fare una volta avviata).
 
 #### Blocco `packer`
 
@@ -169,11 +180,15 @@ packer {
       version = ">= 1.1.3"
       source  = "github.com/hashicorp/proxmox"
     }
+    ansible = {
+      version = ">= 1.1.0"
+      source  = "github.com/hashicorp/ansible"
+    }
   }
 }
 ```
 
-Specifica il plugin `packer-plugin-proxmox` che fornisce il builder `proxmox-iso`. `packer init` lo scarica automaticamente.
+Specifica il plugin `packer-plugin-proxmox` per il builder `proxmox-iso` e `packer-plugin-ansible` per il provisioner Ansible. `packer init` li scarica automaticamente.
 
 #### Connessione Proxmox
 
@@ -189,17 +204,17 @@ I nomi dei campi nel plugin sono `username` e `token` — non `proxmox_token_id`
 #### Disco
 
 ```hcl
-scsi_controller = "virtio-scsi-pci"
+scsi_controller = "virtio-scsi-single"
 disks {
   type         = "scsi"
-  storage_pool = var.storage_pool
+  storage_pool = var.template_storage_pool
   format       = "raw"
   discard      = true
   io_thread    = true
 }
 ```
 
-- `virtio-scsi-pci` è il controller più performante su KVM
+- `virtio-scsi-single` è il controller più performante su KVM (con una coda I/O per disco)
 - `format = "raw"` è obbligatorio per storage LVM; usare `qcow2` per NFS/ZFS/dir
 - `discard = true` abilita il TRIM (supportato da Ubuntu con LVM)
 - `io_thread = true` migliora le performance I/O
@@ -208,7 +223,7 @@ disks {
 
 ```hcl
 cloud_init              = true
-cloud_init_storage_pool = var.storage_pool
+cloud_init_storage_pool = var.template_storage_pool
 ```
 
 Aggiunge un secondo disco di tipo `cloudinit` alla VM. Questo è il meccanismo che Terraform userà per iniettare IP statico, hostname e chiave SSH pubblica in ogni VM clonata dal template.
@@ -241,9 +256,9 @@ Packer invia questi tasti via VNC alla VM appena avviata:
 
 ---
 
-### `http/user-data.tpl`
+### `http/ubuntu-user-data.tpl`
 
-Template YAML per il sistema di autoinstall di Ubuntu 22.04 (Subiquity). Non è un file statico: `build.sh` lo trasforma in `http/user-data` sostituendo i segnaposto `%%...%%` con i valori reali prima di avviare Packer.
+Template YAML per il sistema di autoinstall di Ubuntu (Subiquity). Non è un file statico: `build.sh` lo trasforma in `http/ubuntu-user-data` sostituendo i segnaposto `%%...%%` con i valori reali prima di avviare Packer.
 
 Il file inizia obbligatoriamente con `#cloud-config` e contiene una chiave `autoinstall:`.
 
@@ -317,7 +332,7 @@ apt-get clean && rm -rf /var/lib/apt/lists/*
 
 Eseguito dal `shell` provisioner di Packer come primo step dopo che Ubuntu è installato e SSH è attivo. Il suo unico scopo è aggiornare tutti i pacchetti (inclusi eventuali aggiornamenti di sicurezza usciti dopo il rilascio dell'ISO) e pulire la cache apt per ridurre la dimensione del template.
 
-I pacchetti applicativi sono già installati dall'autoinstall (`user-data.tpl`) per sfruttare il caching APT del processo di installazione.
+I pacchetti applicativi sono già installati dall'autoinstall (`ubuntu-user-data.tpl`) per sfruttare il caching APT del processo di installazione.
 
 ---
 
@@ -366,7 +381,7 @@ UBUNTU_PASSWORD_HASH=$(openssl passwd -6 "${UBUNTU_PASSWORD}")
 sed \
   -e "s|%%UBUNTU_PASSWORD_HASH%%|${UBUNTU_PASSWORD_HASH}|g" \
   -e "s|%%ROOT_PASSWORD%%|${ROOT_PASSWORD}|g" \
-  http/user-data.tpl > http/user-data
+  http/ubuntu-user-data.tpl > http/ubuntu-user-data
 ```
 
 **Perché non inserire l'hash direttamente nel template?**  
@@ -392,7 +407,7 @@ Token ID:     automation@pve!packer
 Token Secret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
-Il token deve essere creato con il playbook `create_proxmox_user.yml` (vedi `PROXMOX_API_USER_DOC.md`). I permessi richiesti per la build Packer sono almeno `PVEAdmin` sul nodo di destinazione.
+Il token deve essere creato con il playbook `create_proxmox_user.yml` (vedi `proxmox-api-user.md`). I permessi richiesti per la build Packer sono almeno `PVEAdmin` sul nodo di destinazione.
 
 Le variabili d'ambiente da esportare prima di `build.sh`:
 
@@ -464,19 +479,19 @@ PACKER_ARGS="-var proxmox_node=pve2" ./build.sh
 PACKER_ARGS="-debug" ./build.sh
 
 # Solo validazione (non costruisce)
-packer validate ubuntu-base.pkr.hcl
+packer validate ubuntu-24.04.pkr.hcl
 ```
 
 ### Ricostruzione del template
 
-Se il template 9000 esiste già, Packer fallisce. Per ricostruirlo:
+Se il template esiste già, Packer fallisce (a meno di `-force`). Per ricostruirlo:
 
 ```bash
-# Da Proxmox: cancella il template esistente
-qm destroy 9000
+# Da Proxmox: cancella il template esistente (usa l'ID corretto)
+qm destroy 9002   # Ubuntu 24.04
 
-# Poi rilancia
-./build.sh
+# Oppure usa -force per sovrascrivere
+PACKER_ARGS="-force" ./build.sh ubuntu-24.04
 ```
 
 ---
@@ -513,11 +528,7 @@ Cause possibili:
 
 Sintomi: `Error downloading ISO: checksum mismatch`.
 
-La URL `releases.ubuntu.com/22.04` punta all'ultima point release ma il file `SHA256SUMS` potrebbe essere aggiornato. Soluzione: specificare la versione esatta.
-
-```bash
-PACKER_ARGS="-var ubuntu_version=22.04.4" ./build.sh
-```
+La URL di rilascio punta all'ultima point release ma il file `SHA256SUMS` potrebbe essere aggiornato. Soluzione: specificare la versione esatta in `build.sh` (modificando l'URL nel template `.pkr.hcl`) o scaricare l'ISO manualmente con `packer/download-isos.sh`.
 
 ### Il template clonato non riceve configurazione cloud-init
 

@@ -211,20 +211,11 @@ Addon abilitati di default:
 |-------|-----------|-------|
 | `helm_enabled` | ✅ | Package manager Kubernetes |
 | `metrics_server_enabled` | ✅ | `kubectl top`, HPA |
-| `dashboard_enabled` | ❌ | Dashboard web K8s |
+| `dashboard_enabled` | ✅ | Dashboard web K8s |
 | `ingress_nginx_enabled` | ❌ | Ingress Controller HTTP/HTTPS |
 | `cert_manager_enabled` | ❌ | Certificati TLS automatici |
-| `metallb_enabled` | ❌ | LoadBalancer per homelab |
+| `metallb_enabled` | ✅ | LoadBalancer per homelab (range: 192.168.0.120-192.168.0.135) |
 | `local_volume_provisioner_enabled` | ❌ | Storage class hostPath |
-
-**MetalLB** è particolarmente utile per homelab: permette di assegnare IP reali della LAN ai `Service` di tipo `LoadBalancer`, senza dipendere da un cloud provider. Per abilitarlo:
-
-```yaml
-# addons.yml
-metallb_enabled: true
-metallb_ip_range: "192.168.1.240-192.168.1.250"  # IP liberi nella LAN
-metallb_protocol: layer2
-```
 
 ---
 

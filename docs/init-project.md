@@ -298,7 +298,7 @@ Dopo aver inserito tutti gli input, lo script:
 |------|-----------|-----------|
 | `group_vars/all.yml` | Credenziali Proxmox cifrate con Vault | ✅ Sì |
 | `packer/packer.pkrvars.hcl` | Token Packer + IP Proxmox | ❌ .gitignore |
-| `terraform/terraform.tfvars` | Topologia cluster (3M+3W, risorse, SSH key path) | ✅ Sì |
+| `terraform/terraform.tfvars` | Topologia cluster (3M+3W, risorse, SSH key path) | ❌ .gitignore |
 | `terraform/terraform.auto.tfvars` | Credenziali Proxmox + configurazione rete | ❌ .gitignore |
 | `terraform/terraform.auto.tfvars.example` | Template credenziali + rete | ✅ Sì |
 | `~/.vault_pass` | Password Vault (sul bastion) | — |
@@ -419,7 +419,7 @@ Se esegui lo script di nuovo:
 
 Per motivi di sicurezza e condivisione del codice, i file Terraform sono separati:
 
-**`terraform/terraform.tfvars`** (pubblico - tracciato in git)
+**`terraform/terraform.tfvars`** (pubblico - NON tracciato in git, ma condivisibile via esempio)
 ```hcl
 # Configurazione cluster
 control_plane_count = 3
