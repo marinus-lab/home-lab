@@ -13,22 +13,47 @@ metrics_server_resizer_nanny_mem: "32Mi"
 dashboard_enabled: true
 
 # ── Ingress Controller (nginx) ─────────────────────────────────────────────────
-# Abilitare per esporre servizi all'esterno del cluster.
-# Richiede una porta libera su ogni nodo worker (80/443).
-ingress_nginx_enabled: false
+# Espone servizi all'esterno del cluster via MetalLB.
+# La porta 80/443 viene esposta su un IP del pool MetalLB.
+ingress_nginx_enabled: true
 # ingress_nginx_host_network: true
 
 # ── Cert Manager ───────────────────────────────────────────────────────────────
 # Gestione automatica certificati TLS (Let's Encrypt o CA interna).
-cert_manager_enabled: false
+cert_manager_enabled: true
 # cert_manager_namespace: cert-manager
 
 # ── MetalLB ────────────────────────────────────────────────────────────────────
 # Load Balancer per homelab (sostituisce il cloud provider LB).
 # Assegna IP pubblici ai servizi LoadBalancer.
 metallb_enabled: true
-metallb_ip_range: "192.168.0.120-192.168.0.135"
 metallb_protocol: layer2
+metallb_config:
+  address_pools:
+    primary:
+      ip_range:
+        - 192.168.0.120-192.168.0.135
+      auto_assign: true
+      avoid_buggy_ips: true
+  layer2:
+    - primary
+
+# ── kube-vip ───────────────────────────────────────────────────────────────────
+# HA del control plane tramite VIP (sostituisce HAProxy esterno).
+# Il VIP viene annunciato via ARP su eth0 dai nodi control plane.
+kube_vip_enabled: true
+kube_vip_arp_enabled: true
+kube_vip_controlplane_enabled: true
+kube_vip_address: 192.168.0.80
+kube_vip_interface: eth0
+kube_vip_services_enabled: false
+loadbalancer_apiserver:
+  address: "{{ kube_vip_address }}"
+  port: 6443
+kube_vip_dns_mode: first
+kube_vip_cp_detect: false
+kube_vip_leasename: plndr-cp-lock
+kube_vip_lb_fwdmethod: local
 
 # ── Local Path Provisioner ──────────────────────────────────────────────────────
 # Storage class basata su hostPath — utile per homelab senza storage esterno.
