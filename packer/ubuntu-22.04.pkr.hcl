@@ -16,8 +16,8 @@ source "proxmox-iso" "ubuntu_2204" {
 
   # ── ISO ─────────────────────────────────────────────────────────────────────
   boot_iso {
-    iso_url           = "https://releases.ubuntu.com/22.04/ubuntu-22.04-live-server-amd64.iso"
-    iso_checksum      = "file:https://releases.ubuntu.com/22.04/SHA256SUMS"
+    iso_url           = "https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso"
+    iso_checksum      = "none"
     iso_storage_pool  = var.iso_storage_pool
     unmount           = true
   }
@@ -28,7 +28,7 @@ source "proxmox-iso" "ubuntu_2204" {
   cpu_type = "host"
 
   # ── Disco ───────────────────────────────────────────────────────────────────
-  scsi_controller = "virtio-scsi-pci"
+  scsi_controller = "virtio-scsi-single"
   disks {
     type         = "scsi"
     disk_size    = var.disk_size
@@ -96,7 +96,7 @@ build {
     ]
 
     extra_arguments = [
-      "--extra-vars", "packer_build=true",
+      "--extra-vars", "{\"packer_build\":true}",
       "--extra-vars", "ansible_password=${var.ssh_password}",
       "--ssh-extra-args", "-o PreferredAuthentications=password,keyboard-interactive,publickey -o PasswordAuthentication=yes -o UserKnownHostsFile=/dev/null",
       "-vvv",
