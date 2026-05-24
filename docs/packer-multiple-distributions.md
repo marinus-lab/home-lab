@@ -290,6 +290,35 @@ Cause comuni:
 # 3. iptables: iptables -L
 ```
 
+### "Ansible SFTP/SCP non funziona — `sftp: Connection closed`"
+
+Il proxy SSH del plugin ansible v1.1.4 di Packer ha alcuni bug:
+- **SFTP** — prova a eseguire `/usr/lib/sftp-server -e` sulla VM, ma su Rocky/RHEL il path è `/usr/libexec/openssh/sftp-server`
+- **SCP** — `scp: Connection closed` attraverso il proxy
+- **Pipelining** — stdin non viene chiuso correttamente, Python resta in attesa
+
+**Soluzione applicata** nei template — `use_proxy = false` + autenticazione via password:
+
+```hcl
+provisioner "ansible" {
+    playbook_file = "../ansible/playbooks/base.yml"
+    user          = "root"
+    use_proxy     = false
+
+    ansible_env_vars = [
+        "ANSIBLE_HOST_KEY_CHECKING=False",
+    ]
+
+    extra_arguments = [
+        "--extra-vars", "packer_build=true",
+        "--extra-vars", "ansible_password=${var.ssh_password}",
+        "--ssh-extra-args", "-o PreferredAuthentications=password,keyboard-interactive,publickey -o PasswordAuthentication=yes -o UserKnownHostsFile=/dev/null",
+    ]
+}
+```
+
+Con `use_proxy = false` Ansible si connette direttamente alla VM (non al proxy locale). Packer genera una chiave SSH temporanea in formato non compatibile con la libcrypto di sistema (`error in libcrypto`), ma Ansible esegue il fallback a password auth. Le operazioni SFTP/SCP vanno direttamente al demone SSH della VM senza intermediari.
+
 ### "Cloud-init not available"
 
 Cloud-init non è installato nel template.
@@ -299,6 +328,21 @@ Cloud-init non è installato nel template.
 cloud-init --version
 
 # Se manca, aggiungi il package al kickstart (Rocky) o user-data (Ubuntu)
+```
+
+### "REMOTE HOST IDENTIFICATION HAS CHANGED"
+
+Errore SSH quando l'IP della VM di build è già presente in `~/.ssh/known_hosts` con una chiave host diversa (tipico su build successive). SSH disabilita password auth come protezione MITM:
+
+```
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+Password authentication is disabled to avoid man-in-the-middle attacks.
+```
+
+**Soluzione:** nei template Packer, `--ssh-extra-args` include già `-o UserKnownHostsFile=/dev/null` per evitare il conflitto. Se il problema persiste in altri contesti:
+
+```bash
+ssh-keygen -f ~/.ssh/known_hosts -R "<IP_VM>"
 ```
 
 ### "Checksum mismatch"
