@@ -52,12 +52,11 @@ source "proxmox-iso" "debian_13" {
   http_bind_address = "0.0.0.0"
 
   # ── Boot: Debian installer con preseed ──────────────────────────────────────
-  # ESC×2 → prompt boot:. Poi "auto http://URL" basta per avviare il preseed.
   boot_wait = "15s"
   boot_command = [
     "<esc><wait>",
     "<esc><wait>",
-    "auto http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian-preseed.cfg<enter>"
+    "auto url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian-preseed.cfg<enter>"
   ]
 
   # ── SSH ─────────────────────────────────────────────────────────────────────
