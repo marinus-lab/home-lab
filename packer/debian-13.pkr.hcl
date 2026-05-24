@@ -52,12 +52,12 @@ source "proxmox-iso" "debian_13" {
   http_bind_address = "0.0.0.0"
 
   # ── Boot: Debian installer con preseed ──────────────────────────────────────
-  # '<tab>' modifica i parametri del bootloader ISOLINUX.
-  # 'auto' abilita la modalità automatica, url= punta al file di config.
+  # '<esc>' esce dal menu ISOLINUX (vesamenu) e va al prompt 'boot:'.
+  # Poi selezioniamo il label 'install' con parametri preseed.
   boot_wait = "10s"
   boot_command = [
-    "<tab>",
-    " auto url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian-preseed.cfg<enter>"
+    "<esc><wait3>",
+    "install auto url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian-preseed.cfg<enter>"
   ]
 
   # ── SSH ─────────────────────────────────────────────────────────────────────
