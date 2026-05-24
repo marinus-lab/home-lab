@@ -2,7 +2,8 @@
 - hosts: all
   become: true
   vars:
-    packer_build: false   # sovrascritta da Packer con --extra-vars "packer_build=true"
+    # Sovrascritta da Packer con --extra-vars '{"packer_build":true}'
+    packer_build: false
 
   tasks:
     # ── Task per VM normali (post-clone Terraform) ──────────────────────────
@@ -17,7 +18,7 @@
           - python3-pip
         state: present
         update_cache: yes
-      when: not packer_build and ansible_os_family == "Debian"
+      when: not (packer_build | bool) and ansible_os_family == "Debian"
 
     - name: Install common packages (Rocky/RHEL)
       dnf:
@@ -29,7 +30,7 @@
           - python3
           - python3-pip
         state: present
-      when: not packer_build and ansible_os_family == "RedHat"
+      when: not (packer_build | bool) and ansible_os_family == "RedHat"
 
     # ── Locale (sempre) ─────────────────────────────────────────────────────
     - name: Ensure locales are generated (Debian/Ubuntu)
@@ -70,24 +71,24 @@
         name: qemu-guest-agent
         enabled: yes
         state: started
-      when: packer_build
+      when: packer_build | bool
 
     - name: Clean apt cache (Debian/Ubuntu)
       apt:
         autoclean: yes
         autoremove: yes
-      when: packer_build and ansible_os_family == "Debian"
+      when: packer_build | bool and ansible_os_family == "Debian"
 
     - name: Clean dnf cache (Rocky/RHEL)
       command: dnf clean all
       changed_when: false
-      when: packer_build and ansible_os_family == "RedHat"
+      when: packer_build | bool and ansible_os_family == "RedHat"
 
     # Reset cloud-init: indispensabile affinché venga eseguito al primo boot
     # di ogni VM clonata da questo template.
     - name: Reset cloud-init state
       command: cloud-init clean --logs
-      when: packer_build
+      when: packer_build | bool
 
     # Rimuovere le host key SSH: verranno rigenerate univoche ad ogni boot.
     - name: Remove SSH host keys
@@ -101,7 +102,7 @@
         - /etc/ssh/ssh_host_ecdsa_key.pub
         - /etc/ssh/ssh_host_ed25519_key
         - /etc/ssh/ssh_host_ed25519_key.pub
-      when: packer_build
+      when: packer_build | bool
 
     # Pulire il machine-id: ogni VM clonata avrà un ID unico al primo boot.
     - name: Truncate machine-id
@@ -109,7 +110,7 @@
         content: ""
         dest: /etc/machine-id
         force: yes
-      when: packer_build
+      when: packer_build | bool
 
     # Pulire i log per partire da uno stato pulito.
     - name: Clean logs
@@ -117,4 +118,4 @@
         find /var/log -type f -name '*.log' -exec truncate -s 0 {} \;
         find /var/log -type f -name '*.gz' -delete
       changed_when: false
-      when: packer_build
+      when: packer_build | bool

@@ -87,7 +87,7 @@ build {
     ]
 
     extra_arguments = [
-      "--extra-vars", "packer_build=true",
+      "--extra-vars", "{\"packer_build\":true}",
       "--extra-vars", "ansible_password=${var.ssh_password}",
       "--ssh-extra-args", "-o PreferredAuthentications=password,keyboard-interactive,publickey -o PasswordAuthentication=yes -o UserKnownHostsFile=/dev/null",
       "-vvv",
