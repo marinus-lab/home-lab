@@ -2,7 +2,7 @@
 # Automated installation with cloud-init support
 
 # ── Keyboard e lingua ────────────────────────────────────────────────────────
-lang it_IT.UTF-8
+lang en_US.UTF-8
 keyboard it
 timezone Europe/Rome
 
