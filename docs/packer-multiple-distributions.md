@@ -15,6 +15,7 @@ Guida per buildare template VM su Proxmox usando Packer con supporto a multiple 
 Tutte le distribuzioni includono:
 - **qemu-guest-agent** — Per interop con Proxmox/Terraform
 - **cloud-init** — Per personalizzazione al boot via Terraform
+- **cloud-utils-growpart** — Espansione partizione root al primo boot
 - **Pacchetti base** — curl, wget, git, vim, python3, pip
 
 ---
@@ -111,10 +112,52 @@ PACKER_ARGS="-var disk_size=30G" ./build.sh ubuntu-22.04
 Variabili disponibili (in `variables.pkr.hcl`):
 - `proxmox_node` (default: `pve`)
 - `vm_id` (default: `9000`)
-- `cores` (default: `2`)
-- `memory` (default: `2048` MB)
-- `disk_size` (default: `20G`)
+- `cores` (default: `4`)
+- `memory` (default: `8192` MB / 8 GB)
+- `disk_size` (default: `32G`)
 - `storage_pool` (default: `local-lvm`)
+
+---
+
+## Configurazione template VM
+
+### Filesystem
+
+Tutte le distribuzioni usano **XFS** come filesystem:
+
+| Componente | Rocky 9 | Ubuntu 22.04 / 24.04 |
+|---|---|---|
+| `/boot` | XFS (1 GB) | XFS (1 GB) |
+| `/` (root) | XFS (LVM, spazio rimanente) | XFS (LVM, spazio rimanente) |
+
+### Cache disco
+
+Tutte le VM di build usano **writeback** come modalità cache del disco Proxmox:
+
+```hcl
+cache_mode = "writeback"
+```
+
+Questo offre migliori prestazioni di I/O durante la build. Il template risultante mantiene la stessa configurazione.
+
+### Locale e lingua
+
+| Parametro | Valore |
+|---|---|
+| Lingua (`LANG`) | `en_US.UTF-8` |
+| Formato ora (`LC_TIME`) | `en_GB.UTF-8` (24h, date DD/MM) |
+| Tastiera | Italiana (`it`) |
+| Timezone | `Europe/Rome` |
+
+### Password di default
+
+| Utente | Password | Personalizzabile via |
+|---|---|---|
+| root | `packer` | `ROOT_PASSWORD` |
+| ubuntu (Ubuntu) | `ubuntu` | `UBUNTU_PASSWORD` |
+| rocky (Rocky) | `rocky` | `ROCKY_PASSWORD` |
+
+Le password persistono **solo durante la build** Packer per consentire l'accesso SSH. Dopo il clone con Terraform, cloud-init imposta nuove credenziali.
 
 ---
 
@@ -274,9 +317,9 @@ Il file SHA256SUMS non è raggiungibile.
 
 ## Performance tips
 
-1. **Aumenta CPU/RAM durante build** — Accelera compilazione
+1. **Riduci CPU/RAM se necessario** — I default (4 CPU, 8 GB RAM) sono già ottimizzati
    ```bash
-   PACKER_ARGS="-var cores=4 -var memory=4096" ./build.sh ubuntu-24.04
+   PACKER_ARGS="-var cores=2 -var memory=2048" ./build.sh ubuntu-24.04
    ```
 
 2. **Usa storage pool veloce** — Preferisci SSD se disponibile

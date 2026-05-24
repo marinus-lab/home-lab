@@ -47,10 +47,49 @@ autoinstall:
     - gnupg
     - lsb-release
 
-  # ── Storage: LVM semplice sull'intero disco ──────────────────────────────────
+  # ── Storage: LVM con XFS sull'intero disco ───────────────────────────────
   storage:
-    layout:
-      name: lvm
+    config:
+      - id: sda
+        type: disk
+        ptable: gpt
+        preserve: false
+        grub_device: true
+      - id: sda-partition
+        type: partition
+        device: sda
+        size: 1MB
+        flag: bios_grub
+      - id: sda-boot
+        type: partition
+        device: sda
+        size: 1GB
+      - id: sda-boot-fs
+        type: format
+        volume: sda-boot
+        fstype: xfs
+      - id: sda-root
+        type: partition
+        device: sda
+        size: -1
+      - id: sda-root-pv
+        type: lvm_volgroup
+        name: vg0
+        devices:
+          - sda-root
+      - id: sda-root-lv
+        type: lvm_partition
+        name: root
+        volgroup: vg0
+        size: -1
+      - id: sda-root-fs
+        type: format
+        volume: sda-root-lv
+        fstype: xfs
+      - id: sda-root-mount
+        type: mount
+        device: sda-root-fs
+        path: /
 
   # ── Comandi post-installazione ───────────────────────────────────────────────
   late-commands:
