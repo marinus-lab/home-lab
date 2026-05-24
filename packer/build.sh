@@ -122,6 +122,35 @@ for dist in "${DISTRIBUTIONS[@]}"; do
       ;;
   esac
 
+  # ── Pre-check: VM esistente su Proxmox? ────────────────────────────────────
+  case "$dist" in
+    ubuntu-22.04) VM_ID=9001 ;;
+    ubuntu-24.04) VM_ID=9002 ;;
+    rocky-9)      VM_ID=9000 ;;
+    debian-13)    VM_ID=9003 ;;
+  esac
+
+  PROXMOX_NODE=$(grep -E '^\s*proxmox_node\s*=' "$PKRVARS_FILE" | sed 's/.*= *"\(.*\)".*/\1/')
+  PROXMOX_API=$(grep -E '^\s*proxmox_url\s*=' "$PKRVARS_FILE" | sed 's/.*= *"\(.*\)".*/\1/')
+  PROXMOX_TID=$(grep -E '^\s*proxmox_token_id\s*=' "$PKRVARS_FILE" | sed 's/.*= *"\(.*\)".*/\1/')
+  PROXMOX_TSEC=$(grep -E '^\s*proxmox_token_secret\s*=' "$PKRVARS_FILE" | sed 's/.*= *"\(.*\)".*/\1/')
+
+  if [ -n "$PROXMOX_API" ] && [ -n "$PROXMOX_TID" ] && [ -n "$PROXMOX_TSEC" ] && \
+     curl -sfk \
+       -H "Authorization: PVEAPIToken=${PROXMOX_TID}=${PROXMOX_TSEC}" \
+       "${PROXMOX_API}/nodes/${PROXMOX_NODE}/qemu/${VM_ID}/status/current" > /dev/null 2>&1; then
+    echo ""
+    echo -e "${YELLOW}⚠️  VM $VM_ID ($dist) already exists on node '$PROXMOX_NODE'${NC}"
+    echo -e "${YELLOW}   Packer non può creare una VM con lo stesso ID.${NC}"
+    read -rp "$(echo -e "Overwrite with ${YELLOW}-force${NC}? ${YELLOW}(y/N)${NC}: ")" answer
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+      PACKER_ARGS="${PACKER_ARGS:-} -force"
+      echo -e "${GREEN}✓${NC} Will overwrite VM $VM_ID"
+    else
+      error "Build aborted for $dist"
+    fi
+  fi
+
   # Inizializza plugins Packer (legge tutta la directory)
   packer init "$SCRIPT_DIR"
 
