@@ -138,8 +138,8 @@ Il file è generato da Terraform con `templatefile()` a partire da `terraform/te
 
 ### `group_vars/all/all.yml`
 
-**`kube_version: v1.30.4`**
-La versione di Kubernetes da installare. Kubespray usa questo valore per scaricare i binari corretti (`kubeadm`, `kubelet`, `kubectl`). Verificare la [matrice di compatibilità Kubespray](https://github.com/kubernetes-sigs/kubespray#supported-components) prima di cambiare versione.
+**`kube_version: 1.36.0`**
+La versione di Kubernetes da installare (senza prefisso `v`). Kubespray usa questo valore per scaricare i binari corretti (`kubeadm`, `kubelet`, `kubectl`). Verificare la [matrice di compatibilità Kubespray](https://github.com/kubernetes-sigs/kubespray#supported-components) prima di cambiare versione.
 
 **`download_run_once: true`**
 Kubespray scarica i binari (containerd, CNI plugins, K8s binaries) una sola volta su un nodo designato e poi li distribuisce agli altri via Ansible. Riduce drasticamente il tempo di deploy su connessioni lente.
@@ -153,6 +153,9 @@ etcd richiede clock sincronizzati tra i nodi (tolleranza ~500ms). Senza NTP, il 
 
 **`container_manager: containerd`**
 Docker non è più supportato come runtime Kubernetes dalla versione 1.24 (rimosso il `dockershim`). `containerd` è il runtime standard raccomandato: leggero, conforme alla CRI spec, utilizzato in produzione da GKE, EKS, AKS.
+
+**`containerd_registries_mirrors: []`**
+Lista di mirror per registry container. Deve essere una lista (`[]`), non un dict (`{}`), perché Kubespray itera con `loop:` su questa variabile al task "Create registry directories". Lasciare vuota se non si usano mirror locali.
 
 ---
 
@@ -229,10 +232,12 @@ metallb_protocol: layer2
 
 Script unico per tutte le operazioni sul cluster. Gestisce automaticamente:
 
-1. **Verifica prerequisiti** — inventory, venv, SSH key
-2. **Clone Kubespray** — se `~/kubespray` non esiste, clona il repo
-3. **Attivazione venv** — usa `~/kubespray-env` creato da `setup-bastion.sh`
-4. **Esecuzione playbook** — dalla root del repo Kubespray (richiesto per trovare ruoli e ansible.cfg)
+1. **Aggiorna inventory** — copia `terraform/generated/kubespray-inventory.ini` se più recente o mancante
+2. **Verifica prerequisiti** — inventory, venv, SSH key
+3. **Test SSH ping** — tenta connessione SSH a tutti i nodi prima di procedere
+4. **Clone Kubespray** — se `~/kubespray` non esiste, clona il repo
+5. **Attivazione venv** — usa `~/kubespray-env` creato da `setup-bastion.sh`
+6. **Esecuzione playbook** — dalla root del repo Kubespray (richiesto per trovare ruoli e ansible.cfg)
 
 ### Comandi disponibili
 
@@ -280,7 +285,7 @@ Per aggiornare Kubespray a una versione più recente:
 cd ~/kubespray
 git fetch --tags
 git checkout v2.25.0   # tag della versione desiderata
-# aggiornare anche kube_version in group_vars/k8s_cluster/k8s-cluster.yml
+# aggiornare anche kube_version in group_vars/all/all.yml
 cd /root/home-lab/kubespray
 ./deploy.sh upgrade
 ```
@@ -299,13 +304,14 @@ cd /root/home-lab/kubespray
 
 Per homelab con K8s standard, Calico è il punto di equilibrio ottimale.
 
-### Perché 1 solo master di default?
+### Perché 3 master (HA)?
 
-Per homelab su hardware limitato, 1 master è sufficiente. Il cluster HA con 3 master richiede:
-- 3 VM master (6+ CPU, 6+ GB RAM totali solo per il control plane)
-- etcd distribuito su 3 nodi (richiede un numero dispari per il quorum)
+Il cluster è configurato con 3 nodi control plane per l'alta disponibilità:
+- etcd distribuito su 3 nodi (quorum di 2)
+- kube-apiserver, kube-controller-manager, kube-scheduler attivi su tutti e 3
+- Il cluster resta operativo anche se un master fallisce
 
-Per passare a HA: cambiare `control_plane_count = 3` in `terraform.tfvars`, rieseguire `terraform apply` + `./deploy.sh upgrade`.
+Per ridurre a 1 master (risparmio risorse): cambiare `control_plane_count = 1` in `configure-cluster.sh` o `terraform.tfvars`, rieseguire `terraform apply` + `./deploy.sh upgrade`.
 
 ---
 
@@ -314,18 +320,12 @@ Per passare a HA: cambiare `control_plane_count = 3` in `terraform.tfvars`, ries
 ### Deploy iniziale
 
 ```bash
-# 1. Aggiorna l'inventory con gli IP delle VM create da Terraform
-cp ../terraform/generated/kubespray-inventory.ini \
-   inventory/homelab/hosts.ini
-
-# 2. Verifica la connettività SSH verso tutti i nodi
-ansible all -i inventory/homelab/hosts.ini -m ping \
-  --private-key ~/.ssh/id_rsa
-
-# 3. Avvia il deploy (20-40 minuti)
+# 1. Avvia il deploy (20-40 minuti)
+#    deploy.sh copia automaticamente l'inventory da Terraform
+#    e verifica la connettività SSH prima di eseguire il playbook
 ./deploy.sh
 
-# 4. Verifica il cluster
+# 2. Verifica il cluster
 kubectl get nodes
 kubectl get pods -A
 ```
