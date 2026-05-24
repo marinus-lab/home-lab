@@ -56,6 +56,12 @@ variable "vm_id_ubuntu_2404" {
   default     = 9002
 }
 
+variable "vm_id_debian_13" {
+  type        = number
+  description = "VM ID Proxmox per il template Debian 13"
+  default     = 9003
+}
+
 variable "network_bridge" {
   type        = string
   description = "Bridge di rete Proxmox"

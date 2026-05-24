@@ -33,7 +33,7 @@ bash init-project.sh
 | Tool | Versione | Ruolo |
 |------|----------|-------|
 | Proxmox VE | 7.x / 8.x | Hypervisor |
-| Packer | ≥ 1.9 | Build template VM (Ubuntu 22.04/24.04, Rocky 9) |
+| Packer | ≥ 1.9 | Build template VM (Ubuntu 22.04/24.04, Debian 13, Rocky 9) |
 | Terraform | ≥ 1.5 | Provisioning VM dal template |
 | Kubespray | latest | Installazione Kubernetes |
 | Kubernetes | v1.30.4 | Container orchestration |
@@ -54,7 +54,7 @@ La fase **Packer** (build template VM) richiede:
 ```
 Bastion ──API──▶ Proxmox VE
                     │
-                    ├─ Template VMID 9000  (Packer)
+                    ├─ Template VMID 9000-9003  (Packer)
                     │       │
                     │       ├─ clone ──▶ k8s-master-1  192.168.1.210  (16GB RAM, 4 CPU)
                     │       ├─ clone ──▶ k8s-master-2  192.168.1.211  (16GB RAM, 4 CPU)
@@ -82,17 +82,19 @@ home-lab/
 ├── create_proxmox_user.yml                # Playbook Ansible alternativo per utente Proxmox
 ├── requirements.yml                       # Dipendenze Ansible Galaxy (community.general)
 │
-├── packer/                                # Build template VM (Ubuntu 22.04, Ubuntu 24.04, Rocky 9)
+├── packer/                                # Build template VM (Ubuntu 22.04, Ubuntu 24.04, Debian 13, Rocky 9)
 │   ├── variables.pkr.hcl                  # Variabili condivise (Proxmox, VM, storage, SSH)
 │   ├── packer.pkrvars.hcl*                # Credenziali Packer (*in .gitignore)
 │   ├── packer.pkrvars.hcl.example         # Template credenziali
 │   ├── ubuntu-22.04.pkr.hcl               # Source + build Ubuntu 22.04 LTS
 │   ├── ubuntu-24.04.pkr.hcl               # Source + build Ubuntu 24.04 LTS
+│   ├── debian-13.pkr.hcl                  # Source + build Debian 13 Trixie
 │   ├── rocky-9.pkr.hcl                    # Source + build Rocky Linux 9
-│   ├── build.sh                           # Menu interattivo per buildare le 3 distro
+│   ├── build.sh                           # Menu interattivo per buildare le 4 distro
 │   ├── download-isos.sh                   # Scarica/carica ISO su Proxmox via API
 │   ├── http/
 │   │   ├── ubuntu-user-data.tpl           # Template cloud-config autoinstall Ubuntu
+│   │   ├── debian-preseed.cfg.tpl         # Template preseed Debian 13
 │   │   ├── rocky-ks.cfg.tpl               # Template kickstart Rocky 9
 │   │   └── meta-data                      # cloud-init metadata
 │   └── scripts/
@@ -179,11 +181,12 @@ cd packer && ./download-isos.sh    # Menu interattivo (usa aria2c + API Proxmox)
 # Oppure: ./download-isos.sh rocky-9
 
 # 6. Packer — build template VM
-# Supporta: Ubuntu 22.04 LTS, Ubuntu 24.04 LTS, Rocky Linux 9
+# Supporta: Ubuntu 22.04 LTS, Ubuntu 24.04 LTS, Debian 13, Rocky Linux 9
 ./build.sh    # Menu interattivo per scegliere distribuzione
 # Oppure:
 # ./build.sh ubuntu-22.04
 # ./build.sh ubuntu-24.04
+# ./build.sh debian-13
 # ./build.sh rocky-9
 
 # 7. (Opzionale) Test singola VM prima del cluster
@@ -211,7 +214,7 @@ Vedi [docs/init-project.md](docs/init-project.md) per dettagli.
 |-----------|-----------|
 | [docs/init-project.md](docs/init-project.md) | Setup iniziale: Proxmox user/token, Vault, credenziali |
 | [docs/cluster-configuration.md](docs/cluster-configuration.md) | Topologia cluster: 3 master + 3 worker, MetalLB, Dashboard |
-| [docs/packer-multiple-distributions.md](docs/packer-multiple-distributions.md) | Packer: buildare Ubuntu 22.04 / 24.04 / Rocky 9 templates |
+| [docs/packer-multiple-distributions.md](docs/packer-multiple-distributions.md) | Packer: buildare Ubuntu 22.04 / 24.04 / Debian 13 / Rocky 9 templates |
 | [docs/end-to-end.md](docs/end-to-end.md) | Guida completa: architettura, fasi, cheatsheet operativo |
 | [docs/terraform-k8s-cluster.md](docs/terraform-k8s-cluster.md) | Terraform: provider, moduli, cloud-init, scalabilità |
 | [docs/kubespray-deploy.md](docs/kubespray-deploy.md) | Kubespray: group_vars, Calico, gestione nodi |
