@@ -78,8 +78,19 @@ build {
 
   # Preparazione template: locale, qemu-guest-agent, cloud-init reset, SSH keys
   provisioner "ansible" {
-    playbook_file    = "../ansible/playbooks/base.yml"
-    extra_arguments  = ["--extra-vars", "packer_build=true"]
-    ansible_env_vars = ["ANSIBLE_HOST_KEY_CHECKING=False"]
+    playbook_file = "../ansible/playbooks/base.yml"
+    user          = "root"
+    use_proxy     = false
+
+    ansible_env_vars = [
+      "ANSIBLE_HOST_KEY_CHECKING=False",
+    ]
+
+    extra_arguments = [
+      "--extra-vars", "packer_build=true",
+      "--extra-vars", "ansible_password=${var.ssh_password}",
+      "--ssh-extra-args", "-o PreferredAuthentications=password,keyboard-interactive,publickey -o PasswordAuthentication=yes",
+      "-vvv",
+    ]
   }
 }

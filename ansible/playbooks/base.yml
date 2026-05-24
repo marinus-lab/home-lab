@@ -56,7 +56,6 @@
       dnf:
         name:
           - glibc-langpack-en
-          - glibc-langpack-en-gb
         state: present
       when: ansible_os_family == "RedHat"
 
