@@ -2,6 +2,32 @@
 
 Infrastructure-as-Code per un cluster Kubernetes su Proxmox VE, costruito con Packer, Terraform e Kubespray.
 
+## Getting Started from scratch (fresh Proxmox)
+
+Partendo da un'installazione vergine di Proxmox, questa guida crea il container LXC che fungerà da bastion per tutto il progetto.
+
+```bash
+# 1. Accedi al nodo Proxmox via SSH o console, poi crea un container
+#    Ubuntu 24.04 LXC con gli script helper della community:
+bash -c "$(wget -qLO - https://github.com/community-scripts/ProxmoxVE/raw/main/ct/ubuntu.sh)"
+
+# 2. Entra nel container e installa git
+pct enter <CT_ID>
+apt update && apt install -y git
+
+# 3. Clona il repository
+git clone https://github.com/marinus-lab/home-lab.git
+cd home-lab
+
+# 4. Installa tutto il tooling (Packer, Terraform, Ansible, kubectl, ...)
+bash setup-bastion.sh
+
+# 5. Configura credenziali Proxmox, rete K8s e vault cifrato
+bash init-project.sh
+
+# 6. Ora sei pronto per il Quick start qui sotto
+```
+
 ## Stack
 
 | Tool | Versione | Ruolo |
