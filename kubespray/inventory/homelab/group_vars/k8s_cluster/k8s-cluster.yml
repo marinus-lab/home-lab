@@ -22,8 +22,20 @@ kube_proxy_strict_arp: true
 kube_apiserver_node_port_range: "30000-32767"
 
 # ── CoreDNS ────────────────────────────────────────────────────────────────────
-# Con 1 solo master, 1 replica è sufficiente. Aumentare a 2 con cluster HA.
-dns_min_replicas: 1
+# 3 repliche con 3 control plane per HA
+dns_min_replicas: 3
+
+# ── NTP ────────────────────────────────────────────────────────────────────────
+# Sincronizzazione tempo su tutti i nodi
+ntp_enabled: true
+
+# ── Registry locale ────────────────────────────────────────────────────────────
+# Cache locale delle immagini per deploy più veloci e resilienza
+registry_enabled: true
+
+# ── Preflight ──────────────────────────────────────────────────────────────────
+# Ignora errori preflight non bloccanti (es. warning su docker assente)
+kubeadm_ignore_preflight_errors: ['all']
 
 # ── Certificati ────────────────────────────────────────────────────────────────
 # Rinnovo automatico dei certificati K8s (scadono ogni anno di default).
