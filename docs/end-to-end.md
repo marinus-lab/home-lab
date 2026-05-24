@@ -25,7 +25,7 @@
 │  │   BASTION    │        │            PROXMOX VE               │   │
 │  │ 192.168.1.10 │──API──▶│                                     │   │
 │  │              │        │  ┌──────────────────────────────┐   │   │
-│  │ Terraform    │        │  │  Template VMID 9000          │   │   │
+│  │ Terraform    │        │  │  Template VM (Packer)        │   │   │
 │  │ Packer       │──SSH──▶│  │  ubuntu-22.04-base  (Packer) │   │   │
 │  │ Ansible      │        │  └──────────┬───────────────────┘   │   │
 │  │ Kubespray    │        │             │ clone (Terraform)      │   │
@@ -51,7 +51,7 @@ KUBERNETES CLUSTER (overlay)
 
 | Tool | Ruolo | Dove gira |
 |------|-------|-----------|
-| **Packer** | Crea il template VM Ubuntu su Proxmox | Bastion |
+| **Packer** | Crea il template VM (multi-distribuzione) su Proxmox | Bastion |
 | **Terraform** | Clona il template e crea le VM K8s | Bastion |
 | **configure-cluster.sh** | Wizard interattivo per topologia cluster (master/worker count, IP) | Bastion |
 | **Ansible / Kubespray** | Installa Kubernetes sulle VM | Bastion → nodi K8s |
@@ -162,7 +162,7 @@ Il playbook mostra il token generato — **salvarlo subito**, non è recuperabil
 ```
 TASK [Display API token] *****
 ok: [localhost] => {
-    "msg": "Token: automation@pve!terraform=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    "msg": "automation@pve!packer=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
 
@@ -184,7 +184,7 @@ export PROXMOX_TOKEN_SECRET="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 ## Fase 2 — Template VM con Packer
 
-Packer scarica l'ISO Ubuntu 22.04, avvia una VM temporanea su Proxmox, installa Ubuntu in modalità non interattiva tramite autoinstall e salva il risultato come **template** (VMID 9000).
+Packer scarica l'ISO della distribuzione scelta, avvia una VM temporanea su Proxmox, installa il sistema in modalità non interattiva (autoinstall/preseed/kickstart) e salva il risultato come **template** (es. VMID 9002 per Ubuntu 24.04).
 
 ### Configurazione
 
@@ -205,7 +205,7 @@ proxmox_url          = "https://192.168.1.10:8006/api2/json"
 proxmox_token_id     = "automation@pve!packer"
 proxmox_token_secret = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 proxmox_node         = "pve"
-storage_pool         = "local-lvm"
+template_storage_pool = "local-lvm"
 ```
 
 ### Build
@@ -225,7 +225,7 @@ PACKER_ARGS="-var-file=packer.pkrvars.hcl" \
 ### Cosa succede durante la build
 
 ```
-1. Packer crea una VM (VMID 9000) su Proxmox via API
+1. Packer crea una VM (VMID es. 9002 per Ubuntu 24.04) su Proxmox via API
 2. Monta l'ISO Ubuntu 22.04 e avvia il boot
 3. Invia la sequenza GRUB via VNC:
       c → linux /casper/vmlinuz --- autoinstall ds=nocloud-net;s=http://<bastion>:<port>/
@@ -241,7 +241,7 @@ PACKER_ARGS="-var-file=packer.pkrvars.hcl" \
       - cloud-init clean (reset per il clone)
       - rimuove SSH host keys
       - svuota machine-id
-8. Converte la VM in template → VMID 9000 pronto
+8. Converte la VM in template → pronto per clonazione con Terraform
 ```
 
 ### Durata stimata
@@ -263,7 +263,7 @@ ssh root@192.168.1.10 "qm list | grep 9000"
 
 ## Fase 3 — Infrastruttura con Terraform
 
-Terraform clona il template 9000 e crea le VM del cluster Kubernetes, iniettando IP statici, hostname e chiave SSH tramite cloud-init.
+Terraform clona il template VM (es. 9002 per Ubuntu 24.04) e crea le VM del cluster Kubernetes, iniettando IP statici, hostname e chiave SSH tramite cloud-init.
 
 ### Configurazione
 
@@ -331,7 +331,7 @@ Con la configurazione di default (`control_plane_count=3`, `worker_count=3`):
 | k8s-worker-3 | 213 | 192.168.1.222 | 4 | 4 GB | 50 GB |
 
 Per ogni VM, Terraform:
-1. Clona (full clone) il template 9000
+1. Clona (full clone) il template Packer
 2. Ridimensiona il disco se necessario
 3. Scrive i dati cloud-init nel drive (IP, gateway, DNS, SSH key)
 4. Avvia la VM → cloud-init configura la rete al boot
@@ -498,20 +498,28 @@ kubectl delete pod test-a test-b
 home-lab/
 │
 ├── setup-bastion.sh                    # Fase 0: installa tooling sul bastion
-├── create_proxmox_user.yml             # Fase 1: crea utente API Proxmox
-├── requirements.yml                    # Dipendenze Ansible Galaxy
-├── group_vars/all.yml                  # Secrets Ansible Vault
+├── init-project.sh                     # Fase 1: inizializzazione progetto
+├── verify-init.sh                      #   verifica configurazione
+├── create_proxmox_user.yml             #   playbook creazione utente API
+├── requirements.yml                    #   dipendenze Ansible Galaxy
+├── group_vars/all.yml                  #   secrets Ansible Vault
 │
 ├── packer/                             # Fase 2: build template VM
-│   ├── build.sh                        #   script di avvio
-│   ├── ubuntu-base.pkr.hcl             #   template Packer
-│   ├── variables.pkr.hcl               #   variabili
+│   ├── build.sh                        #   script di avvio (interattivo)
+│   ├── download-isos.sh                #   pre-download ISO su Proxmox
+│   ├── variables.pkr.hcl               #   variabili comuni
+│   ├── ubuntu-22.04.pkr.hcl            #   template Ubuntu 22.04
+│   ├── ubuntu-24.04.pkr.hcl            #   template Ubuntu 24.04
+│   ├── debian-13.pkr.hcl               #   template Debian 13
+│   ├── rocky-9.pkr.hcl                 #   template Rocky 9
 │   ├── packer.pkrvars.hcl.example      #   esempio valori
 │   ├── http/
-│   │   ├── user-data.tpl               #   autoinstall Ubuntu (template)
+│   │   ├── ubuntu-user-data.tpl        #   autoinstall Ubuntu (template)
+│   │   ├── debian-preseed.cfg.tpl      #   preseed Debian
+│   │   ├── rocky-ks.cfg.tpl            #   kickstart Rocky
 │   │   └── meta-data                   #   richiesto dal protocollo nocloud
 │   └── scripts/
-│       └── install-tools.sh            #   apt upgrade post-install
+│       └── install-tools.sh            #   apt/yum upgrade post-install
 │
 ├── ansible/playbooks/
 │   ├── base.yml                        #   cleanup template (Packer) + config base (post-clone)
@@ -543,14 +551,17 @@ home-lab/
 │           └── k8s_cluster/
 │               ├── k8s-cluster.yml     #   CIDR, proxy mode, certificati
 │               ├── k8s-net-plugin.yml  #   Calico IPIP
-│               └── addons.yml          #   Helm, Metrics Server, MetalLB...
+│               └── addons.yml          #   Helm, Dashboard, MetalLB...
 │
 └── docs/
-    ├── end-to-end.md                   #   questa guida
-    ├── packer-ubuntu-base.md           #   dettagli Packer
+    ├── end-to-end.md                   #   guida completa
+    ├── init-project.md                 #   setup automatico progetto
+    ├── packer-ubuntu-base.md           #   dettagli Packer Ubuntu
+    ├── packer-multiple-distributions.md #   build multi-distribuzione
     ├── terraform-k8s-cluster.md        #   dettagli Terraform
     ├── kubespray-deploy.md             #   dettagli Kubespray
-    └── PROXMOX_API_USER_DOC.md         #   dettagli utente API
+    ├── cluster-configuration.md        #   topologia e addon
+    └── proxmox-api-user.md             #   dettagli utente API
 ```
 
 ---
@@ -562,7 +573,10 @@ home-lab/
 | [packer-ubuntu-base.md](packer-ubuntu-base.md) | Funzionamento autoinstall Ubuntu, boot_command GRUB, cleanup template, troubleshooting |
 | [terraform-k8s-cluster.md](terraform-k8s-cluster.md) | Provider bpg/proxmox, for_each, cloud-init, scalabilità cluster, troubleshooting |
 | [kubespray-deploy.md](kubespray-deploy.md) | group_vars, Calico IPIP, venv, gestione nodi, troubleshooting |
-| [PROXMOX_API_USER_DOC.md](../PROXMOX_API_USER_DOC.md) | Creazione utente API, Ansible Vault, permessi token |
+| [proxmox-api-user.md](proxmox-api-user.md) | Creazione utente API, Ansible Vault, permessi token |
+| [init-project.md](init-project.md) | Inizializzazione automatica del progetto, token, Vault |
+| [cluster-configuration.md](cluster-configuration.md) | Configurazione cluster, topologia, addon |
+| [packer-multiple-distributions.md](packer-multiple-distributions.md) | Build multi-distribuzione (Rocky, Debian, Ubuntu) |
 
 ---
 
@@ -574,24 +588,19 @@ home-lab/
 # 0. Bastion
 bash setup-bastion.sh
 
-# 1. Credenziali Proxmox
-ansible-playbook create_proxmox_user.yml --ask-vault-pass \
-  -e "proxmox_host=192.168.1.10"
+# 1. Inizializzazione progetto (utente API + token + configurazione)
+bash init-project.sh
 
 # 2. Template Packer
-cd packer
-cp packer.pkrvars.hcl.example packer.pkrvars.hcl  # edita
-PACKER_ARGS="-var-file=packer.pkrvars.hcl" ./build.sh
+cd packer && ./build.sh
 
 # 3. Topologia cluster + VM Terraform
 cd ../terraform
-cp terraform.tfvars.example terraform.tfvars       # edita
-bash configure-cluster.sh                           # wizard topologia
+bash configure-cluster.sh              # wizard topologia (opzionale)
 terraform init && terraform apply
 
 # 4. Cluster Kubernetes (deploy.sh copia inventory automaticamente)
-cd ../kubespray
-./deploy.sh
+cd ../kubespray && ./deploy.sh
 
 # 5. Verifica
 kubectl get nodes
@@ -616,9 +625,9 @@ cd kubespray && ./deploy.sh remove-node k8s-worker-2
 # → terraform.tfvars: worker_count = 1
 cd terraform && terraform apply
 
-# Ricostruire il template Packer
-ssh root@192.168.1.10 "qm destroy 9000"
-cd packer && PACKER_ARGS="-var-file=packer.pkrvars.hcl" ./build.sh
+# Ricostruire il template Packer (es. Ubuntu 24.04)
+ssh root@192.168.1.10 "qm destroy 9002"
+cd packer && ./build.sh ubuntu-24.04
 
 # Distruggere il cluster
 cd terraform && terraform destroy

@@ -28,7 +28,7 @@ Tutte le distribuzioni includono:
 packer version
 
 # Variabili di ambiente richieste (da terraform.auto.tfvars)
-export PROXMOX_URL="https://192.168.0.93:8006/api2/json"
+export PROXMOX_URL="https://192.168.1.10:8006/api2/json"
 export PROXMOX_TOKEN_ID="automation@pve!packer"
 export PROXMOX_TOKEN_SECRET="xxxxx-xxxxx-xxxxx-xxxxx"
 ```
@@ -140,7 +140,8 @@ Variabili disponibili (in `variables.pkr.hcl`):
 - `cores` (default: `4`)
 - `memory` (default: `8192` MB / 8 GB)
 - `disk_size` (default: `32G`)
-- `storage_pool` (default: `local-lvm`)
+- `template_storage_pool` (default: `local-lvm`)
+- `iso_storage_pool` (default: `local`)
 
 Per cambiare un VM ID:
 
@@ -162,7 +163,7 @@ Tutte le distribuzioni usano **XFS** come filesystem:
 | Componente | Rocky 9 | Ubuntu 22.04 / 24.04 | Debian 13 |
 |---|---|---|---|
 | `/boot` | XFS (1 GB) | XFS (1 GB) | XFS (1 GB) |
-| `/` (root) | XFS (LVM, spazio rimanente) | XFS (LVM, spazio rimanente) | XFS (LVM, spazio rimanente) |
+| `/` (root) | XFS (partizione singola, spazio rimanente) | XFS (LVM, spazio rimanente) | XFS (LVM, spazio rimanente) |
 
 ### Cache disco
 
@@ -206,6 +207,7 @@ packer/
 ├── debian-13.pkr.hcl              # Build Debian 13
 ├── rocky-9.pkr.hcl                # Build Rocky 9
 ├── build.sh                        # Script build interattivo
+├── download-isos.sh                 # Pre-download ISO su Proxmox
 ├── scripts/
 │   └── install-tools.sh            # Post-build: aggiornamenti sistema
 └── http/
@@ -222,7 +224,7 @@ packer/
 ### Ubuntu (22.04 / 24.04)
 
 ```
-1. build.sh genera http/user-data da http/ubuntu-user-data.tpl
+1. build.sh genera http/ubuntu-user-data da http/ubuntu-user-data.tpl
    ├── Sostituisce hash password %%UBUNTU_PASSWORD_HASH%%
    └── Sostituisce hash password root %%ROOT_PASSWORD%%
 
@@ -348,8 +350,12 @@ L'URL del mirror non è raggiungibile o il checksum non corrisponde.
 # Verifica connessione
 curl -I https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso
 
-# Scarica ISO manualmente e specifica il path locale
+# Opzione 1: Scarica ISO manualmente e specifica il path locale
 PACKER_ARGS="-var iso_url=/tmp/ubuntu-24.04.iso" ./build.sh ubuntu-24.04
+
+# Opzione 2: Usa download-isos.sh per caricare ISO su Proxmox
+./download-isos.sh ubuntu-24.04       # singola
+./download-isos.sh all                # tutte le distribuzioni
 ```
 
 ### "SSH timeout"
@@ -477,7 +483,7 @@ Il file SHA256SUMS non è raggiungibile.
 
 2. **Usa storage pool veloce** — Preferisci SSD se disponibile
    ```bash
-   PACKER_ARGS="-var storage_pool=ssd-lvm" ./build.sh rocky-9
+   PACKER_ARGS="-var template_storage_pool=ssd-lvm" ./build.sh rocky-9
    ```
 
 3. **Parallelizza build multiple** — Se Proxmox supporta 2+ VM contemporanee

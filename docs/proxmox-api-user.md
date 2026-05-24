@@ -52,77 +52,56 @@ root/
 ## 3️⃣ Playbook `create_proxmox_user.yml` <a name="playbook-create_proxmox_useryml"></a>
 ```yaml
 ---
-- name: "Provision Proxmox API user"
+- name: Create Proxmox API user
   hosts: localhost
+  connection: local
   gather_facts: false
   vars:
-    # ---- Configurazione Proxmox ----
     proxmox_host: "{{ lookup('env', 'PROXMOX_HOST') }}"
-    proxmox_user: "root@pam"
-    proxmox_password: "{{ vault_proxmox_root_pw }}"
-
-    # ---- Nuovo utente API ----
-    api_username: "automation"
-    api_realm: "pve"
-    api_password: "{{ vault_automation_user_pw }}"
-    api_role: "PVEAdmin"      # oppure un ruolo più ristretto
-    api_path: "/"
-    api_token_id: "ansible"
-
   tasks:
-    - name: "Create (or ensure) the API user"
-      community.general.proxmox_user:
-        api_user: "{{ proxmox_user }}"
-        api_password: "{{ proxmox_password }}"
-        api_host: "{{ proxmox_host }}"
-        api_validate_certs: false         # impostare a true in produzione
-        name: "{{ api_username }}@{{ api_realm }}"
-        password: "{{ api_password }}"
-        comment: "Automation user for Ansible VM provisioning"
-        state: present
-
-    - name: "Assign role to the user"
+    - name: Create user
       uri:
-        url: "https://{{ proxmox_host }}:8006/api2/json/access/acl"
+        url: "https://{{ proxmox_host }}:8006/api2/json/access/users"
         method: POST
-        user: "{{ proxmox_user }}"
-        password: "{{ proxmox_password }}"
+        user: "root@pam"
+        password: "{{ vault_proxmox_root_pw }}"
         force_basic_auth: true
         validate_certs: false
-        body_format: json
+        body_format: form-urlencoded
         body:
-          path: "{{ api_path }}"
-          roleid: "{{ api_role }}"
-          user: "{{ api_username }}@{{ api_realm }}"
-      register: acl_result
-      changed_when: "200" in acl_result.status
+          userid: "{{ api_username }}@pve"
+          password: "{{ vault_automation_user_pw }}"
+          comment: "Automation user"
+      register: user_result
+      failed_when: user_result.status not in [200, 400]
 
-    - name: "Create an API token for the user"
+    - name: Create token
       uri:
-        url: "https://{{ proxmox_host }}:8006/api2/json/access/users/{{ api_username }}@{{ api_realm }}/token/{{ api_token_id }}"
+        url: "https://{{ proxmox_host }}:8006/api2/json/access/users/{{ api_username }}@pve/token/packer"
         method: POST
-        user: "{{ proxmox_user }}"
-        password: "{{ proxmox_password }}"
+        user: "root@pam"
+        password: "{{ vault_proxmox_root_pw }}"
         force_basic_auth: true
         validate_certs: false
-        body_format: json
+        body_format: form-urlencoded
         body:
-          comment: "Ansible‑generated token"
+          comment: "Packer token"
       register: token_result
-      changed_when: "200" in token_result.status
+      failed_when: token_result.status not in [200, 400]
 
-    - name: "Show token (store securely)"
+    - name: Show token
       debug:
-        msg: "Token ID: {{ api_token_id }}, Value: {{ token_result.json.data.value }}"
+        msg: "{{ api_username }}@pve!packer={{ token_result.json.data.value }}"
 ```
 
 ### Cosa fa il playbook
 | Task | Scopo |
 |------|-------|
-| **Create (or ensure) the API user** | Usa il modulo `proxmox_user` per creare (o verificare) l'utente `automation@pve`. |
-| **Assign role to the user** | Con una chiamata `uri` all'endpoint `/access/acl` assegna il ruolo (`PVEAdmin` di default) al percorso `/`. |
-| **Create an API token for the user** | Genera un token permanente (`ansible`) che può essere usato nei successivi playbook. |
-| **Show token** | Restituisce il valore del token (una tantum). Il valore deve essere salvato in un vault; non sarà più recuperabile via API. |
+| **Create user** | Usa chiamata API diretta (`uri`) per creare l'utente `automation@pve`. |
+| **Create token** | Genera un token permanente `packer` per l'utente. |
+| **Show token** | Restituisce il valore del token (una tantum). Il valore deve essere salvato immediatamente; non sarà più recuperabile via API. |
+
+> **Nota:** Il playbook crea un solo token (`packer`). Lo script `init-project.sh` crea anche un secondo token (`terraform`) usando la stessa logica. Per l'ACL, Proxmox assegna automaticamente il ruolo `PVEAdmin` al primo login via API con il token.
 
 ---
 
@@ -159,9 +138,9 @@ ansible-playbook create_proxmox_user.yml --ask-vault-pass
 ```
 Al termine vedrai un messaggio del tipo:
 ```
-TASK [Show token (store securely)] *******************************************
+TASK [Show token] ************************************************************
 ok: [localhost] => {
-    "msg": "Token ID: ansible, Value: PVE:automation@pve!ansible=abcd1234..."
+    "msg": "automation@pve!packer=abcd1234-ef56-7890-abcd-ef1234567890"
 }
 ```
 Copia il valore del token **immediatamente** e salvalo in un vault o secret manager; non potrai più recuperarlo.

@@ -23,7 +23,7 @@
 
 ## Panoramica
 
-Questo modulo Terraform clona il template Ubuntu prodotto da Packer per creare i nodi del cluster Kubernetes. Ogni VM riceve:
+Questo modulo Terraform clona il template VM prodotto da Packer per creare i nodi del cluster Kubernetes. Ogni VM riceve:
 
 - IP statico via **cloud-init** (configurato dal drive cloud-init del template)
 - Chiave SSH pubblica del bastion (per accesso Ansible/Kubespray)
@@ -33,20 +33,21 @@ Questo modulo Terraform clona il template Ubuntu prodotto da Packer per creare i
 Al termine del `terraform apply`, viene generato automaticamente il file `generated/kubespray-inventory.ini` con gli IP reali delle VM, pronto per essere usato da Kubespray.
 
 ```
-Packer template (VMID 9000)
+Packer template (es. VMID 9002 per Ubuntu 24.04)
         │
         ├── clone ──→ k8s-master-1 (VMID 201, 192.168.1.210)
         ├── clone ──→ k8s-master-2 (VMID 202, 192.168.1.211)  ← solo se control_plane_count=3
         ├── clone ──→ k8s-master-3 (VMID 203, 192.168.1.212)  ← solo se control_plane_count=3
         ├── clone ──→ k8s-worker-1 (VMID 211, 192.168.1.220)
-        └── clone ──→ k8s-worker-2 (VMID 212, 192.168.1.221)
+        ├── clone ──→ k8s-worker-2 (VMID 212, 192.168.1.221)
+        └── clone ──→ k8s-worker-3 (VMID 213, 192.168.1.222)
 ```
 
 ---
 
 ## Prerequisiti
 
-1. **Template Packer** — VMID 9000 presente su Proxmox (creato da `packer/build.sh`)
+1. **Template Packer** — VMID corrispondente alla distribuzione scelta presente su Proxmox (es. 9002 per Ubuntu 24.04, creato da `packer/build.sh`)
 2. **Token API Proxmox** — con ruolo `PVEAdmin` sul nodo (creato da `create_proxmox_user.yml`)
 3. **Chiave SSH** — `~/.ssh/id_rsa.pub` presente sul bastion (generata da `setup-bastion.sh`)
 4. **Terraform** ≥ 1.5.0 installato sul bastion (installato da `setup-bastion.sh`)
@@ -89,7 +90,7 @@ terraform plan
 
 terraform apply
     ├── Per ogni nodo master:
-    │   ├── Clone full del template VMID 9000
+    │   ├── Clone full del template Packer (es. VMID 9002)
     │   ├── Resize disco se disk_size > disco template
     │   ├── Configura cloud-init (IP, gateway, DNS, SSH key)
     │   └── Avvia la VM → cloud-init applica la configurazione al boot
@@ -97,11 +98,10 @@ terraform apply
     │   └── (stesso flusso del master)
     └── Genera generated/kubespray-inventory.ini
 
-         ↓ (passo manuale successivo)
+         ↓ (passo successivo)
 
-cp generated/kubespray-inventory.ini ../kubespray/inventory/homelab/hosts.ini
 cd ../kubespray
-ansible-playbook -i inventory/homelab cluster.yml
+./deploy.sh  # copia inventory automaticamente + esegue il playbook
 ```
 
 ---
@@ -148,13 +148,13 @@ Variabili principali e relative scelte di default:
 | Variabile | Default | Motivazione |
 |-----------|---------|-------------|
 | `proxmox_node` | `"pve"` | Nome default del nodo Proxmox in un setup single-node |
-| `template_vm_id` | `9000` | Allineato con il VMID usato da Packer in `ubuntu-base.pkr.hcl` |
+| `template_vm_id` | `9002` | Allineato con il VMID Ubuntu 24.04 di Packer; 9000=Rocky, 9001=22.04, 9003=Debian |
 | `k8s_subnet` | `192.168.1.0/24` | Subnet tipica di rete domestica/homelab |
 | `master_ip_start` | `210` | IP alti per non conflitti con DHCP (che tipicamente assegna 100-200) |
 | `worker_ip_start` | `220` | 10 IP di gap dai master per espansione futura |
 | `master_vm_id_start` | `201` | Range 201-210 per master (max 10 nodi) |
 | `worker_vm_id_start` | `211` | Range 211+ per worker |
-| `control_plane_count` | `1` | Setup minimal per homelab; `3` per HA |
+| `control_plane_count` | `3` | Setup HA (3 master) per homelab; `1` per minimal |
 
 La variabile `control_plane_count` include una validation:
 ```hcl
@@ -291,7 +291,7 @@ disk {
 }
 ```
 - `interface = "scsi0"` — deve corrispondere al disco creato da Packer nel template
-- `size` — se maggiore del disco del template (20G), il provider esegue un resize automatico
+- `size` — se maggiore del disco del template (default 32G), il provider esegue un resize automatico
 - `discard = "on"` + `iothread = true` — migliorano le performance I/O su storage LVM
 
 **Cloud-init (initialization)**
@@ -466,12 +466,9 @@ terraform output kubespray_inventory_path
 ### Inventario Kubespray
 
 ```bash
-# Crea la directory inventory (necessaria per Kubespray)
-mkdir -p /root/home-lab/kubespray/inventory/homelab
-
-# Copia l'inventory generato
-cp generated/kubespray-inventory.ini \
-   /root/home-lab/kubespray/inventory/homelab/hosts.ini
+# L'inventory viene copiato automaticamente da deploy.sh
+# Verifica manuale:
+cat generated/kubespray-inventory.ini
 ```
 
 ### Distruggere il cluster
@@ -488,11 +485,11 @@ Proxmox spegne e cancella le VM. Il template (VMID 9000) non viene toccato.
 
 ### `Error: failed to clone VM`
 
-Causa: il template VMID 9000 non esiste su Proxmox.
+Causa: il template VMID non esiste su Proxmox.
 
 ```bash
-# Verifica che il template esista
-ssh root@<proxmox-ip> "qm list | grep 9000"
+# Verifica che il template esista (usa l'ID corretto)
+ssh root@<proxmox-ip> "qm list | grep -E '9[0-9]{3}'"
 
 # Se non esiste, ricostruire con Packer
 cd /root/home-lab/packer && ./build.sh

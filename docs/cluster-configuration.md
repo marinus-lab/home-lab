@@ -32,7 +32,7 @@ Questo documento descrive la configurazione attuale del cluster Kubernetes e com
 Tutti i nodi hanno la stessa configurazione:
 - **RAM**: 16 GB
 - **CPU**: 4 core
-- **Disco**: 30 GB (master) / 50 GB (worker)
+- **Disco**: preserva la dimensione del template (default 32G) per i master; 50 GB per i worker
 
 **Totale cluster**: 96 GB RAM + 24 CPU
 
@@ -160,6 +160,6 @@ mio-servizio   LoadBalancer   10.233.x.x      192.168.0.120    80:32xxx/TCP   1m
 ## Documentazione completa
 
 - Terraform: `docs/init-project.md` (setup credenziali)
-- Kubespray: `docs/kubespray-deployment.md` (deployment K8s)
+- Kubespray: `docs/kubespray-deploy.md` (deployment K8s)
 - MetalLB: https://metallb.universe.tf/
 - Kubernetes Dashboard: https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/
