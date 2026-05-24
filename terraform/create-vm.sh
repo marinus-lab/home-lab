@@ -54,8 +54,9 @@ declare -A TEMPLATES=(
   ["Rocky 9"]="9000"
   ["Ubuntu 22.04"]="9001"
   ["Ubuntu 24.04"]="9002"
+  ["Debian 13"]="9003"
 )
-TEMPLATE_NAMES=("Rocky 9" "Ubuntu 22.04" "Ubuntu 24.04")
+TEMPLATE_NAMES=("Rocky 9" "Ubuntu 22.04" "Ubuntu 24.04" "Debian 13")
 
 echo ""
 info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -1,4 +1,4 @@
-# Packer — Building Linux Templates (Ubuntu 22.04 / 24.04 / Rocky 9)
+# Packer — Building Linux Templates (Ubuntu 22.04 / 24.04 / Debian 13 / Rocky 9)
 
 Guida per buildare template VM su Proxmox usando Packer con supporto a multiple distribuzioni Linux.
 
@@ -10,6 +10,7 @@ Guida per buildare template VM su Proxmox usando Packer con supporto a multiple 
 |---------------|----------|-----------|-----------|
 | Ubuntu LTS | 22.04 | Debian Installer (autoinstall) | ✅ Nativo |
 | Ubuntu LTS | 24.04 | Debian Installer (autoinstall) | ✅ Nativo |
+| Debian | 13 (Trixie) | Debian Installer (Preseed) | ✅ Package |
 | Rocky Linux | 9.x | Anaconda (Kickstart) | ✅ Package |
 
 Tutte le distribuzioni includono:
@@ -54,9 +55,10 @@ Quali template desideri buildare?
   1) Ubuntu 22.04 LTS
   2) Ubuntu 24.04 LTS
   3) Rocky Linux 9
-  4) Tutti (22.04 + 24.04 + Rocky 9)
+  4) Debian 13
+  5) Tutti (22.04 + 24.04 + Rocky 9 + Debian 13)
 
-Seleziona (1-4):
+Seleziona (1-5):
 ```
 
 ---
@@ -68,9 +70,10 @@ Seleziona (1-4):
 ./build.sh ubuntu-22.04
 ./build.sh ubuntu-24.04
 ./build.sh rocky-9
+./build.sh debian-13
 
-# Build tutte e tre
-./build.sh ubuntu-22.04 && ./build.sh ubuntu-24.04 && ./build.sh rocky-9
+# Build tutte e quattro
+./build.sh ubuntu-22.04 && ./build.sh ubuntu-24.04 && ./build.sh rocky-9 && ./build.sh debian-13
 ```
 
 ---
@@ -102,11 +105,15 @@ UBUNTU_PASSWORD="my-ubuntu-pass" ROOT_PASSWORD="my-root-pass" ./build.sh ubuntu-
 
 # Rocky
 ROCKY_PASSWORD="my-rocky-pass" ROOT_PASSWORD="my-root-pass" ./build.sh rocky-9
+
+# Debian
+DEBIAN_PASSWORD="my-debian-pass" ROOT_PASSWORD="my-root-pass" ./build.sh debian-13
 ```
 
 **Default:**
 - Ubuntu user: `ubuntu`
 - Rocky user: `rocky`
+- Debian user: `debian`
 - Root: `packer`
 
 ### Variabili Packer
@@ -129,6 +136,7 @@ Variabili disponibili (in `variables.pkr.hcl`):
 - `vm_id_rocky_9` (default: `9000` — VM ID per Rocky 9)
 - `vm_id_ubuntu_2204` (default: `9001` — VM ID per Ubuntu 22.04)
 - `vm_id_ubuntu_2404` (default: `9002` — VM ID per Ubuntu 24.04)
+- `vm_id_debian_13` (default: `9003` — VM ID per Debian 13)
 - `cores` (default: `4`)
 - `memory` (default: `8192` MB / 8 GB)
 - `disk_size` (default: `32G`)
@@ -151,10 +159,10 @@ PACKER_ARGS="-var vm_id_ubuntu_2404=9010" ./build.sh ubuntu-24.04
 
 Tutte le distribuzioni usano **XFS** come filesystem:
 
-| Componente | Rocky 9 | Ubuntu 22.04 / 24.04 |
-|---|---|---|
-| `/boot` | XFS (1 GB) | XFS (1 GB) |
-| `/` (root) | XFS (LVM, spazio rimanente) | XFS (LVM, spazio rimanente) |
+| Componente | Rocky 9 | Ubuntu 22.04 / 24.04 | Debian 13 |
+|---|---|---|---|
+| `/boot` | XFS (1 GB) | XFS (1 GB) | XFS (1 GB) |
+| `/` (root) | XFS (LVM, spazio rimanente) | XFS (LVM, spazio rimanente) | XFS (LVM, spazio rimanente) |
 
 ### Cache disco
 
@@ -182,6 +190,7 @@ Questo offre migliori prestazioni di I/O durante la build. Il template risultant
 | root | `packer` | `ROOT_PASSWORD` |
 | ubuntu (Ubuntu) | `ubuntu` | `UBUNTU_PASSWORD` |
 | rocky (Rocky) | `rocky` | `ROCKY_PASSWORD` |
+| debian (Debian) | `debian` | `DEBIAN_PASSWORD` |
 
 Le password persistono **solo durante la build** Packer per consentire l'accesso SSH. Dopo il clone con Terraform, cloud-init imposta nuove credenziali.
 
@@ -194,6 +203,7 @@ packer/
 ├── variables.pkr.hcl              # Variabili comuni Packer
 ├── ubuntu-22.04.pkr.hcl           # Build Ubuntu 22.04
 ├── ubuntu-24.04.pkr.hcl           # Build Ubuntu 24.04
+├── debian-13.pkr.hcl              # Build Debian 13
 ├── rocky-9.pkr.hcl                # Build Rocky 9
 ├── build.sh                        # Script build interattivo
 ├── scripts/
@@ -201,6 +211,7 @@ packer/
 └── http/
     ├── meta-data                   # Cloud-init metadata (vuoto)
     ├── ubuntu-user-data.tpl        # Cloud-init config per Ubuntu
+    ├── debian-preseed.cfg.tpl      # Preseed config per Debian
     └── rocky-ks.cfg.tpl            # Kickstart per Rocky Linux
 ```
 
@@ -259,6 +270,34 @@ packer/
 9. VM converge in template (VMID 9000, immutabile)
 ```
 
+### Debian 13
+
+```
+1. build.sh genera http/debian-preseed.cfg da http/debian-preseed.cfg.tpl
+   ├── Sostituisce hash password root %%ROOT_PASSWORD_HASH%%
+   └── Sostituisce hash password debian %%DEBIAN_PASSWORD_HASH%%
+
+2. Packer carica ISO Debian (pre-uploadata su Proxmox)
+
+3. Avvia VM Proxmox con ISO
+
+4. Kernel boot con parametri preseed
+   └── Installa via debian-preseed.cfg da Packer HTTP server
+
+5. Debian Installer esegue installazione preseed (fully automated)
+   └── LVM + XFS, pacchetti di base, qemu-guest-agent, cloud-init
+
+6. VM reboota, Packer si connette via SSH (root)
+
+7. Esegue post-provisioning:
+   ├── shell script (install-tools.sh) — aggiornamenti apt
+   └── Ansible playbook (base.yml) — configurazione template
+
+8. Cloud-init reset (per Terraform clone)
+
+9. VM converge in template (VMID 9003, immutabile)
+```
+
 ---
 
 ## Verifica build
@@ -270,6 +309,7 @@ Dopo la build, verifica il template su Proxmox:
 #   Rocky 9      → 9000
 #   Ubuntu 22.04 → 9001
 #   Ubuntu 24.04 → 9002
+#   Debian 13    → 9003
 VMID=9002
 
 # Via API Proxmox
@@ -282,8 +322,8 @@ ssh root@proxmox "pvesh get /nodes/pve/qemu/${VMID}/status/current"
 ```
 
 Attributi attesi:
-- **name**: `ubuntu-22.04-base` / `ubuntu-24.04-base` / `rocky-9-base`
-- **vmid**: dipende dalla distribuzione (9000, 9001, 9002)
+- **name**: `ubuntu-22.04-base` / `ubuntu-24.04-base` / `debian-13-base` / `rocky-9-base`
+- **vmid**: dipende dalla distribuzione (9000, 9001, 9002, 9003)
 - **status**: `stopped`
 - **template**: `1` (is template)
 
@@ -466,4 +506,5 @@ ssh-authorized-keys:
 - [Packer Proxmox Provider](https://github.com/hashicorp/packer-plugin-proxmox)
 - [Ubuntu Autoinstall](https://ubuntu.com/server/docs/install/autoinstall)
 - [Rocky Linux Kickstart](https://rocky.readthedocs.io/en/latest/guides/installation/)
+- [Debian Preseed (official example)](https://www.debian.org/releases/trixie/example-preseed.txt)
 - [Cloud-init Documentation](https://cloud-init.io/)

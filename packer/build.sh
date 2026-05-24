@@ -26,21 +26,23 @@ if [ -z "$DISTRIBUTION" ]; then
   echo "  1) Ubuntu 22.04 LTS"
   echo "  2) Ubuntu 24.04 LTS"
   echo "  3) Rocky Linux 9"
-  echo "  4) Tutti (22.04 + 24.04 + Rocky 9)"
+  echo "  4) Debian 13"
+  echo "  5) Tutti (22.04 + 24.04 + Rocky 9 + Debian 13)"
   echo ""
-  read -rp "Seleziona (1-4): " choice
+  read -rp "Seleziona (1-5): " choice
   echo ""
 
   case "$choice" in
     1) DISTRIBUTIONS=("ubuntu-22.04") ;;
     2) DISTRIBUTIONS=("ubuntu-24.04") ;;
     3) DISTRIBUTIONS=("rocky-9") ;;
-    4) DISTRIBUTIONS=("ubuntu-22.04" "ubuntu-24.04" "rocky-9") ;;
+    4) DISTRIBUTIONS=("debian-13") ;;
+    5) DISTRIBUTIONS=("ubuntu-22.04" "ubuntu-24.04" "rocky-9" "debian-13") ;;
     *) error "Scelta non valida"; ;;
   esac
 else
   case "$DISTRIBUTION" in
-    ubuntu-22.04|ubuntu-24.04|rocky-9) DISTRIBUTIONS=("$DISTRIBUTION") ;;
+    ubuntu-22.04|ubuntu-24.04|rocky-9|debian-13) DISTRIBUTIONS=("$DISTRIBUTION") ;;
     *) error "Distribuzione non valida: $DISTRIBUTION"; ;;
   esac
 fi
@@ -48,10 +50,14 @@ fi
 # ── Password per gli utenti ────────────────────────────────────────────────────
 UBUNTU_PASSWORD="${UBUNTU_PASSWORD:-ubuntu}"
 ROCKY_PASSWORD="${ROCKY_PASSWORD:-rocky}"
+DEBIAN_PASSWORD="${DEBIAN_PASSWORD:-debian}"
 ROOT_PASSWORD="${ROOT_PASSWORD:-packer}"
 
 # ── Genera hash per Ubuntu
 UBUNTU_PASSWORD_HASH=$(openssl passwd -6 "${UBUNTU_PASSWORD}")
+
+# ── Genera hash per Debian
+DEBIAN_PASSWORD_HASH=$(openssl passwd -6 "${DEBIAN_PASSWORD}")
 
 # ── Genera hash criptato per Rocky (Packer usa formato criptato)
 ROCKY_PASSWORD_HASH=$(openssl passwd -6 "${ROCKY_PASSWORD}")
@@ -81,6 +87,7 @@ for dist in "${DISTRIBUTIONS[@]}"; do
     ubuntu-22.04) ONLY_FILTER="ubuntu-2204.proxmox-iso.ubuntu_2204" ;;
     ubuntu-24.04) ONLY_FILTER="ubuntu-2404.proxmox-iso.ubuntu_2404" ;;
     rocky-9)      ONLY_FILTER="rocky-9.proxmox-iso.rocky" ;;
+    debian-13)    ONLY_FILTER="debian-13.proxmox-iso.debian_13" ;;
   esac
 
   case "$dist" in
@@ -102,6 +109,16 @@ for dist in "${DISTRIBUTIONS[@]}"; do
         http/rocky-ks.cfg.tpl > http/rocky-ks.cfg
 
       ok "http/rocky-ks.cfg generato (Rocky)"
+      ;;
+
+    debian-13)
+      # Genera preseed per Debian
+      sed \
+        -e "s|%%ROOT_PASSWORD_HASH%%|${ROOT_PASSWORD_HASH}|g" \
+        -e "s|%%DEBIAN_PASSWORD_HASH%%|${DEBIAN_PASSWORD_HASH}|g" \
+        http/debian-preseed.cfg.tpl > http/debian-preseed.cfg
+
+      ok "http/debian-preseed.cfg generato (Debian)"
       ;;
   esac
 

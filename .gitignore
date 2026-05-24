@@ -20,11 +20,14 @@ override.tf.json
 packer.pkrvars.hcl
 packer/packer.pkrvars.hcl
 packer_cache/
+packer/downloaded_iso_path/
 packer-manifest.json
 # generato da build.sh da ubuntu-user-data.tpl
 packer/http/user-data
 # generato da build.sh da rocky-ks.cfg.tpl
 packer/http/rocky-ks.cfg
+# generato da build.sh da debian-preseed.cfg.tpl
+packer/http/debian-preseed.cfg
 
 # ── Backup / Temp ──────────────────────────────────────────────────────────────
 *.bak

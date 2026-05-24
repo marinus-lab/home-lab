@@ -54,6 +54,11 @@ ISO_URLS[rocky-9]="https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky
 ISO_FILES[rocky-9]="Rocky-9.7-x86_64-dvd.iso"
 ISO_SIZE[rocky-9]="~12.4GB"
 
+ISO_NAMES[debian-13]="Debian 13.5 Trixie"
+ISO_URLS[debian-13]="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-13.5.0-amd64-netinst.iso"
+ISO_FILES[debian-13]="debian-13.5.0-amd64-netinst.iso"
+ISO_SIZE[debian-13]="~755MB"
+
 # ── Verifica se ISO esiste su Proxmox ─────────────────────────────────────────
 iso_exists() {
   local filename="$1"
@@ -173,19 +178,22 @@ show_menu() {
   echo "  1) Ubuntu 22.04 LTS    (~2.0GB)"
   echo "  2) Ubuntu 24.04 LTS    (~3.2GB)"
   echo "  3) Rocky Linux 9 DVD   (~12.4GB)"
-  echo "  4) Tutte"
+  echo "  4) Debian 13 Trixie    (~755MB)"
+  echo "  5) Tutte"
   echo ""
-  read -rp "Seleziona (1-4): " choice
+  read -rp "Seleziona (1-5): " choice
   echo ""
 
   case "$choice" in
     1) process_iso "ubuntu-22.04" "$CLEAN" ;;
     2) process_iso "ubuntu-24.04" "$CLEAN" ;;
     3) process_iso "rocky-9" "$CLEAN" ;;
-    4)
+    4) process_iso "debian-13" "$CLEAN" ;;
+    5)
       process_iso "ubuntu-22.04" "$CLEAN"
       process_iso "ubuntu-24.04" "$CLEAN"
       process_iso "rocky-9" "$CLEAN"
+      process_iso "debian-13" "$CLEAN"
       ;;
     *) error "Scelta non valida" ;;
   esac
@@ -199,11 +207,12 @@ SELECTED=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --clean) CLEAN=true; shift ;;
-    rocky|rocky-9)  SELECTED="rocky-9"; shift ;;
+    rocky|rocky-9)     SELECTED="rocky-9"; shift ;;
     ubuntu-22.04|22.04) SELECTED="ubuntu-22.04"; shift ;;
     ubuntu-24.04|24.04) SELECTED="ubuntu-24.04"; shift ;;
+    debian-13|13)      SELECTED="debian-13"; shift ;;
     all) SELECTED="all"; shift ;;
-    *) error "Argomento sconosciuto: $1. Usa: rocky|ubuntu-22.04|ubuntu-24.04|all|--clean" ;;
+    *) error "Argomento sconosciuto: $1. Usa: rocky|ubuntu-22.04|ubuntu-24.04|debian-13|all|--clean" ;;
   esac
 done
 
@@ -214,10 +223,12 @@ case "$SELECTED" in
   rocky-9)       process_iso "rocky-9" "$CLEAN" ;;
   ubuntu-22.04)  process_iso "ubuntu-22.04" "$CLEAN" ;;
   ubuntu-24.04)  process_iso "ubuntu-24.04" "$CLEAN" ;;
+  debian-13)     process_iso "debian-13" "$CLEAN" ;;
   all)
     process_iso "ubuntu-22.04" "$CLEAN"
     process_iso "ubuntu-24.04" "$CLEAN"
     process_iso "rocky-9" "$CLEAN"
+    process_iso "debian-13" "$CLEAN"
     ;;
   *) show_menu ;;
 esac
