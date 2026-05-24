@@ -73,6 +73,19 @@ variable "storage_pool" {
   default     = "local-lvm"
 }
 
+# ── Nomi VM ────────────────────────────────────────────────────────────────────
+variable "master_name_prefix" {
+  type        = string
+  description = "Prefisso nome nodi control plane (es. k8s-master → k8s-master-1)"
+  default     = "k8s-master"
+}
+
+variable "worker_name_prefix" {
+  type        = string
+  description = "Prefisso nome nodi worker (es. k8s-worker → k8s-worker-1)"
+  default     = "k8s-worker"
+}
+
 # ── Control plane (master) ─────────────────────────────────────────────────────
 variable "control_plane_count" {
   type        = number
