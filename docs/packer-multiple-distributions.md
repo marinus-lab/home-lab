@@ -126,11 +126,22 @@ PACKER_ARGS="-var disk_size=30G" ./build.sh ubuntu-22.04
 
 Variabili disponibili (in `variables.pkr.hcl`):
 - `proxmox_node` (default: `pve`)
-- `vm_id` (default: `9000`)
+- `vm_id_rocky_9` (default: `9000` — VM ID per Rocky 9)
+- `vm_id_ubuntu_2204` (default: `9001` — VM ID per Ubuntu 22.04)
+- `vm_id_ubuntu_2404` (default: `9002` — VM ID per Ubuntu 24.04)
 - `cores` (default: `4`)
 - `memory` (default: `8192` MB / 8 GB)
 - `disk_size` (default: `32G`)
 - `storage_pool` (default: `local-lvm`)
+
+Per cambiare un VM ID:
+
+```bash
+# Da riga di comando
+PACKER_ARGS="-var vm_id_ubuntu_2404=9010" ./build.sh ubuntu-24.04
+
+# Oppure modifica il default in packer/variables.pkr.hcl
+```
 
 ---
 
@@ -221,12 +232,9 @@ packer/
 
 8. Cloud-init reset (per Terraform clone)
 
-9. VM converge in template (VMID 9000, immutabile)
+9. VM converge in template (VMID 9001, immutabile)
 ```
 
-### Rocky Linux 9
-
-```
 1. build.sh genera http/rocky-ks.cfg da http/rocky-ks.cfg.tpl
    ├── Sostituisce hash password root %%ROOT_PASSWORD%%
    └── Sostituisce hash password rocky %%ROCKY_PASSWORD_HASH%%
@@ -258,20 +266,32 @@ packer/
 Dopo la build, verifica il template su Proxmox:
 
 ```bash
+# Sostituisci <VMID> con:
+#   Rocky 9      → 9000
+#   Ubuntu 22.04 → 9001
+#   Ubuntu 24.04 → 9002
+VMID=9002
+
 # Via API Proxmox
 curl -k -X GET \
-  "https://192.168.0.93:8006/api2/json/nodes/pve/qemu/9000/status/current" \
+  "https://192.168.0.93:8006/api2/json/nodes/pve/qemu/${VMID}/status/current" \
   -H "Authorization: PVEAPIToken=automation@pve!packer=xxxxx"
 
 # Via CLI Proxmox
-ssh root@proxmox "pvesh get /nodes/pve/qemu/9000/status/current"
+ssh root@proxmox "pvesh get /nodes/pve/qemu/${VMID}/status/current"
 ```
 
 Attributi attesi:
 - **name**: `ubuntu-22.04-base` / `ubuntu-24.04-base` / `rocky-9-base`
-- **vmid**: `9000`
+- **vmid**: dipende dalla distribuzione (9000, 9001, 9002)
 - **status**: `stopped`
 - **template**: `1` (is template)
+
+Per cambiare i VM ID, modifica i default in `packer/variables.pkr.hcl` o usa `PACKER_ARGS`:
+
+```bash
+PACKER_ARGS="-var vm_id_ubuntu_2404=9010" ./build.sh ubuntu-24.04
+```
 
 ---
 
