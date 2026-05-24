@@ -7,7 +7,7 @@ source "proxmox-iso" "rocky" {
   node                     = var.proxmox_node
 
   # ── Identità template ───────────────────────────────────────────────────────
-  vm_id                = var.vm_id
+  vm_id                = var.vm_id_rocky_9
   vm_name              = "rocky-9-base"
   template_name        = "rocky-9-base"
   template_description = "Rocky Linux 9 base — built by Packer on ${formatdate("YYYY-MM-DD", timestamp())}"
