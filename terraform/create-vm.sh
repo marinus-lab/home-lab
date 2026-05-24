@@ -42,7 +42,8 @@ K8S_SUBNET=$(read_var k8s_subnet "$AUTO_TFVARS")
 K8S_GATEWAY=$(read_var k8s_gateway "$AUTO_TFVARS")
 
 # ── Default da terraform.tfvars (con fallback) ────────────────────────────────
-NETWORK_BRIDGE=$(read_var network_bridge "$TFVARS")  || NETWORK_BRIDGE=$(read_var network_bridge "$AUTO_TFVARS")
+NETWORK_BRIDGE=$(read_var network_bridge "$TFVARS" || true)
+[ -n "$NETWORK_BRIDGE" ] || NETWORK_BRIDGE=$(read_var network_bridge "$AUTO_TFVARS" || true)
 NETWORK_BRIDGE="${NETWORK_BRIDGE:-vmbr0}"
 
 CIDR_PREFIX="${K8S_SUBNET##*/}"
@@ -103,6 +104,9 @@ MEMORY="${MEMORY:-2048}"
 read -rp "Disco GB [20]: " DISK_SIZE
 DISK_SIZE="${DISK_SIZE:-20}"
 
+read -rp "Bridge di rete [$NETWORK_BRIDGE]: " input
+NETWORK_BRIDGE="${input:-$NETWORK_BRIDGE}"
+
 # ── Riepilogo ─────────────────────────────────────────────────────────────────
 echo ""
 info "━━━ Riepilogo ─━━"
@@ -115,6 +119,7 @@ echo "  CPU:      $CORES core"
 echo "  RAM:      $MEMORY MB"
 echo "  Disco:    $DISK_SIZE GB"
 echo "  Nodo:     $PROXMOX_NODE"
+echo "  Bridge:   $NETWORK_BRIDGE"
 echo "  Storage:  $STORAGE_POOL"
 echo ""
 

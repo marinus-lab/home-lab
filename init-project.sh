@@ -143,6 +143,13 @@ while true; do
   break
 done
 
+# ── Bridge di rete Proxmox ─────────────────────────────────────────────────────
+echo ""
+read -rp "Bridge di rete Proxmox per VM (default: vmbr0): " PROXMOX_BRIDGE
+PROXMOX_BRIDGE="${PROXMOX_BRIDGE:-vmbr0}"
+echo ""
+ok "Bridge di rete: $PROXMOX_BRIDGE"
+
 # Ultimo ottetto IP primo master
 while true; do
   echo ""
@@ -259,6 +266,9 @@ proxmox_token_id     = "$API_USERNAME@pve!packer"
 proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
 proxmox_node         = "PLACEHOLDER_NODO"
 
+# ── Rete ───────────────────────────────────────────────────────────────────────
+network_bridge = "$PROXMOX_BRIDGE"
+
 # ── Storage Packer (rilevati dinamicamente da Proxmox API) ────────────────────
 iso_storage_pool      = "PLACEHOLDER_ISO_POOL"
 template_storage_pool = "PLACEHOLDER_TEMPLATE_POOL"
@@ -284,6 +294,9 @@ k8s_subnet      = "$K8S_SUBNET"
 k8s_gateway     = "$K8S_GATEWAY"
 master_ip_start = $MASTER_IP_OCTET
 worker_ip_start = $WORKER_IP_OCTET
+
+# ── Bridge di rete Proxmox per VM ──────────────────────────────────────────────
+network_bridge = "$PROXMOX_BRIDGE"
 
 # ── Storage Proxmox (rilevati dinamicamente da Proxmox API) ───────────────────
 storage_pool = "PLACEHOLDER_TEMPLATE_POOL"
@@ -621,7 +634,11 @@ echo "  • Gateway: $K8S_GATEWAY"
 echo "  • Master IP: $MASTER_IP_OCTET-$((MASTER_IP_OCTET+2))"
 echo "  • Worker IP: $WORKER_IP_OCTET-$((WORKER_IP_OCTET+2))"
 echo ""
+echo "Configurazione rete:"
+echo "  • Bridge di rete: $PROXMOX_BRIDGE"
+echo ""
 echo "Configurazione Packer:"
+echo "  • Bridge: $PROXMOX_BRIDGE"
 echo "  • Storage ISO: $PACKER_ISO_POOL"
 echo "  • Storage template: $PACKER_TEMPLATE_POOL"
 echo ""
