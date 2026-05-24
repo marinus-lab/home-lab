@@ -50,6 +50,7 @@ if [ ! -d "$KUBESPRAY_DIR" ]; then
   info "Clonando Kubespray in $KUBESPRAY_DIR..."
   git clone --depth 1 https://github.com/kubernetes-sigs/kubespray.git "$KUBESPRAY_DIR"
   info "Clone completato."
+  _apply_patches
 else
   info "Kubespray trovato in $KUBESPRAY_DIR"
 fi
@@ -99,6 +100,16 @@ _ssh_ping_test() {
     [[ "$confirm" =~ ^[sSyY] ]] || error "Annullato"
   else
     ok "Tutti i nodi raggiungibili"
+  fi
+}
+
+# ── Applica patch necessarie a Kubespray ────────────────────────────────────────
+_apply_patches() {
+  local f="$KUBESPRAY_DIR/roles/download/tasks/download_container.yml"
+  if grep -q 'failed_when: container_save_status.stderr' "$f" 2>/dev/null; then
+    info "Applicando patch: nerdctl stderr → rc check..."
+    sed -i 's/failed_when: container_save_status.stderr/failed_when: container_save_status.rc != 0/' "$f"
+    ok "Patch applicata."
   fi
 }
 
