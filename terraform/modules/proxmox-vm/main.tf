@@ -9,7 +9,7 @@ resource "proxmox_virtual_environment_vm" "this" {
   # ── Clone dal template Packer ────────────────────────────────────────────────
   clone {
     vm_id   = var.template_vm_id
-    full    = true   # clone completo — obbligatorio con dischi raw/LVM
+    full    = true # clone completo — obbligatorio con dischi raw/LVM
     retries = 3
   }
 
@@ -18,14 +18,14 @@ resource "proxmox_virtual_environment_vm" "this" {
   # Proxmox lo usa per ottenere l'IP della VM e per gli shutdown ordinati.
   agent {
     enabled = true
-    trim    = true  # abilita TRIM/discard tramite l'agente
+    trim    = true # abilita TRIM/discard tramite l'agente
   }
 
   # ── CPU ──────────────────────────────────────────────────────────────────────
   cpu {
     cores   = var.cores
     sockets = 1
-    type    = "x86-64-v2-AES"  # compatibile con Ubuntu 22.04+, supporta AES-NI
+    type    = "x86-64-v2-AES" # compatibile con Ubuntu 22.04+, supporta AES-NI
   }
 
   # ── RAM ──────────────────────────────────────────────────────────────────────
@@ -34,14 +34,19 @@ resource "proxmox_virtual_environment_vm" "this" {
   }
 
   # ── Disco ────────────────────────────────────────────────────────────────────
-  # Il provider ridimensiona il disco dopo il clone se disk_size > dimensione template.
-  disk {
-    datastore_id = var.storage_pool
-    interface    = "scsi0"
-    size         = var.disk_size
-    discard      = "on"
-    iothread     = true
-    file_format  = "raw"  # raw per LVM; deve corrispondere al formato del template
+  # dynamic: se disk_size = 0 non crea il blocco (clone preserva la size del template).
+  # Se disk_size > 0, ridimensiona dopo il clone (deve essere >= template size, Proxmox
+  # non supporta shrink).
+  dynamic "disk" {
+    for_each = var.disk_size > 0 ? [1] : []
+    content {
+      datastore_id = var.storage_pool
+      interface    = "scsi0"
+      size         = var.disk_size
+      discard      = "on"
+      iothread     = true
+      file_format  = "raw"
+    }
   }
 
   # ── Rete ─────────────────────────────────────────────────────────────────────
