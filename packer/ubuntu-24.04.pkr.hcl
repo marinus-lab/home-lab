@@ -7,7 +7,7 @@ source "proxmox-iso" "ubuntu_2404" {
   node                     = var.proxmox_node
 
   # ── Identità template ───────────────────────────────────────────────────────
-  vm_id                = var.vm_id
+  vm_id                = var.vm_id_ubuntu_2404
   vm_name              = "ubuntu-24.04-base"
   template_name        = "ubuntu-24.04-base"
   template_description = "Ubuntu 24.04 LTS base — built by Packer on ${formatdate("YYYY-MM-DD", timestamp())}"
@@ -16,10 +16,8 @@ source "proxmox-iso" "ubuntu_2404" {
 
   # ── ISO ─────────────────────────────────────────────────────────────────────
   boot_iso {
-    iso_url           = "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
-    iso_checksum      = "none"
-    iso_storage_pool  = var.iso_storage_pool
-    unmount           = true
+    iso_file  = "${var.iso_storage_pool}:iso/ubuntu-24.04.4-live-server-amd64.iso"
+    unmount   = true
   }
 
   # ── CPU e RAM ───────────────────────────────────────────────────────────────

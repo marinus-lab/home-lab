@@ -37,11 +37,23 @@ variable "proxmox_node" {
   default     = "pve"
 }
 
-# ── Template VM ───────────────────────────────────────────────────────────────
-variable "vm_id" {
+# ── VM IDs per distribuzione ──────────────────────────────────────────────────
+variable "vm_id_rocky_9" {
   type        = number
-  description = "VM ID Proxmox per il template"
+  description = "VM ID Proxmox per il template Rocky 9"
   default     = 9000
+}
+
+variable "vm_id_ubuntu_2204" {
+  type        = number
+  description = "VM ID Proxmox per il template Ubuntu 22.04"
+  default     = 9001
+}
+
+variable "vm_id_ubuntu_2404" {
+  type        = number
+  description = "VM ID Proxmox per il template Ubuntu 24.04"
+  default     = 9002
 }
 
 variable "network_bridge" {
