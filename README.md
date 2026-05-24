@@ -7,7 +7,7 @@ Infrastructure-as-Code per un cluster Kubernetes su Proxmox VE, costruito con Pa
 | Tool | Versione | Ruolo |
 |------|----------|-------|
 | Proxmox VE | 7.x / 8.x | Hypervisor |
-| Packer | ≥ 1.9 | Build template VM Ubuntu 22.04 |
+| Packer | ≥ 1.9 | Build template VM (Ubuntu 22.04/24.04, Rocky 9) |
 | Terraform | ≥ 1.5 | Provisioning VM dal template |
 | Kubespray | latest | Installazione Kubernetes |
 | Kubernetes | v1.30.4 | Container orchestration |
@@ -43,24 +43,80 @@ Bastion ──SSH──▶ 6 nodi K8s  (Kubespray installa il cluster HA)
 
 ```
 home-lab/
-├── init-project.sh             # Setup iniziale (crea credenziali + token)
-├── verify-init.sh              # Verifica configurazione
-├── setup-bastion.sh            # Installa tooling sul bastion
-├── packer/                     # Build template Ubuntu 22.04
-│   └── packer.pkrvars.hcl*     # Credenziali Packer (*in .gitignore)
-├── terraform/                  # Provisioning VM cluster K8s
-│   ├── terraform.tfvars        # Configurazione cluster (tracciato)
-│   ├── terraform.auto.tfvars*  # Credenziali Proxmox (*in .gitignore, auto-generato)
-│   └── terraform.auto.tfvars.example  # Template credenziali
-├── kubespray/                  # Deploy Kubernetes
-├── ansible/playbooks/          # Configurazione base VM
-└── docs/                       # Documentazione dettagliata
+├── init-project.sh                        # Setup iniziale: credenziali, utente API, token, storage
+├── verify-init.sh                         # Verifica post-init: file, vault, token, storage, dipendenze
+├── setup-bastion.sh                       # Installa tooling sul bastion (tmux dashboard)
+├── create_proxmox_user.yml                # Playbook Ansible alternativo per utente Proxmox
+├── requirements.yml                       # Dipendenze Ansible Galaxy (community.general)
+│
+├── packer/                                # Build template VM (Ubuntu 22.04, Ubuntu 24.04, Rocky 9)
+│   ├── variables.pkr.hcl                  # Variabili condivise (Proxmox, VM, storage, SSH)
+│   ├── packer.pkrvars.hcl*                # Credenziali Packer (*in .gitignore)
+│   ├── packer.pkrvars.hcl.example         # Template credenziali
+│   ├── ubuntu-22.04.pkr.hcl               # Source + build Ubuntu 22.04 LTS
+│   ├── ubuntu-24.04.pkr.hcl               # Source + build Ubuntu 24.04 LTS
+│   ├── rocky-9.pkr.hcl                    # Source + build Rocky Linux 9
+│   ├── build.sh                           # Menu interattivo per buildare le 3 distro
+│   ├── download-isos.sh                   # Scarica/carica ISO su Proxmox via API
+│   ├── http/
+│   │   ├── ubuntu-user-data.tpl           # Template cloud-config autoinstall Ubuntu
+│   │   ├── rocky-ks.cfg.tpl               # Template kickstart Rocky 9
+│   │   └── meta-data                      # cloud-init metadata
+│   └── scripts/
+│       └── install-tools.sh               # Provisioner: apt update/upgrade + cleanup
+│
+├── terraform/                             # Provisioning VM cluster K8s
+│   ├── main.tf                            # Provider proxmox (bpg), locals (SSH, CIDR)
+│   ├── variables.tf                       # Variabili: Proxmox, rete, storage, master/worker
+│   ├── k8s-cluster.tf                     # Core: topologia dinamica, moduli VM, inventory
+│   ├── outputs.tf                         # IP nodi, inventory path, comandi SSH
+│   ├── terraform.tfvars                   # Config cluster (tracciato: topologia, risorse)
+│   ├── terraform.tfvars.example           # Template completo con tutti i parametri
+│   ├── terraform.auto.tfvars*             # Credenziali + rete (*in .gitignore, da init-project.sh)
+│   ├── terraform.auto.tfvars.example      # Template credenziali
+│   ├── modules/proxmox-vm/                # Modulo riutilizzabile per singola VM
+│   │   ├── main.tf                        # Clone, cloud-init, disco, rete, QEMU agent
+│   │   ├── variables.tf                   # 18 variabili (nome, risorse, rete, SSH)
+│   │   └── outputs.tf                     # IP, nome, VM ID
+│   └── templates/
+│       └── kubespray-inventory.tftpl      # Template Ansible inventory per Kubespray
+│
+├── kubespray/                             # Deploy Kubernetes
+│   ├── ansible.cfg                        # Config Ansible (ruoli, SSH, parallelismo)
+│   ├── deploy.sh                          # Comandi: install | upgrade | remove-node | reset
+│   └── inventory/homelab/
+│       ├── hosts.ini                      # Inventory (generato da Terraform)
+│       └── group_vars/
+│           ├── all/
+│           │   ├── all.yml                # Cluster name, K8s v1.30.4, DNS, NTP, SSH
+│           │   └── containerd.yml         # Runtime containerd
+│           └── k8s_cluster/
+│               ├── k8s-cluster.yml        # Versione K8s, CIDR, kube-proxy, certificati
+│               ├── k8s-net-plugin.yml     # Calico IPIP, MTU, bird backend
+│               └── addons.yml             # Helm, Metrics Server, Dashboard, MetalLB
+│
+├── ansible/playbooks/                     # Playbook per preparazione template VM
+│   ├── base.yml                           # Locale IT, qemu-agent, cloud-init reset, SSH keys
+│   └── proxmox_image_import.yml           # Import alternativo immagini qcow2
+│
+├── group_vars/
+│   └── all.yml                            # Credenziali Proxmox cifrate con Ansible Vault
+│
+└── docs/                                  # Documentazione dettagliata
+    ├── init-project.md                    # Setup iniziale, credenziali, Vault
+    ├── cluster-configuration.md           # Topologia, MetalLB, Dashboard
+    ├── packer-multiple-distributions.md   # Ubuntu 22.04/24.04, Rocky 9
+    ├── packer-ubuntu-base.md              # Dettaglio build Packer Ubuntu
+    ├── terraform-k8s-cluster.md           # Provider, moduli, cloud-init, scalabilità
+    ├── kubespray-deploy.md                # group_vars, Calico, gestione nodi
+    ├── proxmox-api-user.md                # Utente API, Vault, permessi, token
+    └── end-to-end.md                      # Guida completa end-to-end
 ```
 
-**Note su credenziali e Git:**
-- ✅ File tracciati: `terraform.tfvars`, `group_vars/all.yml` (Vault cifrato), documentazione
-- ❌ File ignorati: `*.auto.tfvars`, `packer.pkrvars.hcl` (contengono token)
-- 🔐 File `.example`: template per referenza e setup manuale
+**Legenda file:**
+- ✅ Tracciati in git: `terraform.tfvars`, `group_vars/all.yml` (Vault cifrato), documentazione, `.example`
+- ❌ Ignorati da git (`*.auto.tfvars`, `packer.pkrvars.hcl`): contengono token e credenziali
+- 🔐 File `.example`: template da copiare e compilare per setup manuale
 
 ## Quick start
 
@@ -80,21 +136,25 @@ bash verify-init.sh
 # Nota: Subnet K8s e IP master/worker sono già configurati da init-project.sh
 vim terraform/terraform.tfvars  # modifica control_plane_count, worker_count, risorse (se desiderato)
 
-# 5. Packer — build template VM
+# 5. (Opzionale) Scarica ISO su Proxmox — necessario per Rocky 9, consigliato per Ubuntu
+cd packer && ./download-isos.sh    # Menu interattivo (usa aria2c + API Proxmox)
+# Oppure: ./download-isos.sh rocky-9
+
+# 6. Packer — build template VM
 # Supporta: Ubuntu 22.04 LTS, Ubuntu 24.04 LTS, Rocky Linux 9
-cd packer && ./build.sh    # Menu interattivo per scegliere distribuzione
+./build.sh    # Menu interattivo per scegliere distribuzione
 # Oppure:
 # ./build.sh ubuntu-22.04
 # ./build.sh ubuntu-24.04
 # ./build.sh rocky-9
 
-# 6. Terraform — crea le VM
+# 7. Terraform — crea le VM
 cd ../terraform && terraform apply
 
-# 7. Kubespray — installa Kubernetes
+# 8. Kubespray — installa Kubernetes
 cd ../kubespray && ./deploy.sh
 
-# 8. Verifica
+# 9. Verifica
 kubectl get nodes
 kubectl get svc -A  # verifica MetalLB
 ```
