@@ -80,7 +80,7 @@ autoinstall:
       - id: sda-root-lv
         type: lvm_partition
         name: root
-        volgroup: vg0
+        volgroup: sda-root-pv
         size: -1
       - id: sda-root-fs
         type: format
