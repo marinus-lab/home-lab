@@ -251,6 +251,6 @@ ok "Configurazione scritta in: $TFVARS"
 echo ""
 
 info "Prossimi passi:"
-info "  terraform plan    — verifica le modifiche"
-info "  terraform apply   — crea le VM del cluster"
+info "  terraform plan              — verifica le modifiche"
+info "  terraform apply -parallelism=2  — crea le VM (2 alla volta per evitare timeout)"
 echo ""
