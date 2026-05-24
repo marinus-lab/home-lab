@@ -21,17 +21,23 @@ INVENTORY="${INVENTORY:-$SCRIPT_DIR/inventory/homelab/hosts.ini}"
 COMMAND="${1:-install}"
 
 # ── Colori ────────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[kubespray]${NC} $*"; }
+ok()    { echo -e "${BLUE}[kubespray]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[kubespray]${NC} $*"; }
 error() { echo -e "${RED}[kubespray]${NC} $*" >&2; exit 1; }
 
-# ── Verifica prerequisiti ─────────────────────────────────────────────────────
+# ── Inventory: auto-copia da Terraform se disponibile ──────────────────────
+TERRAFORM_INVENTORY="$SCRIPT_DIR/../terraform/generated/kubespray-inventory.ini"
+if [ -f "$TERRAFORM_INVENTORY" ]; then
+  if [ ! -f "$INVENTORY" ] || [ "$TERRAFORM_INVENTORY" -nt "$INVENTORY" ]; then
+    cp "$TERRAFORM_INVENTORY" "$INVENTORY"
+    info "Inventory auto-aggiornato da Terraform: $INVENTORY"
+  fi
+fi
 [ -f "$INVENTORY" ] || error "Inventory non trovato: $INVENTORY
   Eseguire prima:
-    cd ../terraform && terraform apply
-    cp terraform/generated/kubespray-inventory.ini \\
-       kubespray/inventory/homelab/hosts.ini"
+    cd ../terraform && terraform apply"
 
 [ -d "$VENV_DIR" ] || error "Venv Python non trovato: $VENV_DIR
   Eseguire prima setup-bastion.sh"
@@ -77,6 +83,7 @@ case "$COMMAND" in
   install)
     info "Avvio installazione cluster Kubernetes..."
     info "Inventory: $INVENTORY"
+    _ssh_ping_test
     warn "Durata stimata: 20-40 minuti a seconda dell'hardware."
     "${ANSIBLE_CMD[@]}" cluster.yml
     info "Cluster installato con successo!"
@@ -118,6 +125,31 @@ case "$COMMAND" in
     ;;
 
 esac
+
+# ── SSH ping test pre-deploy ──────────────────────────────────────────────────
+_ssh_ping_test() {
+  local fail=0
+  info "Verifica connettività SSH verso tutti i nodi..."
+  while IFS= read -r line; do
+    host=$(echo "$line" | awk '{print $1}')
+    ip=$(echo "$line" | grep -oP 'ansible_host=\K[0-9.]+')
+    [ -z "$ip" ] && continue
+    echo -n "  $host ($ip) ... "
+    if ssh -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no ubuntu@"$ip" "echo OK" 2>/dev/null; then
+      echo "OK"
+    else
+      echo "NO"
+      fail=1
+    fi
+  done < <(grep 'ansible_host=' "$INVENTORY")
+  if [ "$fail" -eq 1 ]; then
+    warn "Uno o più nodi non sono raggiungibili via SSH."
+    read -r -p "  Procedere comunque con l'installazione? (s/N): " confirm
+    [[ "$confirm" =~ ^[sSyY] ]] || error "Annullato"
+  else
+    ok "Tutti i nodi raggiungibili"
+  fi
+}
 
 # ── Info post-installazione ────────────────────────────────────────────────────
 _print_post_install() {
