@@ -50,6 +50,11 @@ CIDR_PREFIX="${K8S_SUBNET##*/}"
 CIDR_PREFIX="${CIDR_PREFIX:-24}"
 GATEWAY="${K8S_GATEWAY}"
 
+# ── Default IP VM: ultimo ottetto .130 sulla stessa subnet di Proxmox ──────
+PROXMOX_HOST_IP="${PROXMOX_URL#https://}"
+PROXMOX_HOST_IP="${PROXMOX_HOST_IP%%:*}"
+DEFAULT_IP=$(echo "$PROXMOX_HOST_IP" | sed -E 's/\.[0-9]+$/.130/')
+
 # ── Helper: recupera dimensione disco template da Proxmox API ──────────────
 get_template_disk_size_gb() {
   local vmid="$1"
@@ -106,8 +111,8 @@ VM_NAME="${VM_NAME:-test-${OS_NAME,,}}"
 read -rp "VM ID [300]: " VM_ID
 VM_ID="${VM_ID:-300}"
 
-read -rp "Indirizzo IP [192.168.1.100]: " IP_ADDRESS
-IP_ADDRESS="${IP_ADDRESS:-192.168.1.100}"
+read -rp "Indirizzo IP [$DEFAULT_IP]: " IP_ADDRESS
+IP_ADDRESS="${IP_ADDRESS:-$DEFAULT_IP}"
 
 read -rp "Prefisso CIDR [$CIDR_PREFIX]: " input
 CIDR_PREFIX="${input:-$CIDR_PREFIX}"
