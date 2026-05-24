@@ -30,9 +30,9 @@ part / --fstype=ext4 --size=1 --grow
 # ── Pacchetti ────────────────────────────────────────────────────────────────
 %packages
 @core
-@standard
 qemu-guest-agent
 cloud-init
+cloud-utils-growpart
 curl
 wget
 git
