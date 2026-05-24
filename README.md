@@ -16,6 +16,13 @@ Infrastructure-as-Code per un cluster Kubernetes su Proxmox VE, costruito con Pa
 | MetalLB | latest | Load balancer bare-metal (Layer 2) |
 | Kubernetes Dashboard | latest | UI monitoraggio cluster |
 
+## Prerequisiti di rete
+
+La fase **Packer** (build template VM) richiede:
+
+- **Server DHCP attivo** sulla rete Proxmox — la VM di build riceve un IP temporaneo via DHCP durante l'installazione automatica da ISO. Dopo il clone con Terraform, i nodi K8s usano invece IP statici assegnati via cloud-init.
+- **Bastion raggiungibile dalla rete VM** — Packer avvia un server HTTP temporaneo (porta 8613+) dal quale l'installer scarica la configurazione kickstart/autoinstall. Il bastion e la VM devono essere sulla stessa rete o comunque instradabili.
+
 ## Architettura
 
 ```
