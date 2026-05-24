@@ -36,6 +36,7 @@ source "proxmox-iso" "ubuntu_2404" {
     format       = "raw"   # raw per LVM; usare "qcow2" per storage NFS/ZFS
     discard      = true
     io_thread    = true
+    cache_mode   = "writeback"
   }
 
   # ── Rete ────────────────────────────────────────────────────────────────────

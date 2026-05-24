@@ -23,9 +23,9 @@ repo --name="AppStream" --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?
 bootloader --location=mbr --driveorder=vda
 zerombr
 clearpart --all --initlabel
-part /boot --fstype=ext4 --size=1024
+part /boot --fstype=xfs --size=1024
 part swap --size=2048
-part / --fstype=ext4 --size=1 --grow
+part / --fstype=xfs --size=1 --grow
 
 # ── Pacchetti ────────────────────────────────────────────────────────────────
 %packages

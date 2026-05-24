@@ -34,6 +34,7 @@ source "proxmox-iso" "rocky" {
     format       = "raw"
     discard      = true
     io_thread    = true
+    cache_mode   = "writeback"
   }
 
   # ── Rete ────────────────────────────────────────────────────────────────────
