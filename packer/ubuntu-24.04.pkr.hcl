@@ -1,16 +1,3 @@
-packer {
-  required_plugins {
-    proxmox = {
-      version = ">= 1.1.3"
-      source  = "github.com/hashicorp/proxmox"
-    }
-    ansible = {
-      version = ">= 1.1.0"
-      source  = "github.com/hashicorp/ansible"
-    }
-  }
-}
-
 source "proxmox-iso" "ubuntu_2404" {
   # ── Connessione Proxmox ─────────────────────────────────────────────────────
   proxmox_url              = var.proxmox_url
@@ -28,14 +15,17 @@ source "proxmox-iso" "ubuntu_2404" {
   qemu_agent           = true
 
   # ── ISO ─────────────────────────────────────────────────────────────────────
-  iso_url          = "https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso"
-  iso_checksum     = "file:https://releases.ubuntu.com/24.04/SHA256SUMS"
-  iso_storage_pool = var.iso_storage_pool
-  unmount_iso      = true
+  boot_iso {
+    iso_url           = "https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso"
+    iso_checksum      = "file:https://releases.ubuntu.com/24.04/SHA256SUMS"
+    iso_storage_pool  = var.iso_storage_pool
+    unmount           = true
+  }
 
   # ── CPU e RAM ───────────────────────────────────────────────────────────────
-  cores  = var.cores
-  memory = var.memory
+  cores    = var.cores
+  memory   = var.memory
+  cpu_type = "host"
 
   # ── Disco ───────────────────────────────────────────────────────────────────
   scsi_controller = "virtio-scsi-pci"

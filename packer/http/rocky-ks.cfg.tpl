@@ -15,6 +15,10 @@ user --name=rocky --groups=wheel --iscrypted --password=%%ROCKY_PASSWORD_HASH%%
 # ── Rete ─────────────────────────────────────────────────────────────────────
 network --bootproto=dhcp --onboot=yes --device=eth0 --activate
 
+# ── Repository online (boot.iso non contiene pacchetti) ────────────────────
+url --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?arch=x86_64&repo=BaseOS-9"
+repo --name="AppStream" --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?arch=x86_64&repo=AppStream-9"
+
 # ── Storage ──────────────────────────────────────────────────────────────────
 bootloader --location=mbr --driveorder=vda
 zerombr
@@ -29,7 +33,6 @@ part / --fstype=ext4 --size=1 --grow
 @standard
 qemu-guest-agent
 cloud-init
-cloud-utils
 curl
 wget
 git
