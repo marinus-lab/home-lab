@@ -10,8 +10,11 @@ d-i clock-setup/ntp boolean true
 
 ### Network
 d-i netcfg/choose_interface select auto
+d-i netcfg/dhcp_timeout string 30
+d-i netcfg/dhcp_failed note
 d-i netcfg/get_hostname string unassigned-hostname
 d-i netcfg/get_domain string unassigned-domain
+d-i hw-detect/load_firmware boolean false
 
 ### Mirror
 d-i mirror/country string manual
