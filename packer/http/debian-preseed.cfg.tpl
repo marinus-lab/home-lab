@@ -85,6 +85,10 @@ d-i grub-installer/bootdev string /dev/sda
 ### Finishing up
 d-i finish-install/reboot_in_progress note
 
+### Early command — debug (scrive su console se il preseed è caricato)
+d-i preseed/early_command string \
+    echo "PRESEED-LOADED" > /dev/console
+
 ### Late commands — enable services, SSH, sudo
 d-i preseed/late_command string \
     in-target systemctl enable qemu-guest-agent ; \
