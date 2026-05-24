@@ -50,6 +50,17 @@ CIDR_PREFIX="${K8S_SUBNET##*/}"
 CIDR_PREFIX="${CIDR_PREFIX:-24}"
 GATEWAY="${K8S_GATEWAY}"
 
+# ── Helper: recupera dimensione disco template da Proxmox API ──────────────
+get_template_disk_size_gb() {
+  local vmid="$1"
+  local auth_header="PVEAuthToken=${PROXMOX_TOKEN_ID}=${PROXMOX_TOKEN_SECRET}"
+
+  curl -s -k -H "Authorization: $auth_header" \
+    "$PROXMOX_URL/nodes/$PROXMOX_NODE/qemu/$vmid/config" 2>/dev/null \
+    | grep -oP 'size=\K\d+(?=G)' \
+    | head -1
+}
+
 # ── Mappa OS template → VM ID ─────────────────────────────────────────────────
 declare -A TEMPLATES=(
   ["Rocky 9"]="9000"
@@ -78,6 +89,15 @@ OS_INDEX=$((os_choice - 1))
 OS_NAME="${TEMPLATE_NAMES[$OS_INDEX]}"
 TEMPLATE_VM_ID="${TEMPLATES[$OS_NAME]}"
 
+info "Recupero dimensione disco template $TEMPLATE_VM_ID..."
+TEMPLATE_DISK_SIZE=$(get_template_disk_size_gb "$TEMPLATE_VM_ID" || true)
+if [ -z "$TEMPLATE_DISK_SIZE" ]; then
+  warn "Impossibile rilevare dimensione disco template — assumo 32G"
+  TEMPLATE_DISK_SIZE=32
+else
+  ok "Template disco: ${TEMPLATE_DISK_SIZE}G"
+fi
+
 # ── Parametri VM ──────────────────────────────────────────────────────────────
 echo ""
 read -rp "Nome VM [test-${OS_NAME,,}]: " VM_NAME
@@ -101,8 +121,28 @@ CORES="${CORES:-2}"
 read -rp "RAM MB [2048]: " MEMORY
 MEMORY="${MEMORY:-2048}"
 
-read -rp "Disco GB [0 = usa template]: " DISK_SIZE
-DISK_SIZE="${DISK_SIZE:-0}"
+while true; do
+  read -rp "Disco GB [0 = usa template (${TEMPLATE_DISK_SIZE}G)]: " DISK_SIZE
+  DISK_SIZE="${DISK_SIZE:-0}"
+
+  if ! echo "$DISK_SIZE" | grep -qE '^[0-9]+$'; then
+    warn "Inserisci un numero (0 per usare la dimensione del template)"
+    continue
+  fi
+
+  if [ "$DISK_SIZE" -eq 0 ]; then
+    ok "Usata dimensione template (${TEMPLATE_DISK_SIZE}G)"
+    break
+  fi
+
+  if [ "$DISK_SIZE" -lt "$TEMPLATE_DISK_SIZE" ]; then
+    warn "${DISK_SIZE}G < template ${TEMPLATE_DISK_SIZE}G — Proxmox non supporta shrink"
+    warn "Inserisci 0 (usa template) o un valore >= ${TEMPLATE_DISK_SIZE}"
+    continue
+  fi
+
+  break
+done
 
 read -rp "Bridge di rete [$NETWORK_BRIDGE]: " input
 NETWORK_BRIDGE="${input:-$NETWORK_BRIDGE}"
@@ -117,7 +157,11 @@ echo "  IP:       $IP_ADDRESS/$CIDR_PREFIX"
 echo "  Gateway:  $GATEWAY"
 echo "  CPU:      $CORES core"
 echo "  RAM:      $MEMORY MB"
-echo "  Disco:    $DISK_SIZE GB"
+if [ "$DISK_SIZE" -eq 0 ]; then
+  echo "  Disco:    template size (${TEMPLATE_DISK_SIZE}G)"
+else
+  echo "  Disco:    $DISK_SIZE GB"
+fi
 echo "  Nodo:     $PROXMOX_NODE"
 echo "  Bridge:   $NETWORK_BRIDGE"
 echo "  Storage:  $STORAGE_POOL"
