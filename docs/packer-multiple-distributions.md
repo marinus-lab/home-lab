@@ -13,7 +13,7 @@ Guida per buildare template VM su Proxmox usando Packer con supporto a multiple 
 | Rocky Linux | 9.x | Anaconda (Kickstart) | ✅ Package |
 
 Tutte le distribuzioni includono:
-- **qemu-guest-agent** — Per interop con Proxmox/Terraform
+- **qemu-guest-agent** — **Obbligatorio**: Packer lo usa per comunicare con la VM durante la build (spegnimento, reboot, verifica stato). Senza qemu-guest-agent, Packer non riesce a gestire correttamente il ciclo di vita della VM.
 - **cloud-init** — Per personalizzazione al boot via Terraform
 - **cloud-utils-growpart** — Espansione partizione root al primo boot
 - **Pacchetti base** — curl, wget, git, vim, python3, pip
@@ -72,6 +72,21 @@ Seleziona (1-4):
 # Build tutte e tre
 ./build.sh ubuntu-22.04 && ./build.sh ubuntu-24.04 && ./build.sh rocky-9
 ```
+
+---
+
+## Debug
+
+Per diagnosticare problemi durante la build, esegui lo script con il log di Packer abilitato:
+
+```bash
+PACKER_LOG=1 ./build.sh
+```
+
+Questo mostra tutti i dettagli interni di Packer: connessione SSH, esecuzione dei provisioner, invocazione di Ansible, e codice d'uscita di ogni comando remoto. Utile per individuare:
+- Fallimenti di connessione SSH (host key mismatch, timeout)
+- Errori del proxy adapter Ansible (SFTP/SCP/pipelining)
+- Comandi remoti che falliscono silenziosamente
 
 ---
 
