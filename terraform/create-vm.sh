@@ -101,8 +101,8 @@ CORES="${CORES:-2}"
 read -rp "RAM MB [2048]: " MEMORY
 MEMORY="${MEMORY:-2048}"
 
-read -rp "Disco GB [20]: " DISK_SIZE
-DISK_SIZE="${DISK_SIZE:-20}"
+read -rp "Disco GB [0 = usa template]: " DISK_SIZE
+DISK_SIZE="${DISK_SIZE:-0}"
 
 read -rp "Bridge di rete [$NETWORK_BRIDGE]: " input
 NETWORK_BRIDGE="${input:-$NETWORK_BRIDGE}"
