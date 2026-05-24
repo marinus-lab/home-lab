@@ -1,3 +1,4 @@
+---
 - hosts: all
   become: true
   vars:
@@ -5,7 +6,7 @@
 
   tasks:
     # ── Task per VM normali (post-clone Terraform) ──────────────────────────
-    - name: Install common packages
+    - name: Install common packages (Debian/Ubuntu)
       apt:
         name:
           - curl
@@ -16,20 +17,53 @@
           - python3-pip
         state: present
         update_cache: yes
-      when: not packer_build
+      when: not packer_build and ansible_os_family == "Debian"
+
+    - name: Install common packages (Rocky/RHEL)
+      dnf:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - python3
+          - python3-pip
+        state: present
+      when: not packer_build and ansible_os_family == "RedHat"
 
     # ── Locale (sempre) ─────────────────────────────────────────────────────
-    - name: Ensure locale it_IT.UTF-8 is generated
+    - name: Ensure locales are generated (Debian/Ubuntu)
       locale_gen:
-        name: it_IT.UTF-8
+        name: "{{ item }}"
         state: present
+      loop:
+        - it_IT.UTF-8
+        - en_GB.UTF-8
+      when: ansible_os_family == "Debian"
 
-    - name: Set default locale
+    - name: Set default locale en_US.UTF-8 (Debian/Ubuntu)
       lineinfile:
         path: /etc/default/locale
-        regexp: '^LANG='
-        line: 'LANG=it_IT.UTF-8'
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
         create: yes
+      loop:
+        - { regexp: '^LANG=', line: 'LANG=en_US.UTF-8' }
+        - { regexp: '^LC_TIME=', line: 'LC_TIME=en_GB.UTF-8' }
+      when: ansible_os_family == "Debian"
+
+    - name: Install langpacks for locale (Rocky/RHEL)
+      dnf:
+        name:
+          - glibc-langpack-en
+          - glibc-langpack-en-gb
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Set default locale (Rocky/RHEL)
+      command: localectl set-locale LANG=en_US.UTF-8 LC_TIME=en_GB.UTF-8
+      changed_when: false
+      when: ansible_os_family == "RedHat"
 
     # ── Preparazione template (solo durante Packer build) ────────────────────
     - name: Enable and start qemu-guest-agent
@@ -39,11 +73,16 @@
         state: started
       when: packer_build
 
-    - name: Clean apt cache
+    - name: Clean apt cache (Debian/Ubuntu)
       apt:
         autoclean: yes
         autoremove: yes
-      when: packer_build
+      when: packer_build and ansible_os_family == "Debian"
+
+    - name: Clean dnf cache (Rocky/RHEL)
+      command: dnf clean all
+      changed_when: false
+      when: packer_build and ansible_os_family == "RedHat"
 
     # Reset cloud-init: indispensabile affinché venga eseguito al primo boot
     # di ogni VM clonata da questo template.
@@ -65,26 +104,18 @@
         - /etc/ssh/ssh_host_ed25519_key.pub
       when: packer_build
 
-    # Svuotare machine-id: ogni VM clonata ne otterrà uno univoco al primo boot.
+    # Pulire il machine-id: ogni VM clonata avrà un ID unico al primo boot.
     - name: Truncate machine-id
       copy:
         content: ""
         dest: /etc/machine-id
-        owner: root
-        group: root
-        mode: '0444'
-      when: packer_build
-
-    - name: Ensure /var/lib/dbus/machine-id is a symlink to /etc/machine-id
-      file:
-        src: /etc/machine-id
-        dest: /var/lib/dbus/machine-id
-        state: link
         force: yes
       when: packer_build
 
-    - name: Clean temp files
-      shell: rm -rf /tmp/* /var/tmp/*
-      args:
-        warn: false
+    # Pulire i log per partire da uno stato pulito.
+    - name: Clean logs
+      shell: |
+        find /var/log -type f -name '*.log' -exec truncate -s 0 {} \;
+        find /var/log -type f -name '*.gz' -delete
+      changed_when: false
       when: packer_build

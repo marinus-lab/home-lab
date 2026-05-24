@@ -3,7 +3,8 @@ autoinstall:
   version: 1
 
   # ── Lingua e tastiera ────────────────────────────────────────────────────────
-  locale: it_IT.UTF-8
+  locale: en_US.UTF-8
+  timezone: Europe/Rome
   keyboard:
     layout: it
     variant: ''
