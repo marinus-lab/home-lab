@@ -53,6 +53,7 @@ KUBERNETES CLUSTER (overlay)
 |------|-------|-----------|
 | **Packer** | Crea il template VM Ubuntu su Proxmox | Bastion |
 | **Terraform** | Clona il template e crea le VM K8s | Bastion |
+| **configure-cluster.sh** | Wizard interattivo per topologia cluster (master/worker count, IP) | Bastion |
 | **Ansible / Kubespray** | Installa Kubernetes sulle VM | Bastion → nodi K8s |
 | **cloud-init** | Configura IP, hostname, SSH key al primo boot | Ogni VM |
 | **Calico** | Rete pod-to-pod (IPIP overlay) | Cluster K8s |
@@ -294,6 +295,15 @@ master_ip_start = 210
 worker_ip_start = 220
 ```
 
+### Configurazione topologia (opzionale)
+
+```bash
+# Wizard interattivo per numero master/worker, subnet, IP
+bash configure-cluster.sh
+```
+
+Se preferisci la configurazione manuale, edita direttamente `terraform.tfvars`.
+
 ### Deploy
 
 ```bash
@@ -309,13 +319,16 @@ terraform apply
 
 ### Cosa crea Terraform
 
-Con la configurazione di default (`control_plane_count=1`, `worker_count=2`):
+Con la configurazione di default (`control_plane_count=3`, `worker_count=3`):
 
 | VM | VMID | IP | CPU | RAM | Disco |
 |----|------|----|-----|-----|-------|
 | k8s-master-1 | 201 | 192.168.1.210 | 2 | 2 GB | 30 GB |
+| k8s-master-2 | 202 | 192.168.1.211 | 2 | 2 GB | 30 GB |
+| k8s-master-3 | 203 | 192.168.1.212 | 2 | 2 GB | 30 GB |
 | k8s-worker-1 | 211 | 192.168.1.220 | 4 | 4 GB | 50 GB |
 | k8s-worker-2 | 212 | 192.168.1.221 | 4 | 4 GB | 50 GB |
+| k8s-worker-3 | 213 | 192.168.1.222 | 4 | 4 GB | 50 GB |
 
 Per ogni VM, Terraform:
 1. Clona (full clone) il template 9000
@@ -363,33 +376,19 @@ ssh ubuntu@192.168.1.221 "hostname && uptime"
 
 Kubespray installa Kubernetes su tutti i nodi tramite Ansible, a partire dall'inventory generato da Terraform.
 
-### Preparazione inventory
-
-```bash
-cd ../kubespray
-
-# Copia l'inventory generato da Terraform
-cp ../terraform/generated/kubespray-inventory.ini \
-   inventory/homelab/hosts.ini
-
-# Verifica la connettività Ansible verso tutti i nodi
-ansible all \
-  -i inventory/homelab/hosts.ini \
-  -m ping \
-  --private-key ~/.ssh/id_rsa
-# Tutti i nodi devono rispondere: pong
-```
-
 ### Deploy
 
 ```bash
+cd ../kubespray
 ./deploy.sh
 ```
 
 Il `deploy.sh`:
-1. Clona `kubernetes-sigs/kubespray` in `~/kubespray` (solo la prima volta)
-2. Attiva il venv `~/kubespray-env`
-3. Lancia `ansible-playbook cluster.yml` con l'inventory homelab
+1. Copia l'inventory da `terraform/generated/kubespray-inventory.ini` se più recente
+2. Verifica la connettività SSH verso tutti i nodi
+3. Clona `kubernetes-sigs/kubespray` in `~/kubespray` (solo la prima volta)
+4. Attiva il venv `~/kubespray-env`
+5. Lancia `ansible-playbook cluster.yml` con l'inventory homelab
 
 ### Cosa installa Kubespray
 
@@ -432,9 +431,9 @@ Al termine, il kubeconfig viene scaricato in `~/.kube/config` sul bastion.
 # Tutti i nodi devono essere Ready
 kubectl get nodes -o wide
 # NAME           STATUS   ROLES           AGE   VERSION   INTERNAL-IP
-# k8s-master-1   Ready    control-plane   5m    v1.30.4   192.168.1.210
-# k8s-worker-1   Ready    <none>          3m    v1.30.4   192.168.1.220
-# k8s-worker-2   Ready    <none>          3m    v1.30.4   192.168.1.221
+# k8s-master-1   Ready    control-plane   5m    1.36.0   192.168.1.210
+# k8s-worker-1   Ready    <none>          3m    1.36.0   192.168.1.220
+# k8s-worker-2   Ready    <none>          3m    1.36.0   192.168.1.221
 
 # Tutti i pod di sistema devono essere Running o Completed
 kubectl get pods -A
@@ -522,6 +521,7 @@ home-lab/
 │   ├── main.tf                         #   provider bpg/proxmox
 │   ├── variables.tf                    #   tutte le variabili
 │   ├── k8s-cluster.tf                  #   topologia cluster + inventory
+│   ├── configure-cluster.sh            #   wizard interattivo topologia
 │   ├── outputs.tf                      #   IP, comandi SSH, path inventory
 │   ├── terraform.tfvars.example        #   esempio valori
 │   ├── templates/
@@ -583,15 +583,14 @@ cd packer
 cp packer.pkrvars.hcl.example packer.pkrvars.hcl  # edita
 PACKER_ARGS="-var-file=packer.pkrvars.hcl" ./build.sh
 
-# 3. VM Terraform
+# 3. Topologia cluster + VM Terraform
 cd ../terraform
 cp terraform.tfvars.example terraform.tfvars       # edita
+bash configure-cluster.sh                           # wizard topologia
 terraform init && terraform apply
 
-# 4. Cluster Kubernetes
+# 4. Cluster Kubernetes (deploy.sh copia inventory automaticamente)
 cd ../kubespray
-cp ../terraform/generated/kubespray-inventory.ini \
-   inventory/homelab/hosts.ini
 ./deploy.sh
 
 # 5. Verifica
@@ -604,11 +603,10 @@ kubectl get nodes
 # Aggiungere un worker
 # → terraform.tfvars: worker_count = 3
 cd terraform && terraform apply
-cp generated/kubespray-inventory.ini ../kubespray/inventory/homelab/hosts.ini
 cd ../kubespray && EXTRA_ARGS="--limit k8s-worker-3" ./deploy.sh
 
 # Aggiornare Kubernetes
-# → k8s-cluster.yml: kube_version: v1.31.0
+# → group_vars/all/all.yml: kube_version: 1.36.0
 cd kubespray && ./deploy.sh upgrade
 
 # Rimuovere un worker
