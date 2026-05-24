@@ -102,6 +102,11 @@ autoinstall:
     - "chmod 0440 /target/etc/sudoers.d/ubuntu"
     # Avvia qemu-guest-agent al boot (necessario per Proxmox/Terraform)
     - "curtin in-target -- systemctl enable qemu-guest-agent"
+    # Disabilita AppArmor e UFW per Packer build
+    - "curtin in-target -- systemctl disable apparmor"
+    - "curtin in-target -- systemctl stop apparmor"
+    - "curtin in-target -- systemctl disable ufw"
+    - "curtin in-target -- systemctl stop ufw"
 
   updates: security
   shutdown: reboot
