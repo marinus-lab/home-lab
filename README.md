@@ -85,6 +85,7 @@ home-lab/
 ├── init-project.sh                        # Setup iniziale: credenziali, utente API, token, storage
 ├── verify-init.sh                         # Verifica post-init: file, vault, token, storage, dipendenze
 ├── verify-cluster.sh                      # Health check cluster K8s: nodi, componenti, addon
+├── demo-cluster.sh                        # Demo: Tetris, Hello K8s, Podinfo, registry, MetalLB
 ├── setup-bastion.sh                       # Installa tooling sul bastion (tmux dashboard)
 ├── create_proxmox_user.yml                # Playbook Ansible alternativo per utente Proxmox
 ├── requirements.yml                       # Dipendenze Ansible Galaxy (community.general)
@@ -217,6 +218,41 @@ bash ../verify-cluster.sh
 
 **Nota:** `init-project.sh` automatizza la creazione di credenziali e token API. 
 Vedi [docs/init-project.md](docs/init-project.md) per dettagli.
+
+## Demo
+
+Dopo aver installato il cluster con Kubespray, lancia lo script demo per verificare che tutto funzioni:
+
+```bash
+bash demo-cluster.sh
+```
+
+Lo script testa:
+1. **Tetris** (service NodePort) → `http://192.168.0.120`
+2. **Hello Kubernetes** (Deployment + LoadBalancer) → `http://192.168.0.121`
+3. **Podinfo** (Deployment + LoadBalancer) → `http://192.168.0.122:9898`
+4. **Registry interno** — verifica API tramite port-forward
+5. **Push al registry** via nerdctl su SSH — testa che il registry locale funzioni
+
+Esempio di output:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  DEMO CLUSTER KUBERNETES HOMELAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[INFO] 1. Tetris
+[PASS] http://192.168.0.120 (Tetris)
+[INFO] 2. Hello Kubernetes
+[PASS] http://192.168.0.121 (Hello K8s)
+[INFO] 3. Podinfo
+[PASS] http://192.168.0.122:9898 (Podinfo)
+[INFO] 4. Registry interno
+[PASS] Registry 10.98.158.126:5000 — "repositories":["nginx"]
+[INFO] 5. Registry push/pull
+[PASS] Push nginx:alpine → 10.244.69.198:5000/nginx:test
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅ DEMO COMPLETATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 ## Documentazione
 
