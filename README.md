@@ -36,10 +36,13 @@ bash init-project.sh
 | Packer | ≥ 1.9 | Build template VM (Ubuntu 22.04/24.04, Debian 13, Rocky 9) |
 | Terraform | ≥ 1.5 | Provisioning VM dal template |
 | Kubespray | latest | Installazione Kubernetes |
-| Kubernetes | v1.30.4 | Container orchestration |
+| Kubernetes | v1.36.0 | Container orchestration |
 | Calico | bundled | CNI (overlay IPIP) |
 | containerd | bundled | Container runtime |
+| kube-vip | bundled | HA control plane (VIP 192.168.0.80 via ARP) |
 | MetalLB | latest | Load balancer bare-metal (Layer 2) |
+| cert-manager | latest | Certificati TLS automatici |
+| ingress-nginx | latest | Ingress controller |
 | Kubernetes Dashboard | latest | UI monitoraggio cluster |
 
 ## Prerequisiti di rete
@@ -56,15 +59,18 @@ Bastion ──API──▶ Proxmox VE
                     │
                     ├─ Template VMID 9000-9003  (Packer)
                     │       │
-                    │       ├─ clone ──▶ k8s-master-1  192.168.1.210  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-master-2  192.168.1.211  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-master-3  192.168.1.212  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-1  192.168.1.220  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-2  192.168.1.221  (16GB RAM, 4 CPU)
-                    │       └─ clone ──▶ k8s-worker-3  192.168.1.222  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-1  192.168.0.150  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-2  192.168.0.151  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-3  192.168.0.152  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-1  192.168.0.155  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-2  192.168.0.156  (16GB RAM, 4 CPU)
+                    │       └─ clone ──▶ k8s-worker-3  192.168.0.157  (16GB RAM, 4 CPU)
                     │
 Bastion ──SSH──▶ 6 nodi K8s  (Kubespray installa il cluster HA)
-                    └─ MetalLB: 192.168.0.120-192.168.0.135 (load balancing)
+                    │
+                    ├─ kube-vip: 192.168.0.80 (VIP control plane via ARP)
+                    ├─ MetalLB: 192.168.0.120-192.168.0.135 (load balancing servizi)
+                    └─ Registry locale immagini su ogni nodo
 ```
 
 **Topologia cluster:**
@@ -78,6 +84,7 @@ Bastion ──SSH──▶ 6 nodi K8s  (Kubespray installa il cluster HA)
 home-lab/
 ├── init-project.sh                        # Setup iniziale: credenziali, utente API, token, storage
 ├── verify-init.sh                         # Verifica post-init: file, vault, token, storage, dipendenze
+├── verify-cluster.sh                      # Health check cluster K8s: nodi, componenti, addon
 ├── setup-bastion.sh                       # Installa tooling sul bastion (tmux dashboard)
 ├── create_proxmox_user.yml                # Playbook Ansible alternativo per utente Proxmox
 ├── requirements.yml                       # Dipendenze Ansible Galaxy (community.general)
@@ -131,9 +138,9 @@ home-lab/
 │           │   ├── all.yml                # Cluster name, K8s v1.30.4, DNS, NTP, SSH
 │           │   └── containerd.yml         # Runtime containerd
 │           └── k8s_cluster/
-│               ├── k8s-cluster.yml        # Versione K8s, CIDR, kube-proxy, certificati
+│               ├── k8s-cluster.yml        # CIDR, kube-proxy, DNS, NTP, registry, certificati
 │               ├── k8s-net-plugin.yml     # Calico IPIP, MTU, bird backend
-│               └── addons.yml             # Helm, Metrics Server, Dashboard, MetalLB
+│               └── addons.yml             # Helm, Metrics, Dashboard, Ingress, cert-manager, MetalLB, kube-vip
 │
 ├── ansible/playbooks/                     # Playbook per preparazione template VM
 │   ├── base.yml                           # Locale IT, qemu-agent, cloud-init reset, SSH keys
@@ -200,9 +207,12 @@ terraform apply
 # 9. Kubespray — installa Kubernetes
 cd ../kubespray && ./deploy.sh
 
-# 10. Verifica
-kubectl get nodes
-kubectl get svc -A  # verifica MetalLB
+# 10. Verifica cluster
+bash ../verify-cluster.sh
+# Oppure manualmente:
+# kubectl get nodes
+# kubectl get pods -A
+# kubectl get svc -A  # verifica MetalLB
 ```
 
 **Nota:** `init-project.sh` automatizza la creazione di credenziali e token API. 
@@ -228,8 +238,8 @@ I parametri del cluster sono distribuiti in quattro file:
 |------|----------------|-------------|
 | `terraform/terraform.auto.tfvars` | Subnet K8s, gateway, IP base master/worker | `init-project.sh` |
 | `terraform/terraform.tfvars` | Conteggio master/worker, risorse VM (CPU/RAM), storage | Manuale |
-| `kubespray/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml` | Versione K8s, CIDR pod, proxy mode | Manuale |
-| `kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml` | Helm, MetalLB, Ingress, Dashboard | Manuale |
+| `kubespray/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml` | CIDR pod, kube-proxy (ipvs), DNS, NTP, registry, certificati | Manuale |
+| `kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml` | Helm, Dashboard, Ingress-nginx, cert-manager, MetalLB, kube-vip | Manuale |
 
 ### Default
 
@@ -239,8 +249,9 @@ I parametri del cluster sono distribuiti in quattro file:
 - **Storage**: 30GB disco per master, 50GB per worker
 - **Subnet Kubernetes**: `192.168.0.0/24` — configurabile in `init-project.sh`, salvato in `terraform/terraform.auto.tfvars`
 - **Gateway**: `192.168.0.1` — configurabile in `init-project.sh`
-- **Master IP**: primo da `.210` (es. `.210`, `.211`, `.212`) — configurabile in `init-project.sh`
-- **Worker IP**: primo da `.220` (es. `.220`, `.221`, `.222`) — configurabile in `init-project.sh`
+- **Master IP**: primo da `.150` (es. `.150`, `.151`, `.152`) — configurabile in `init-project.sh`
+- **Worker IP**: primo da `.155` (es. `.155`, `.156`, `.157`) — configurabile in `init-project.sh`
+- **kube-vip**: `192.168.0.80` (VIP control plane via ARP)
 - **Pod subnet**: `10.244.0.0/16`
 - **Service subnet**: `10.96.0.0/12`
 - **Load balancer**: MetalLB con range `192.168.0.120-192.168.0.135`
