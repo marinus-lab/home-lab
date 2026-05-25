@@ -143,6 +143,18 @@ case "$COMMAND" in
     warn "Durata stimata: 20-40 minuti a seconda dell'hardware."
     "${ANSIBLE_CMD[@]}" cluster.yml
     info "Cluster installato con successo!"
+
+    # ── Copia kubectl e kubeconfig sul bastion ──────────────────────────────────
+    local artifacts
+    artifacts="$(dirname "$INVENTORY")/artifacts"
+    if [ -f "$artifacts/kubectl" ] && [ -f "$artifacts/admin.conf" ]; then
+      install -m 755 "$artifacts/kubectl" /usr/local/bin/kubectl
+      mkdir -p ~/.kube
+      cp "$artifacts/admin.conf" ~/.kube/config
+      chmod 600 ~/.kube/config
+      ok "kubectl e kubeconfig installati su ~/.kube/config"
+    fi
+
     _print_post_install
     ;;
 
