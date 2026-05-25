@@ -113,6 +113,26 @@ _apply_patches() {
   fi
 }
 
+# ── Info post-installazione ────────────────────────────────────────────────────
+_print_post_install() {
+  MASTER_IP=$(grep ansible_host "$INVENTORY" | grep master | head -1 | awk -F'ansible_host=' '{print $2}' | awk '{print $1}')
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  Cluster Kubernetes pronto!"
+  echo ""
+  echo "  kubeconfig scaricato in: ~/.kube/config"
+  echo "  kubectl disponibile in:  /usr/local/bin/kubectl"
+  echo ""
+  echo "  Comandi di verifica:"
+  echo "    kubectl get nodes"
+  echo "    kubectl get pods -A"
+  echo ""
+  if [ -n "${MASTER_IP:-}" ]; then
+  echo "  API server: https://${MASTER_IP}:6443"
+  fi
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
 # ── Esegui il comando richiesto ───────────────────────────────────────────────
 case "$COMMAND" in
 
@@ -161,23 +181,3 @@ case "$COMMAND" in
     ;;
 
 esac
-
-# ── Info post-installazione ────────────────────────────────────────────────────
-_print_post_install() {
-  MASTER_IP=$(grep ansible_host "$INVENTORY" | grep master | head -1 | awk -F'ansible_host=' '{print $2}' | awk '{print $1}')
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  Cluster Kubernetes pronto!"
-  echo ""
-  echo "  kubeconfig scaricato in: ~/.kube/config"
-  echo "  kubectl disponibile in:  /usr/local/bin/kubectl"
-  echo ""
-  echo "  Comandi di verifica:"
-  echo "    kubectl get nodes"
-  echo "    kubectl get pods -A"
-  echo ""
-  if [ -n "${MASTER_IP:-}" ]; then
-  echo "  API server: https://${MASTER_IP}:6443"
-  fi
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-}
