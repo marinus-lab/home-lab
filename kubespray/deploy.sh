@@ -57,31 +57,7 @@ _apply_patches() {
     ok "Patch download_container.yml applicata."
   fi
 
-  # Patch 2: kubectl apply → --validate=false (evita errore TLS su OpenAPI download)
-  f="$KUBESPRAY_DIR/library/kube.py"
-  if grep -q "'apply'\]" "$f" 2>/dev/null && ! grep -q "'--validate=false'" "$f" 2>/dev/null; then
-    info "Applicando patch: kubectl apply --validate=false..."
-    sed -i "/cmd = \['apply'\]/a\        cmd.append('--validate=false')" "$f"
-    ok "Patch kube.py applicata."
-  fi
-
-  # Patch 3: calicoctl version → rimuovi pipefail (calicoctl esce rc=1 se non raggiunge API server)
-  f="$KUBESPRAY_DIR/roles/network_plugin/calico/tasks/check.yml"
-  if grep -q 'pipefail.*calicoctl.sh version' "$f" 2>/dev/null; then
-    info "Applicando patch: rimuovi pipefail da calicoctl version..."
-    sed -i 's/set -o pipefail && \(.*calicoctl.sh version\)/\1/' "$f"
-    ok "Patch check.yml applicata."
-  fi
-
-  # Patch 4: kubeadm upload-certs → salta se il cluster è già stato inizializzato
-  f="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-secondary.yml"
-  if grep -q 'not kube_external_ca_mode' "$f" 2>/dev/null && ! grep -q 'kubeadm_already_run' "$f" 2>/dev/null; then
-    info "Applicando patch: salta upload-certs se cluster già inizializzato..."
-    sed -i '/- not kube_external_ca_mode/a\    - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists' "$f"
-    ok "Patch kubeadm-secondary.yml applicata."
-  fi
-
-  # Patch 5: admin.conf → insecure-skip-tls-verify=true (risolve tutti i TLS error su VIP)
+  # Patch 2: admin.conf → insecure-skip-tls-verify=true (risolve tutti i TLS error su VIP)
   f="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-setup.yml"
   if ! grep -q 'insecure-skip-tls-verify' "$f" 2>/dev/null; then
     info "Applicando patch: insecure-skip-tls-verify in admin.conf..."
