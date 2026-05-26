@@ -222,7 +222,7 @@ phase_end 0 "$JAVA_VER"
 phase_start 1
 sudo apt-get install -y curl gnupg software-properties-common git unzip \
     python3-pip python3-venv python3-pygments build-essential \
-    tmux jq dnsutils netcat-openbsd htop
+    tmux jq dnsutils netcat-openbsd htop aria2
 TMUX_VER="$(tmux -V 2>&1 | awk '{print $2}')"
 phase_end 1 "$TMUX_VER"
 
