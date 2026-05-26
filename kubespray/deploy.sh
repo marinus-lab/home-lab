@@ -65,9 +65,8 @@ _apply_patches() {
 
 - name: Kubeadm | Set insecure-skip-tls-verify in admin.conf
   command: >-
-    {{ bin_dir }}/kubectl config set-cluster kubernetes
-    --kubeconfig={{ kube_config_dir }}/admin.conf
-    --insecure-skip-tls-verify=true
+    sed -i '/certificate-authority-data:/a\    insecure-skip-tls-verify: true'
+    {{ kube_config_dir }}/admin.conf
   changed_when: false
 YAML
     ok "Patch kubeadm-setup.yml applicata."
