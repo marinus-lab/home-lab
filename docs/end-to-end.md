@@ -109,13 +109,15 @@ Lo script usa una dashboard tmux per mostrare il progresso in tempo reale:
 | 2 | Dipendenze sistema (curl, git, python3, jq, tmux, htop...) |
 | 3 | Vim con tema desert e plugin Terraform |
 | 4 | Node.js 22 |
-| 5 | OpenCode AI Agent |
-| 6 | OpenClaude |
-| 7 | Ansible + modulo community.proxmox + proxmoxer |
-| 8 | Terraform + Packer (HashiCorp APT repo) |
-| 9 | **Venv Python `~/kubespray-env`** con dipendenze Kubespray |
-| 10 | Chiave SSH RSA 4096-bit in `~/.ssh/id_rsa` |
-| 11 | less + Pygmentize (syntax highlight nei file) |
+| 5 | GitHub Copilot CLI |
+| 6 | Gemini CLI |
+| 7 | OpenCode AI Agent |
+| 8 | OpenClaude |
+| 9 | Ansible + modulo community.proxmox + proxmoxer |
+| 10 | Terraform + Packer (HashiCorp APT repo) |
+| 11 | **Venv Python `~/kubespray-env`** con dipendenze Kubespray |
+| 12 | Chiave SSH RSA 4096-bit in `~/.ssh/id_rsa` |
+| 13 | less + Pygmentize (syntax highlight nei file) |
 
 ### Verifica
 
