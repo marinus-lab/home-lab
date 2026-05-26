@@ -64,6 +64,14 @@ _apply_patches() {
     sed -i "/cmd = \['apply'\]/a\        cmd.append('--validate=false')" "$f"
     ok "Patch kube.py applicata."
   fi
+
+  # Patch 3: calicoctl version → rimuovi pipefail (calicoctl esce rc=1 se non raggiunge API server)
+  f="$KUBESPRAY_DIR/roles/network_plugin/calico/tasks/check.yml"
+  if grep -q 'pipefail.*calicoctl.sh version' "$f" 2>/dev/null; then
+    info "Applicando patch: rimuovi pipefail da calicoctl version..."
+    sed -i 's/set -o pipefail && \(.*calicoctl.sh version\)/\1/' "$f"
+    ok "Patch check.yml applicata."
+  fi
 }
 
 # ── Clone Kubespray se non presente ──────────────────────────────────────────
