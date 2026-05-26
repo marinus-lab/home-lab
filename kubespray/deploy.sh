@@ -73,13 +73,45 @@ _apply_patches() {
   fi
 }
 
-# ── Clone Kubespray se non presente ──────────────────────────────────────────
+# ── Legge kubespray_version da group_vars/all/all.yml ────────────────────────────
+_ALL_YML="$SCRIPT_DIR/inventory/homelab/group_vars/all/all.yml"
+KUBESPRAY_VERSION=""
+if [ -f "$_ALL_YML" ]; then
+  KUBESPRAY_VERSION=$(grep '^kubespray_version:' "$_ALL_YML" | awk '{print $2}' | tr -d '"' || true)
+fi
+if [ -n "$KUBESPRAY_VERSION" ]; then
+  info "Kubespray version richiesta: $KUBESPRAY_VERSION"
+fi
+
+# ── Clone / aggiorna Kubespray ──────────────────────────────────────────────
 if [ ! -d "$KUBESPRAY_DIR" ]; then
   info "Clonando Kubespray in $KUBESPRAY_DIR..."
   git clone --depth 1 https://github.com/kubernetes-sigs/kubespray.git "$KUBESPRAY_DIR"
+  if [ -n "${KUBESPRAY_VERSION:-}" ]; then
+    info "Checkout versione $KUBESPRAY_VERSION..."
+    cd "$KUBESPRAY_DIR"
+    git fetch --tags --depth 1
+    git checkout "tags/$KUBESPRAY_VERSION"
+    cd "$OLDPWD"
+  fi
   info "Clone completato."
 else
   info "Kubespray trovato in $KUBESPRAY_DIR"
+  if [ -n "${KUBESPRAY_VERSION:-}" ]; then
+    current_ver=$(cd "$KUBESPRAY_DIR" && git describe --tags 2>/dev/null || echo "dev")
+    if [ "$current_ver" != "$KUBESPRAY_VERSION" ]; then
+      warn "Versione attuale Kubespray: $current_ver"
+      warn "Versione richiesta: $KUBESPRAY_VERSION"
+      read -r -p "  Eseguire checkout di $KUBESPRAY_VERSION? (s/N): " confirm
+      if [[ "$confirm" =~ ^[sSyY] ]]; then
+        cd "$KUBESPRAY_DIR"
+        git fetch --tags --depth 1
+        git checkout "tags/$KUBESPRAY_VERSION"
+        cd "$OLDPWD"
+        ok "Checkout $KUBESPRAY_VERSION completato."
+      fi
+    fi
+  fi
 fi
 
 _apply_patches

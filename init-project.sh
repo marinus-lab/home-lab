@@ -201,6 +201,161 @@ done
 
 ok "Rete Kubernetes configurata"
 
+# ── KUBERNETES SETUP ──────────────────────────────────────────────────────────
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  ☸️  CONFIGURAZIONE KUBERNETES"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ── Selettore versione Kubespray ─────────────────────────────────────────
+info "Recupero release Kubespray da GitHub..."
+KUBESPRAY_RELEASES=$(curl -s "https://api.github.com/repos/kubernetes-sigs/kubespray/releases?per_page=10" 2>/dev/null || echo "[]")
+
+# Parsing rilasci stabili (non draft, non prerelease)
+KUBESPRAY_JSON=$(echo "$KUBESPRAY_RELEASES" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+releases = []
+for r in data:
+    if r.get('draft') or r.get('prerelease'):
+        continue
+    releases.append({
+        'tag': r.get('tag_name',''),
+        'date': r.get('published_at','')[:10],
+    })
+# Ordina per data decrescente
+releases.sort(key=lambda x: x['date'], reverse=True)
+for r in releases[:5]:
+    print(f\"{r['tag']}|{r['date']}\")
+" 2>/dev/null)
+
+# Leggi in array
+mapfile -t KUBESPRAY_TAGS < <(echo "$KUBESPRAY_JSON" | cut -d'|' -f1)
+mapfile -t KUBESPRAY_DATES < <(echo "$KUBESPRAY_JSON" | cut -d'|' -f2)
+
+if [ ${#KUBESPRAY_TAGS[@]} -lt 1 ]; then
+  warn "Impossibile recuperare release Kubespray — uso default"
+  KUBESPRAY_TAGS=("v2.31.0" "v2.30.0" "v2.29.1")
+  KUBESPRAY_DATES=("2026-04-25" "2026-01-29" "2025-12-11")
+fi
+
+# Per ogni tag, recupera la max K8s supportata
+KUBESPRAY_MAX_K8S=()
+for tag in "${KUBESPRAY_TAGS[@]}"; do
+  # Prova nuovo path (v2.30+)
+  k8s_ver=$(curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kubespray/$tag/roles/kubespray_defaults/vars/main/checksums.yml" 2>/dev/null | \
+    awk '/^kubelet_checksums:/{f=1} f && /^  amd64:/{a=1; next} a && /^    [0-9]/{print; exit}' | \
+    sed 's/.*://' | tr -d ' ' || true)
+  # Fallback path (v2.26.x)
+  if [ -z "$k8s_ver" ]; then
+    k8s_ver=$(curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kubespray/$tag/roles/kubespray-defaults/defaults/main/checksums.yml" 2>/dev/null | \
+      awk '/^kubelet_checksums:/{f=1} f && /^  amd64:/{a=1; next} a && /^    [0-9]/{print; exit}' | \
+      sed 's/.*://' | tr -d ' ' || true)
+  fi
+  # Estrai solo numero versione (senza sha)
+  k8s_ver=$(echo "$k8s_ver" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+  [ -z "$k8s_ver" ] && k8s_ver="N/D"
+  KUBESPRAY_MAX_K8S+=("$k8s_ver")
+done
+
+# Mostra menu limitato a 3 entry
+echo ""
+echo "Seleziona versione Kubespray:"
+echo ""
+echo "  #  Tag          Pubblicato    K8s max"
+echo "  ─────────────────────────────────────"
+MAX_SHOW=$(( ${#KUBESPRAY_TAGS[@]} < 3 ? ${#KUBESPRAY_TAGS[@]} : 3 ))
+for i in $(seq 0 $((MAX_SHOW - 1))); do
+  printf "  %d)  %-12s  %-12s  %s\n" $((i+1)) "${KUBESPRAY_TAGS[$i]}" "${KUBESPRAY_DATES[$i]}" "${KUBESPRAY_MAX_K8S[$i]}"
+done
+echo ""
+
+while true; do
+  read -rp "Scelta (1-$MAX_SHOW): " K8S_SEL
+  if echo "$K8S_SEL" | grep -qE '^[0-9]+$' && [ "$K8S_SEL" -ge 1 ] && [ "$K8S_SEL" -le "$MAX_SHOW" ]; then
+    KUBESPRAY_VERSION="${KUBESPRAY_TAGS[$((K8S_SEL-1))]}"
+    DEFAULT_KUBE_VERSION="${KUBESPRAY_MAX_K8S[$((K8S_SEL-1))]}"
+    ok "Kubespray selezionato: $KUBESPRAY_VERSION"
+    break
+  fi
+  warn "Scelta non valida (1-$MAX_SHOW)"
+done
+
+# ── Versione Kubernetes ──────────────────────────────────────────────────
+echo ""
+echo "Versione Kubernetes supportata: $DEFAULT_KUBE_VERSION"
+while true; do
+  read -rp "Versione Kubernetes (default: $DEFAULT_KUBE_VERSION, Enter per confermare): " KUBE_VERSION
+  KUBE_VERSION="${KUBE_VERSION:-$DEFAULT_KUBE_VERSION}"
+  if echo "$KUBE_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+    ok "Kubernetes $KUBE_VERSION"
+    break
+  fi
+  warn "Formato non valido (usa X.Y.Z, es. $DEFAULT_KUBE_VERSION)"
+done
+
+# ── Nome cluster ─────────────────────────────────────────────────────────
+echo ""
+while true; do
+  read -rp "Nome cluster (default: homelab): " CLUSTER_NAME
+  CLUSTER_NAME="${CLUSTER_NAME:-homelab}"
+  if echo "$CLUSTER_NAME" | grep -qE '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'; then
+    ok "Nome cluster: $CLUSTER_NAME"
+    break
+  fi
+  warn "Solo lettere minuscole, numeri e trattini (es. homelab, my-cluster)"
+done
+
+# ── Genera kubespray inventory group_vars all.yml ─────────────────────────
+KUBESPRAY_ALL_YML="$SCRIPT_DIR/kubespray/inventory/homelab/group_vars/all/all.yml"
+if [ -f "$KUBESPRAY_ALL_YML" ]; then
+  cp "$KUBESPRAY_ALL_YML" "$KUBESPRAY_ALL_YML.bak"
+  warn "Backup creato: $KUBESPRAY_ALL_YML.bak"
+fi
+mkdir -p "$(dirname "$KUBESPRAY_ALL_YML")"
+
+cat > "$KUBESPRAY_ALL_YML" << K8S_EOF
+---
+# ── Cluster ────────────────────────────────────────────────────────────────────
+cluster_name: $CLUSTER_NAME
+
+# ── Versione Kubernetes ────────────────────────────────────────────────────────
+# Verificare la compatibilità con la versione Kubespray in uso:
+# https://github.com/kubernetes-sigs/kubespray#supported-components
+kube_version: $KUBE_VERSION
+
+# ── Versione Kubespray ─────────────────────────────────────────────────────────
+# Tag release da usare per il clone. Vuoto = branch main.
+kubespray_version: $KUBESPRAY_VERSION
+
+# ── DNS upstream ───────────────────────────────────────────────────────────────
+upstream_dns_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+# ── Ottimizzazione download binari ────────────────────────────────────────────
+download_run_once: true
+download_localhost: false
+
+# ── NTP ────────────────────────────────────────────────────────────────────────
+ntp_enabled: true
+ntp_manage_config: true
+ntp_servers:
+  - 0.it.pool.ntp.org
+  - 1.it.pool.ntp.org
+  - 2.it.pool.ntp.org
+
+# ── SSH ────────────────────────────────────────────────────────────────────────
+ansible_user: ubuntu
+ansible_become: true
+K8S_EOF
+
+ok "$KUBESPRAY_ALL_YML generato (cluster: $CLUSTER_NAME, K8s: $KUBE_VERSION, Kubespray: $KUBESPRAY_VERSION)"
+
+echo ""
+ok "Configurazione Kubernetes completata"
+
 # NOTA: Gli storage pool Proxmox vengono rilevati dinamicamente dopo aver
 # ottenuto il ticket di sessione (vedi sezione "RILEVAMENTO STORAGE PROXMOX")
 
@@ -672,12 +827,16 @@ echo "  • group_vars/all.yml                    (credenziali Proxmox cifrate)"
 echo "  • packer/packer.pkrvars.hcl             (token Packer)"
 echo "  • terraform/terraform.auto.tfvars       (credenziali + rete Kubernetes)"
 echo "  • terraform/terraform.tfvars            (topologia cluster - pubblico)"
+echo "  • kubespray/inventory/.../all.yml       (config cluster K8s)"
 echo ""
 echo "Configurazione Kubernetes:"
 echo "  • Subnet: $K8S_SUBNET"
 echo "  • Gateway: $K8S_GATEWAY"
 echo "  • Master IP: $MASTER_IP_OCTET-$((MASTER_IP_OCTET+2))"
 echo "  • Worker IP: $WORKER_IP_OCTET-$((WORKER_IP_OCTET+2))"
+echo "  • Cluster name: $CLUSTER_NAME"
+echo "  • K8s version: $KUBE_VERSION"
+echo "  • Kubespray: $KUBESPRAY_VERSION"
 echo ""
 echo "Configurazione rete:"
 echo "  • Bridge di rete: $PROXMOX_BRIDGE"
