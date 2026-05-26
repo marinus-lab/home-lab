@@ -45,6 +45,16 @@ fi
 [ -f "$HOME/.ssh/id_rsa" ] || error "Chiave SSH non trovata: ~/.ssh/id_rsa
   Eseguire prima setup-bastion.sh"
 
+# ── Applica patch necessarie a Kubespray ────────────────────────────────────────
+_apply_patches() {
+  local f="$KUBESPRAY_DIR/roles/download/tasks/download_container.yml"
+  if grep -q 'failed_when: container_save_status.stderr' "$f" 2>/dev/null; then
+    info "Applicando patch: nerdctl stderr → rc check..."
+    sed -i 's/failed_when: container_save_status.stderr/failed_when: container_save_status.rc != 0/' "$f"
+    ok "Patch applicata."
+  fi
+}
+
 # ── Clone Kubespray se non presente ──────────────────────────────────────────
 if [ ! -d "$KUBESPRAY_DIR" ]; then
   info "Clonando Kubespray in $KUBESPRAY_DIR..."
@@ -100,16 +110,6 @@ _ssh_ping_test() {
     [[ "$confirm" =~ ^[sSyY] ]] || error "Annullato"
   else
     ok "Tutti i nodi raggiungibili"
-  fi
-}
-
-# ── Applica patch necessarie a Kubespray ────────────────────────────────────────
-_apply_patches() {
-  local f="$KUBESPRAY_DIR/roles/download/tasks/download_container.yml"
-  if grep -q 'failed_when: container_save_status.stderr' "$f" 2>/dev/null; then
-    info "Applicando patch: nerdctl stderr → rc check..."
-    sed -i 's/failed_when: container_save_status.stderr/failed_when: container_save_status.rc != 0/' "$f"
-    ok "Patch applicata."
   fi
 }
 
