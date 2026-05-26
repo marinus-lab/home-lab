@@ -60,10 +60,11 @@ if [ ! -d "$KUBESPRAY_DIR" ]; then
   info "Clonando Kubespray in $KUBESPRAY_DIR..."
   git clone --depth 1 https://github.com/kubernetes-sigs/kubespray.git "$KUBESPRAY_DIR"
   info "Clone completato."
-  _apply_patches
 else
   info "Kubespray trovato in $KUBESPRAY_DIR"
 fi
+
+_apply_patches
 
 # ── Attiva venv ───────────────────────────────────────────────────────────────
 info "Attivando venv: $VENV_DIR"
