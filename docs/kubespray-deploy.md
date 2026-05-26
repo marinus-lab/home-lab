@@ -100,7 +100,7 @@ kubespray/
 
 6. cd kubespray && ./deploy.sh
    ├── Clona kubernetes-sigs/kubespray in ~/kubespray
-   ├── Applica patch automatiche (nerdctl stderr, kubectl --validate=false)
+   ├── Applica patch automatiche (nerdctl stderr, admin.conf insecure-skip-tls-verify)
    ├── Attiva ~/kubespray-env
    └── ansible-playbook cluster.yml → installa K8s su tutti i nodi
 
@@ -239,7 +239,7 @@ Il deploy script applica automaticamente alcune patch al codice Kubespray per ri
 | # | File patchato | Problema | Fix |
 |---|---------------|----------|-----|
 | 1 | `roles/download/tasks/download_container.yml` | `nerdctl image save` scrive progress su stderr; Kubespray interpreta stderr non vuoto come fallimento (`failed_when: container_save_status.stderr`) | `failed_when: container_save_status.rc != 0` — verifica il codice di uscita invece dello stderr |
-| 2 | `roles/kubernetes/control-plane/tasks/kubeadm-setup.yml` | Tutti i comandi `kubectl --kubeconfig /etc/kubernetes/admin.conf` verso la VIP falliscono TLS (kube-proxy, calicoctl, upload-certs, ecc.) | Aggiunge `insecure-skip-tls-verify: true` al cluster `kubernetes` in admin.conf subito dopo kubeadm init/join — risolve alla radice tutti i TLS error su VIP |
+| 2 | `roles/kubernetes/control-plane/tasks/kubeadm-setup.yml` | Tutti i comandi `kubectl --kubeconfig /etc/kubernetes/admin.conf` verso la VIP falliscono TLS (kube-proxy, calicoctl, upload-certs, ecc.) | `sed` aggiunge `insecure-skip-tls-verify: true` subito dopo `certificate-authority-data:` in admin.conf subito dopo kubeadm init/join — senza dipendere dal nome del cluster |
 
 Le patch vengono applicate a ogni run di `deploy.sh`, sia su clone fresco (`~/kubespray` non esistente) sia su repo già esistente.
 
@@ -481,16 +481,7 @@ ssh ubuntu@<IP> "ip link show tunl0"
 
 Compare durante i task `Registry | Apply manifests` o `Cert Manager | Apply manifests`. Il modulo Ansible `kube` esegue `kubectl apply --force` che cerca di scaricare l'OpenAPI schema dalla VIP (192.168.0.80:6443) per validare i manifest, ma la connessione TLS fallisce perché il certificato del kube-apiserver non include ancora la VIP nei SAN attendibili.
 
-**Soluzione:** la patch `_apply_patches` in `deploy.sh` aggiunge `--validate=false` al file `library/kube.py` di Kubespray, evitando la validazione OpenAPI. Il fix viene applicato automaticamente a ogni run.
-
-Se il problema persiste dopo un deploy già eseguito senza patch, applicare i manifest a mano su k8s-master-1:
-
-```bash
-kubectl --kubeconfig /etc/kubernetes/admin.conf apply \
-  -f /etc/kubernetes/addons/registry/registry-svc.yml --validate=false
-kubectl --kubeconfig /etc/kubernetes/admin.conf apply \
-  -f /etc/kubernetes/addons/registry/registry-cm.yml --validate=false
-```
+**Soluzione:** la patch `_apply_patches` in `deploy.sh` aggiunge `insecure-skip-tls-verify: true` all'admin.conf con `sed`, risolvendo tutti i TLS error verso la VIP alla radice. Il fix viene applicato automaticamente a ogni run.
 
 ### `kubectl get nodes` mostra nodi NotReady
 
