@@ -49,7 +49,7 @@ Bastion (control node Ansible)
 
 | Requisito | Come verificare | Come ottenere |
 |-----------|-----------------|---------------|
-| VM Proxmox attive | `terraform output all_nodes` | `cd terraform && terraform apply` |
+| VM Proxmox attive | `terraform output all_nodes` | `cd terraform && terraform init && terraform apply` |
 | Inventory aggiornato | `cat kubespray/inventory/homelab/hosts.ini` | `cp terraform/generated/kubespray-inventory.ini kubespray/inventory/homelab/hosts.ini` |
 | SSH key sul bastion | `ls ~/.ssh/id_rsa.pub` | Generata da `setup-bastion.sh` |
 | SSH key nelle VM | `ssh ubuntu@<IP>` | Iniettata da Terraform via cloud-init |
@@ -90,7 +90,7 @@ kubespray/
 3. packer/build.sh
    └── Costruisce template Ubuntu 22.04 (VMID 9000) su Proxmox
 
-4. cd terraform && terraform apply
+4. cd terraform && terraform init && terraform apply
    ├── Clona template → VM k8s-master-*, k8s-worker-*
    ├── Configura cloud-init (IP statico, SSH key)
    └── Genera terraform/generated/kubespray-inventory.ini
@@ -302,7 +302,7 @@ Il cluster è configurato con 3 nodi control plane per l'alta disponibilità:
 - kube-apiserver, kube-controller-manager, kube-scheduler attivi su tutti e 3
 - Il cluster resta operativo anche se un master fallisce
 
-Per ridurre a 1 master (risparmio risorse): cambiare `control_plane_count = 1` in `configure-cluster.sh` o `terraform.tfvars`, rieseguire `terraform apply` + `./deploy.sh upgrade`.
+Per ridurre a 1 master (risparmio risorse): cambiare `control_plane_count = 1` in `configure-cluster.sh` o `terraform.tfvars`, rieseguire `terraform init && terraform apply` + `./deploy.sh upgrade`.
 
 ---
 
@@ -351,6 +351,7 @@ kubectl get svc nginx
 ```bash
 # 1. Aggiungere il nodo in terraform.tfvars (worker_count = 3)
 cd ../terraform
+terraform init
 terraform apply
 
 # 2. Aggiornare l'inventory
@@ -377,6 +378,7 @@ kubectl delete node k8s-worker-2
 # 4. Distrugge la VM su Proxmox
 cd ../terraform
 # Ridurre worker_count in terraform.tfvars
+terraform init
 terraform apply
 ```
 

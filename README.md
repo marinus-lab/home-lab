@@ -203,6 +203,7 @@ cd ../terraform && bash create-vm.sh
 # Dopo il test: cd single-vm && terraform destroy
 
 # 8. Terraform — crea il cluster K8s (6 VM)
+terraform init
 terraform apply
 
 # 9. Kubespray — installa Kubernetes

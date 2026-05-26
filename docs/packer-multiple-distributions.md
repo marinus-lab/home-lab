@@ -507,6 +507,7 @@ Una volta che il template è pronto:
 ```bash
 # 1. Terraform clona il template e crea le VM K8s
 cd ../terraform
+terraform init
 terraform apply
 
 # 2. Kubespray provisiona Kubernetes

@@ -611,7 +611,7 @@ kubectl get nodes
 ```bash
 # Aggiungere un worker
 # → terraform.tfvars: worker_count = 3
-cd terraform && terraform apply
+cd terraform && terraform init && terraform apply
 cd ../kubespray && EXTRA_ARGS="--limit k8s-worker-3" ./deploy.sh
 
 # Aggiornare Kubernetes
@@ -623,7 +623,7 @@ kubectl drain k8s-worker-2 --ignore-daemonsets --delete-emptydir-data
 kubectl delete node k8s-worker-2
 cd kubespray && ./deploy.sh remove-node k8s-worker-2
 # → terraform.tfvars: worker_count = 1
-cd terraform && terraform apply
+cd ../terraform && terraform init && terraform apply
 
 # Ricostruire il template Packer (es. Ubuntu 24.04)
 ssh root@192.168.1.10 "qm destroy 9002"
