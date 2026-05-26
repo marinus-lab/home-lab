@@ -304,6 +304,50 @@ EOF
 
 ok "terraform/terraform.auto.tfvars creato (credenziali + rete Kubernetes)"
 
+# ── Genera terraform/terraform.tfvars (topologia — pubblico) ────────────────────
+info "Generazione terraform/terraform.tfvars..."
+
+cat > "$SCRIPT_DIR/terraform/terraform.tfvars" << EOF
+# Configurazione cluster Kubernetes — Generato da init-project.sh
+# Credenziali Proxmox: vedi terraform.auto.tfvars
+
+# ── Rete ────────────────────────────────────────────────────────────────────────
+proxmox_node = "PLACEHOLDER_NODO"
+k8s_subnet   = "$K8S_SUBNET"
+k8s_gateway  = "$K8S_GATEWAY"
+
+# ── Template Packer ─────────────────────────────────────────────────────────────
+template_vm_id = 9002
+
+# ── Nomi VM ─────────────────────────────────────────────────────────────────────
+master_name_prefix = "k8s-master"
+worker_name_prefix = "k8s-worker"
+
+# ── Topologia ────────────────────────────────────────────────────────────────────
+control_plane_count = 3
+worker_count        = 3
+
+# ── VM ID ───────────────────────────────────────────────────────────────────────
+master_vm_id_start = 44555
+worker_vm_id_start = 44666
+
+# ── IP ──────────────────────────────────────────────────────────────────────────
+master_ip_start = $MASTER_IP_OCTET
+worker_ip_start = $WORKER_IP_OCTET
+
+# ── Risorse master ──────────────────────────────────────────────────────────────
+master_cpu_cores = 4
+master_memory    = 16384
+master_disk_size = 0
+
+# ── Risorse worker ──────────────────────────────────────────────────────────────
+worker_cpu_cores = 4
+worker_memory    = 16384
+worker_disk_size = 50
+EOF
+
+ok "terraform/terraform.tfvars creato (topologia cluster)"
+
 # ── Crea l'utente API su Proxmox con curl ─────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -612,6 +656,7 @@ sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DI
 # Aggiorna placeholder in terraform (sostituzione robusta, indipendente dagli spazi)
 sed -i "s|\"PLACEHOLDER_GENERATO_DA_CURL\"|\"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
 sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
+sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform/terraform.tfvars"
 sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
 
 ok "Token, nodo e storage Proxmox inseriti nei file di configurazione"
