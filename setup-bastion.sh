@@ -15,6 +15,8 @@ PHASE_NAMES=(
     "System Update & Dependencies"
     "Vim Configuration"
     "Node.js 22 Installation"
+    "GitHub Copilot CLI"
+    "Gemini CLI"
     "OpenCode AI Agent"
     "OpenClaude"
     "Ansible & Proxmox"
@@ -247,9 +249,20 @@ sudo apt-get install -y nodejs
 NODE_VER="$(node --version 2>&1 | cut -c2-)"
 phase_end 3 "$NODE_VER"
 
-# 5. OpenCode AI Agent
-# 5. OpenCode AI Agent
+# 5. GitHub Copilot CLI
 phase_start 4
+sudo npm i -g @github/copilot
+COPILOT_VER="$(npm list -g @github/copilot --depth=0 2>/dev/null | awk -F'@' '/copilot/{print $2}')"
+phase_end 4 "$COPILOT_VER"
+
+# 6. Gemini CLI
+phase_start 5
+sudo npm i -g @google/gemini-cli
+GEMINI_VER="$(npm list -g @google/gemini-cli --depth=0 2>/dev/null | awk -F'@' '/gemini-cli/{print $2}')"
+phase_end 5 "$GEMINI_VER"
+
+# 7. OpenCode AI Agent
+phase_start 6
 sudo npm i -g opencode-ai
 echo "🧠 Configuring OpenCode Working Memory plugin..."
 mkdir -p "$HOME/.opencode"
@@ -268,34 +281,34 @@ EOF
 OPENCODE_VER="$(opencode --version 2>&1 || npm list -g opencode-ai --depth=0 2>/dev/null | awk -F'@' '/opencode-ai/{print $2}')"
 phase_end 4 "$OPENCODE_VER"
 
-# 6. OpenClaude
-phase_start 5
+# 8. OpenClaude
+phase_start 7
 sudo npm i -g @gitlawb/openclaude
 OPENCLAUDE_VER="$(npm list -g @gitlawb/openclaude --depth=0 2>/dev/null | awk -F'@' '/openclaude/{print $2}')"
-phase_end 5 "$OPENCLAUDE_VER"
+phase_end 7 "$OPENCLAUDE_VER"
 
-# 7. Ansible & Proxmox Integration
-phase_start 6
+# 9. Ansible & Proxmox Integration
+phase_start 8
 sudo add-apt-repository -y ppa:ansible/ansible
 sudo apt-get update
 sudo apt-get install -y ansible
 sudo pip3 install --break-system-packages proxmoxer requests
 ansible-galaxy collection install community.proxmox
 ANSIBLE_VER="$(ansible --version 2>&1 | head -1 | sed 's/.*\[core \([^]]*\).*/\1/')"
-phase_end 6 "$ANSIBLE_VER"
+phase_end 8 "$ANSIBLE_VER"
 
-# 8. HashiCorp Packer and Terraform
-phase_start 7
+# 10. HashiCorp Packer and Terraform
+phase_start 9
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 sudo apt-get update
 sudo apt-get install -y terraform packer
 TF_VER="$(terraform --version 2>&1 | head -1 | awk '{print $2}')"
 PACKER_VER="$(packer --version 2>&1)"
-phase_end 7 "TF $TF_VER / Packer $PACKER_VER"
+phase_end 9 "TF $TF_VER / Packer $PACKER_VER"
 
-# 9. Python venv for Kubespray
-phase_start 8
+# 11. Python venv for Kubespray
+phase_start 10
 mkdir -p "$HOME/kubespray-env"
 python3 -m venv "$HOME/kubespray-env"
 source "$HOME/kubespray-env/bin/activate"
@@ -311,20 +324,20 @@ else
 fi
 rm -rf "$TMP_DIR"
 deactivate
-phase_end 8
+phase_end 10
 
-# 10. SSH key generation
-phase_start 9
+# 12. SSH key generation
+phase_start 11
 if [ ! -f "$HOME/.ssh/id_rsa" ]; then
     ssh-keygen -t rsa -b 4096 -f "$HOME/.ssh/id_rsa" -N ""
     echo "✅ New SSH key generated."
 else
     echo "ℹ️  SSH key already exists, skipping."
 fi
-phase_end 9
+phase_end 11
 
-# 11. less + Pygmentize configuration (rrt theme)
-phase_start 10
+# 13. less + Pygmentize configuration (rrt theme)
+phase_start 12
 cat > "$HOME/.lessfilter" << 'LESSFILTER'
 #!/bin/bash
 case "$1" in
@@ -367,7 +380,7 @@ echo "🎉 BASTION SETUP COMPLETED SUCCESSFULLY!"
 echo "================================================================="
 echo "• OpenJDK 17 Headless installed."
 echo "• Vim (desert theme, line numbers)."
-echo "• Node.js 22 + OpenCode-AI + OpenClaude + Working Memory plugin."
+echo "• Node.js 22 + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + OpenClaude + Working Memory plugin."
 echo "• Ansible + Proxmox integration."
 echo "• Terraform + Packer installed."
 echo "• Kubespray venv ready at $HOME/kubespray-env"

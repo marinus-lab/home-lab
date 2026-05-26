@@ -19,7 +19,7 @@ apt update && apt install -y git
 git clone https://github.com/marinus-lab/home-lab.git
 cd home-lab
 
-# 4. Installa tutto il tooling (Packer, Terraform, Ansible, kubectl, ...)
+# 4. Installa tutto il tooling (Packer, Terraform, Ansible, kubectl, GitHub Copilot CLI, Gemini CLI, ...)
 bash setup-bastion.sh
 
 # 5. Configura credenziali Proxmox, rete K8s e vault cifrato
@@ -169,7 +169,7 @@ home-lab/
 ## Quick start
 
 ```bash
-# 1. Bastion — installa tutto il tooling
+# 1. Bastion — installa tutto il tooling (inclusi GitHub Copilot CLI e Gemini CLI)
 bash setup-bastion.sh
 
 # 2. Inizializzazione — crea credenziali Proxmox e configurazione rete
