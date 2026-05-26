@@ -72,6 +72,14 @@ _apply_patches() {
     sed -i 's/set -o pipefail && \(.*calicoctl.sh version\)/\1/' "$f"
     ok "Patch check.yml applicata."
   fi
+
+  # Patch 4: kubeadm upload-certs → salta se il cluster è già stato inizializzato
+  f="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-secondary.yml"
+  if grep -q 'not kube_external_ca_mode' "$f" 2>/dev/null && ! grep -q 'kubeadm_already_run' "$f" 2>/dev/null; then
+    info "Applicando patch: salta upload-certs se cluster già inizializzato..."
+    sed -i '/- not kube_external_ca_mode/a\    - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists' "$f"
+    ok "Patch kubeadm-secondary.yml applicata."
+  fi
 }
 
 # ── Clone Kubespray se non presente ──────────────────────────────────────────
