@@ -80,6 +80,22 @@ _apply_patches() {
     sed -i '/- not kube_external_ca_mode/a\    - kubeadm_already_run is not defined or not kubeadm_already_run.stat.exists' "$f"
     ok "Patch kubeadm-secondary.yml applicata."
   fi
+
+  # Patch 5: admin.conf → insecure-skip-tls-verify=true (risolve tutti i TLS error su VIP)
+  f="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-setup.yml"
+  if ! grep -q 'insecure-skip-tls-verify' "$f" 2>/dev/null; then
+    info "Applicando patch: insecure-skip-tls-verify in admin.conf..."
+    cat >> "$f" << 'YAML'
+
+- name: Kubeadm | Set insecure-skip-tls-verify in admin.conf
+  command: >-
+    {{ bin_dir }}/kubectl config set-cluster kubernetes
+    --kubeconfig={{ kube_config_dir }}/admin.conf
+    --insecure-skip-tls-verify=true
+  changed_when: false
+YAML
+    ok "Patch kubeadm-setup.yml applicata."
+  fi
 }
 
 # ── Clone Kubespray se non presente ──────────────────────────────────────────
