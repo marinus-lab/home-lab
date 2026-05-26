@@ -161,7 +161,7 @@ for dist in "${DISTRIBUTIONS[@]}"; do
   case "$dist" in
     ubuntu-22.04) ISO_FILE="ubuntu-22.04.5-live-server-amd64.iso" ;;
     ubuntu-24.04) ISO_FILE="ubuntu-24.04.4-live-server-amd64.iso" ;;
-    rocky-9)      ISO_FILE="Rocky-9-latest-x86_64-boot.iso" ;;
+    rocky-9)      ISO_FILE="Rocky-9-latest-x86_64-dvd.iso" ;;
     debian-13)    ISO_FILE="debian-13.5.0-amd64-netinst.iso" ;;
   esac
 
