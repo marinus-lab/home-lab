@@ -130,7 +130,6 @@ download_iso() {
     -d "$CACHE_DIR" -o "$dest" "$url"
   ok "Download completato: $dest ($(du -h "$CACHE_DIR/$dest" | cut -f1))"
 }
-}
 
 # ── Gestione ISO singola ──────────────────────────────────────────────────────
 process_iso() {
