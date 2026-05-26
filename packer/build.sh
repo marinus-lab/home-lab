@@ -82,6 +82,12 @@ for dist in "${DISTRIBUTIONS[@]}"; do
   info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
+  # Log file per output completo
+  LOGS_DIR="$SCRIPT_DIR/logs"
+  mkdir -p "$LOGS_DIR"
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  BUILD_LOG="$LOGS_DIR/build-$dist-$TIMESTAMP.log"
+
   # Mappa distribuzione -> filtro -only di Packer (<build_name>.<source>)
   case "$dist" in
     ubuntu-22.04) ONLY_FILTER="ubuntu-2204.proxmox-iso.ubuntu_2204" ;;
@@ -160,9 +166,8 @@ for dist in "${DISTRIBUTIONS[@]}"; do
     -var-file="$PKRVARS_FILE" \
     -only="$ONLY_FILTER" \
     ${PACKER_ARGS:-} \
-    "$SCRIPT_DIR"
+    "$SCRIPT_DIR" > "$BUILD_LOG" 2>&1
 
   echo ""
+  ok "Build completata: $dist (log: $BUILD_LOG)"
 done
-
-ok "Build completata per: ${DISTRIBUTIONS[*]}"
