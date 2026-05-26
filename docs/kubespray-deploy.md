@@ -239,7 +239,7 @@ Il deploy script applica automaticamente alcune patch al codice Kubespray per ri
 | # | File patchato | Problema | Fix |
 |---|---------------|----------|-----|
 | 1 | `roles/download/tasks/download_container.yml` | `nerdctl image save` scrive progress su stderr; Kubespray interpreta stderr non vuoto come fallimento (`failed_when: container_save_status.stderr`) | `failed_when: container_save_status.rc != 0` — verifica il codice di uscita invece dello stderr |
-| 2 | `roles/kubernetes/control-plane/tasks/kubeadm-setup.yml` | Tutti i comandi `kubectl --kubeconfig /etc/kubernetes/admin.conf` verso la VIP falliscono TLS (kube-proxy, calicoctl, upload-certs, ecc.) | `sed` aggiunge `insecure-skip-tls-verify: true` subito dopo `certificate-authority-data:` in admin.conf subito dopo kubeadm init/join — senza dipendere dal nome del cluster |
+| 2 | `roles/kubernetes/control-plane/tasks/kubeadm-setup.yml` + Ansible ad-hoc pre-playbook | Tutti i comandi `kubectl --kubeconfig /etc/kubernetes/admin.conf` verso la VIP falliscono TLS (kube-proxy, calicoctl, upload-certs, ecc.) | Due vie: (a) task Ansible in `kubeadm-setup.yml` dopo `kubeadm init` (fresh-deploy); (b) `ansible kube_control_plane -m shell "sed ..."` prima del playbook (re-deploy). Il `sed` aggiunge `insecure-skip-tls-verify: true` subito dopo `certificate-authority-data:` nell'admin.conf — senza dipendere dal nome del cluster |
 
 Le patch vengono applicate a ogni run di `deploy.sh`, sia su clone fresco (`~/kubespray` non esistente) sia su repo già esistente.
 
