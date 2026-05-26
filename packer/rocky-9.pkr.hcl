@@ -16,7 +16,7 @@ source "proxmox-iso" "rocky" {
 
   # ── ISO ─────────────────────────────────────────────────────────────────────
   boot_iso {
-    iso_file = "${var.iso_storage_pool}:iso/Rocky-9-latest-x86_64-boot.iso"
+    iso_file = "${var.iso_storage_pool}:iso/Rocky-9-latest-x86_64-dvd.iso"
     unmount  = true
   }
 

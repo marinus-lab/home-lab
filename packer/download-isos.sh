@@ -59,6 +59,11 @@ ISO_URLS[debian-13]="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/d
 ISO_FILES[debian-13]="debian-13.5.0-amd64-netinst.iso"
 ISO_SIZE[debian-13]="~755MB"
 
+# Nome stabile su Proxmox (indipendente dalla versione) — evita di dover
+# aggiornare packer/.pkr.hcl a ogni release
+declare -A ISO_PROXMOX_NAME
+ISO_PROXMOX_NAME[rocky-9]="Rocky-9-latest-x86_64-dvd.iso"
+
 # ── Verifica se ISO esiste su Proxmox ─────────────────────────────────────────
 iso_exists() {
   local filename="$1"
@@ -140,16 +145,17 @@ process_iso() {
   local filename="${ISO_FILES[$key]}"
   local size="${ISO_SIZE[$key]}"
   local local_path="$CACHE_DIR/$filename"
+  local proxmox_name="${ISO_PROXMOX_NAME[$key]:-$filename}"
 
   echo ""
   info "━━━ $name ($size) ━━━"
 
-  if iso_exists "$filename"; then
-    ok "$filename già presente su $ISO_STORAGE"
+  if iso_exists "$proxmox_name"; then
+    ok "$proxmox_name già presente su $ISO_STORAGE"
     return 0
   fi
 
-  warn "$filename non trovata su $ISO_STORAGE"
+  warn "$proxmox_name non trovata su $ISO_STORAGE"
 
   if [ -f "$local_path" ]; then
     ok "$filename già presente in cache locale, salto download"
@@ -158,8 +164,8 @@ process_iso() {
     download_iso "$url" "$filename"
   fi
 
-  upload_iso "$local_path" "$filename"
-  ok "$filename pronta su $ISO_STORAGE"
+  upload_iso "$local_path" "$proxmox_name"
+  ok "$proxmox_name pronta su $ISO_STORAGE"
 
   if [ "$clean" = "true" ]; then
     rm -f "$local_path"
