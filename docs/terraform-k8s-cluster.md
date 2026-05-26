@@ -88,7 +88,7 @@ terraform plan
     ├── Mostra le VM che verranno create
     └── Non crea nulla
 
-terraform apply
+terraform apply -parallelism=2
     ├── Per ogni nodo master:
     │   ├── Clone full del template Packer (es. VMID 9002)
     │   ├── Resize disco se disk_size > disco template
@@ -399,7 +399,7 @@ Questo meccanismo funziona perché Packer ha eseguito `cloud-init clean` nel tem
 
 ### Aggiungere worker
 
-Incrementare `worker_count` e lanciare `terraform apply`. Terraform crea solo i nuovi nodi senza toccare quelli esistenti (grazie al `for_each`).
+Incrementare `worker_count` e lanciare `terraform apply -parallelism=2`. Terraform crea solo i nuovi nodi senza toccare quelli esistenti (grazie al `for_each`).
 
 ```hcl
 # terraform.tfvars
@@ -407,7 +407,7 @@ worker_count = 4  # era 2
 ```
 
 ```bash
-terraform apply  # crea solo k8s-worker-3 e k8s-worker-4
+terraform apply -parallelism=2  # crea solo k8s-worker-3 e k8s-worker-4
 ```
 
 ### Passare da minimal a HA (1 → 3 master)
@@ -417,7 +417,7 @@ control_plane_count = 3
 ```
 
 ```bash
-terraform apply  # crea k8s-master-2 e k8s-master-3
+terraform apply -parallelism=2  # crea k8s-master-2 e k8s-master-3
 ```
 
 Dopo il `terraform apply`, Kubespray va rieseguito per aggiungere i nuovi master all'etcd cluster e al control plane.
@@ -433,7 +433,7 @@ kubectl delete node k8s-worker-2
 
 Poi ridurre `worker_count` e applicare:
 ```bash
-terraform apply  # distrugge la VM k8s-worker-2 su Proxmox
+terraform apply -parallelism=2  # distrugge la VM k8s-worker-2 su Proxmox
 ```
 
 ---
@@ -455,8 +455,8 @@ terraform init
 # 3. Verifica il piano
 terraform plan
 
-# 4. Applica
-terraform apply
+# 4. Applica (2 VM alla volta per non sovraccaricare lo storage)
+terraform apply -parallelism=2
 
 # 5. Verifica output
 terraform output all_nodes
@@ -508,7 +508,7 @@ terraform import 'module.k8s_master["k8s-master-1"].proxmox_virtual_environment_
 
 # Opzione B: distruggi manualmente e riapplica
 ssh root@<proxmox-ip> "qm stop 201 && qm destroy 201"
-terraform apply
+terraform apply -parallelism=2
 ```
 
 ### La VM si avvia ma cloud-init non configura la rete

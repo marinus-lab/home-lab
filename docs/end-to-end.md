@@ -313,8 +313,8 @@ terraform init
 # Verifica cosa verrà creato (nessuna modifica)
 terraform plan
 
-# Crea le VM
-terraform apply
+# Crea le VM (2 alla volta per non sovraccaricare lo storage)
+terraform apply -parallelism=2
 ```
 
 ### Cosa crea Terraform
@@ -597,7 +597,7 @@ cd packer && ./build.sh
 # 3. Topologia cluster + VM Terraform
 cd ../terraform
 bash configure-cluster.sh              # wizard topologia (opzionale)
-terraform init && terraform apply
+terraform init && terraform apply -parallelism=2
 
 # 4. Cluster Kubernetes (deploy.sh copia inventory automaticamente)
 cd ../kubespray && ./deploy.sh
@@ -611,7 +611,7 @@ kubectl get nodes
 ```bash
 # Aggiungere un worker
 # → terraform.tfvars: worker_count = 3
-cd terraform && terraform init && terraform apply
+cd terraform && terraform init && terraform apply -parallelism=2
 cd ../kubespray && EXTRA_ARGS="--limit k8s-worker-3" ./deploy.sh
 
 # Aggiornare Kubernetes
@@ -623,7 +623,7 @@ kubectl drain k8s-worker-2 --ignore-daemonsets --delete-emptydir-data
 kubectl delete node k8s-worker-2
 cd kubespray && ./deploy.sh remove-node k8s-worker-2
 # → terraform.tfvars: worker_count = 1
-cd ../terraform && terraform init && terraform apply
+cd ../terraform && terraform init && terraform apply -parallelism=2
 
 # Ricostruire il template Packer (es. Ubuntu 24.04)
 ssh root@192.168.1.10 "qm destroy 9002"

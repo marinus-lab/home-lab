@@ -508,7 +508,7 @@ Una volta che il template è pronto:
 # 1. Terraform clona il template e crea le VM K8s
 cd ../terraform
 terraform init
-terraform apply
+terraform apply -parallelism=2
 
 # 2. Kubespray provisiona Kubernetes
 cd ../kubespray

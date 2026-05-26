@@ -202,9 +202,9 @@ cd packer && ./download-isos.sh    # Menu interattivo (usa aria2c + API Proxmox)
 cd ../terraform && bash create-vm.sh
 # Dopo il test: cd single-vm && terraform destroy
 
-# 8. Terraform — crea il cluster K8s (6 VM)
+# 8. Terraform — crea il cluster K8s (6 VM) — 2 VM alla volta per non sovraccaricare lo storage
 terraform init
-terraform apply
+terraform apply -parallelism=2
 
 # 9. Kubespray — installa Kubernetes
 cd ../kubespray && ./deploy.sh
