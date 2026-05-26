@@ -119,15 +119,30 @@ except:
   error "Timeout upload $filename"
 }
 
-# ── Scarica ISO con aria2c ────────────────────────────────────────────────────
+# ── Scarica ISO (aria2c auto-install, fallback curl) ──────────────────────────
 download_iso() {
   local url="$1"
   local dest="$2"
 
   mkdir -p "$CACHE_DIR"
-  info "Download $filename..."
-  aria2c -x 16 -s 16 -k 1M --console-log-level=warn \
-    -d "$CACHE_DIR" -o "$dest" "$url"
+  info "Download $dest..."
+
+  if command -v aria2c &>/dev/null; then
+    aria2c -x 16 -s 16 -k 1M --console-log-level=warn \
+      -d "$CACHE_DIR" -o "$dest" "$url"
+  else
+    warn "aria2c non trovato — installazione automatica..."
+    apt-get install -y aria2 2>&1 | tail -1 || true
+    if command -v aria2c &>/dev/null; then
+      aria2c -x 16 -s 16 -k 1M --console-log-level=warn \
+        -d "$CACHE_DIR" -o "$dest" "$url"
+    elif command -v curl &>/dev/null; then
+      warn "aria2c non disponibile — uso curl"
+      curl -L -o "$CACHE_DIR/$dest" "$url"
+    else
+      error "Né aria2c né curl. Installa: apt install -y aria2 curl"
+    fi
+
   ok "Download completato: $dest ($(du -h "$CACHE_DIR/$dest" | cut -f1))"
 }
 
