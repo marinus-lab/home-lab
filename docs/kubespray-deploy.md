@@ -240,6 +240,7 @@ Il deploy script applica automaticamente alcune patch al codice Kubespray per ri
 |---|---------------|----------|-----|
 | 1 | `roles/download/tasks/download_container.yml` | `nerdctl image save` scrive progress su stderr; Kubespray interpreta stderr non vuoto come fallimento (`failed_when: container_save_status.stderr`) | `failed_when: container_save_status.rc != 0` — verifica il codice di uscita invece dello stderr |
 | 2 | `library/kube.py` | `kubectl apply` scarica l'OpenAPI schema per validare i manifest, ma la connessione TLS alla VIP (192.168.0.80:6443) fallisce se il certificato del kube-apiserver non è ancora fidato | Aggiunge `--validate=false` al comando `apply`, saltando la validazione OpenAPI |
+| 3 | `roles/network_plugin/calico/tasks/check.yml` | `calicoctl.sh version` esce rc=1 se non raggiunge l'API server (stesso TLS error); con `set -o pipefail` la pipeline `version | grep | awk` fallisce anche se il Client Version è estratto correttamente | Rimuove `set -o pipefail` dal comando; la pipeline `grep | awk` estrae il Client Version da stdout e termina con rc=0 |
 
 Le patch vengono applicate a ogni run di `deploy.sh`, sia su clone fresco (`~/kubespray` non esistente) sia su repo già esistente.
 
