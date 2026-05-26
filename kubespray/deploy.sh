@@ -47,11 +47,22 @@ fi
 
 # ── Applica patch necessarie a Kubespray ────────────────────────────────────────
 _apply_patches() {
-  local f="$KUBESPRAY_DIR/roles/download/tasks/download_container.yml"
+  local f
+
+  # Patch 1: nerdctl stderr → rc check
+  f="$KUBESPRAY_DIR/roles/download/tasks/download_container.yml"
   if grep -q 'failed_when: container_save_status.stderr' "$f" 2>/dev/null; then
     info "Applicando patch: nerdctl stderr → rc check..."
     sed -i 's/failed_when: container_save_status.stderr/failed_when: container_save_status.rc != 0/' "$f"
-    ok "Patch applicata."
+    ok "Patch download_container.yml applicata."
+  fi
+
+  # Patch 2: kubectl apply → --validate=false (evita errore TLS su OpenAPI download)
+  f="$KUBESPRAY_DIR/library/kube.py"
+  if grep -q "'apply'\]" "$f" 2>/dev/null && ! grep -q "'--validate=false'" "$f" 2>/dev/null; then
+    info "Applicando patch: kubectl apply --validate=false..."
+    sed -i "/cmd = \['apply'\]/a\        cmd.append('--validate=false')" "$f"
+    ok "Patch kube.py applicata."
   fi
 }
 
