@@ -323,7 +323,7 @@ Credenziali Vault salvate in:
 
 Prossimi passi:
   1. cd packer && ./build.sh              (crea template VM)
-  2. cd ../terraform && terraform apply   (crea VM K8s)
+  2. cd ../terraform && terraform init && terraform apply   (crea VM K8s)
   3. cd ../kubespray && ./deploy.sh       (installa Kubernetes)
 
 Per decifrare le credenziali:
@@ -458,6 +458,7 @@ cd packer
 
 ```bash
 cd terraform
+terraform init
 terraform apply  # Legge automaticamente da terraform.tfvars
 ```
 
@@ -596,7 +597,7 @@ bash init-project.sh
 
 # 4. Ora tutto è automatico
 cd packer && ./build.sh
-cd ../terraform && terraform apply
+cd ../terraform && terraform init && terraform apply
 cd ../kubespray && ./deploy.sh
 
 # 5. Cluster pronto
