@@ -157,6 +157,23 @@ for dist in "${DISTRIBUTIONS[@]}"; do
     fi
   fi
 
+  # ── Pre-check: ISO presente su Proxmox? ──────────────────────────────────────
+  case "$dist" in
+    ubuntu-22.04) ISO_FILE="ubuntu-22.04.5-live-server-amd64.iso" ;;
+    ubuntu-24.04) ISO_FILE="ubuntu-24.04.4-live-server-amd64.iso" ;;
+    rocky-9)      ISO_FILE="Rocky-9-latest-x86_64-boot.iso" ;;
+    debian-13)    ISO_FILE="debian-13.5.0-amd64-netinst.iso" ;;
+  esac
+
+  ISO_STORAGE=$(grep -E '^\s*iso_storage_pool\s*=' "$PKRVARS_FILE" | sed 's/.*= *"\(.*\)".*/\1/')
+  if [ -n "$PROXMOX_API" ] && [ -n "$PROXMOX_TID" ] && [ -n "$PROXMOX_TSEC" ] && [ -n "$ISO_STORAGE" ]; then
+    if ! curl -sfk \
+      -H "Authorization: PVEAPIToken=${PROXMOX_TID}=${PROXMOX_TSEC}" \
+      "${PROXMOX_API}/nodes/${PROXMOX_NODE}/storage/${ISO_STORAGE}/content/${ISO_STORAGE}:iso/${ISO_FILE}" > /dev/null 2>&1; then
+      error "ISO mancante: ${ISO_STORAGE}:iso/${ISO_FILE}. Per scaricare: cd ${SCRIPT_DIR} && ./download-isos.sh"
+    fi
+  fi
+
   # Inizializza plugins Packer (legge tutta la directory)
   packer init "$SCRIPT_DIR"
 
