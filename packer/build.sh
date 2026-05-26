@@ -162,12 +162,12 @@ for dist in "${DISTRIBUTIONS[@]}"; do
 
   # Build: passa la directory così Packer carica variables.pkr.hcl + tutti i .pkr.hcl
   # Usa -only per limitare la build alla distribuzione selezionata
+  info "Build in corso — log: $BUILD_LOG"
   packer build \
     -var-file="$PKRVARS_FILE" \
     -only="$ONLY_FILTER" \
     ${PACKER_ARGS:-} \
-    "$SCRIPT_DIR" > "$BUILD_LOG" 2>&1
-
-  echo ""
-  ok "Build completata: $dist (log: $BUILD_LOG)"
+    "$SCRIPT_DIR" > "$BUILD_LOG" 2>&1 && \
+  ok "Build completata: $dist (log: $BUILD_LOG)" || \
+  error "Build FALLITA: $dist (log: $BUILD_LOG)"
 done
