@@ -1,4 +1,4 @@
-# Homelab Kubernetes su Proxmox — Guida end-to-end
+# Homelab Kubernetes + K3S su Proxmox — Guida end-to-end
 
 ## Indice
 
@@ -9,9 +9,10 @@
 5. [Fase 2 — Template VM con Packer](#fase-2--template-vm-con-packer)
 6. [Fase 3 — Infrastruttura con Terraform](#fase-3--infrastruttura-con-terraform)
 7. [Fase 4 — Cluster Kubernetes con Kubespray](#fase-4--cluster-kubernetes-con-kubespray)
-8. [Fase 5 — Verifica post-deploy](#fase-5--verifica-post-deploy)
-9. [Struttura del repository](#struttura-del-repository)
-10. [Riferimenti ai doc di dettaglio](#riferimenti-ai-doc-di-dettaglio)
+8. [Fase 5 — Cluster K3S (opzionale)](#fase-5--cluster-k3s-opzionale)
+9. [Fase 6 — Verifica post-deploy](#fase-6--verifica-post-deploy)
+10. [Struttura del repository](#struttura-del-repository)
+11. [Riferimenti ai doc di dettaglio](#riferimenti-ai-doc-di-dettaglio)
 
 ---
 
@@ -29,17 +30,29 @@
 │  │ Packer       │──SSH──▶│  │  ubuntu-22.04-base  (Packer) │   │   │
 │  │ Ansible      │        │  └──────────┬───────────────────┘   │   │
 │  │ Kubespray    │        │             │ clone (Terraform)      │   │
-│  └──────────────┘        │  ┌──────────▼───────────────────┐   │   │
-│         │                │  │  k8s-master-1  VMID 201      │   │   │
+│  │ k3s          │        │  ┌──────────▼───────────────────┐   │   │
+│  └──────────────┘        │  │  k8s-master-1  VMID 201      │   │   │
 │         │                │  │  192.168.1.210               │   │   │
 │         │ ansible        │  ├──────────────────────────────┤   │   │
-│         └───────────────▶│  │  k8s-worker-1  VMID 211      │   │   │
-│                          │  │  192.168.1.220               │   │   │
-│                          │  ├──────────────────────────────┤   │   │
-│                          │  │  k8s-worker-2  VMID 212      │   │   │
-│                          │  │  192.168.1.221               │   │   │
-│                          │  └──────────────────────────────┘   │   │
-│                          └─────────────────────────────────────┘   │
+│         ├────────────────▶│  │  k8s-worker-1  VMID 211      │   │   │
+│         │                │  │  192.168.1.220               │   │   │
+│         │ / k3s          │  ├──────────────────────────────┤   │   │
+│         │ deploy.sh      │  │  k8s-worker-2  VMID 212      │   │   │
+│         │                │  │  192.168.1.221               │   │   │
+│         │                │  └──────────────────────────────┘   │   │
+│         │                │  ┌──────────────────────────────┐   │   │
+│         │                │  │  k3s-1  VMID 44777           │   │   │
+│         │                │  │  192.168.1.160               │   │   │
+│         │                │  ├──────────────────────────────┤   │   │
+│         │                │  │  k3s-2  VMID 44778           │   │   │
+│         │                │  │  192.168.1.161               │   │   │
+│         │                │  ├──────────────────────────────┤   │   │
+│         │                │  │  k3s-3  VMID 44779           │   │   │
+│         │                │  │  192.168.1.162               │   │   │
+│         │                │  └──────────────────────────────┘   │   │
+│         │                └─────────────────────────────────────┘   │
+│         └──────────── K3S (SSH / k3s/deploy.sh) ──────────────────▶│
+│                                                                    │
 └─────────────────────────────────────────────────────────────────────┘
 
 KUBERNETES CLUSTER (overlay)
@@ -52,9 +65,9 @@ KUBERNETES CLUSTER (overlay)
 | Tool | Ruolo | Dove gira |
 |------|-------|-----------|
 | **Packer** | Crea il template VM (multi-distribuzione) su Proxmox | Bastion |
-| **Terraform** | Clona il template e crea le VM K8s | Bastion |
-| **configure-cluster.sh** | Wizard interattivo per topologia cluster (master/worker count, IP) | Bastion |
-| **Ansible / Kubespray** | Installa Kubernetes sulle VM | Bastion → nodi K8s |
+| **Terraform** | Clona il template e crea le VM (K8s + K3S) | Bastion |
+| **Ansible / Kubespray** | Installa Kubernetes sulle VM K8s | Bastion → nodi K8s |
+| **k3s/deploy.sh** | Installa K3S sulle VM K3S (due fasi: single-node → HA) | Bastion → nodi K3S |
 | **cloud-init** | Configura IP, hostname, SSH key al primo boot | Ogni VM |
 | **Calico** | Rete pod-to-pod (IPIP overlay) | Cluster K8s |
 | **containerd** | Container runtime | Ogni nodo K8s |
@@ -265,9 +278,16 @@ ssh root@192.168.1.10 "qm list | grep 9000"
 
 ## Fase 3 — Infrastruttura con Terraform
 
-Terraform clona il template VM (es. 9002 per Ubuntu 24.04) e crea le VM del cluster Kubernetes, iniettando IP statici, hostname e chiave SSH tramite cloud-init.
+Due directory Terraform separate per i due cluster:
 
-### Configurazione
+| Cluster | Directory | VM create | Comando |
+|---------|-----------|-----------|---------|
+| **K8s** (Kubespray) | `terraform/` | 3 master + 3 worker | `terraform apply -parallelism=2` |
+| **K3S** (leggero) | `terraform-k3s/` | 3 server (opzionale) | `terraform apply -parallelism=2` |
+
+### Cluster K8s (Kubespray)
+
+Terraform clona il template VM e crea le VM del cluster Kubernetes, iniettando IP statici, hostname e chiave SSH tramite cloud-init.
 
 ```bash
 cd ../terraform
@@ -297,29 +317,15 @@ master_ip_start = 210
 worker_ip_start = 220
 ```
 
-### Configurazione topologia (opzionale)
+### Deploy K8s
 
 ```bash
-# Wizard interattivo per numero master/worker, subnet, IP
-bash configure-cluster.sh
-```
-
-Se preferisci la configurazione manuale, edita direttamente `terraform.tfvars`.
-
-### Deploy
-
-```bash
-# Inizializza il provider bpg/proxmox
 terraform init
-
-# Verifica cosa verrà creato (nessuna modifica)
 terraform plan
-
-# Crea le VM (2 alla volta per non sovraccaricare lo storage)
 terraform apply -parallelism=2
 ```
 
-### Cosa crea Terraform
+### Cosa crea Terraform per K8s
 
 Con la configurazione di default (`control_plane_count=3`, `worker_count=3`):
 
@@ -339,6 +345,34 @@ Per ogni VM, Terraform:
 4. Avvia la VM → cloud-init configura la rete al boot
 
 Al termine genera `generated/kubespray-inventory.ini`.
+
+### Cluster K3S (opzionale)
+
+Se desideri un cluster K3S separato dal K8s, crea le VM K3S con la configurazione dedicata:
+
+```bash
+# Vai nella directory terraform-k3s (usa lo stesso template VM e provider Proxmox)
+cd ../terraform-k3s
+
+# I file di configurazione sono generati da init-project.sh
+# e già presenti in terraform.tfvars (topologia) e terraform.auto.tfvars (credenziali)
+
+# Inizializza
+terraform init
+
+# Crea le 3 VM K3S (k3s-1, k3s-2, k3s-3)
+terraform apply -parallelism=2
+```
+
+### Cosa crea Terraform per K3S
+
+| VM | VMID | IP | CPU | RAM | Disco |
+|----|------|----|-----|-----|-------|
+| k3s-1 | 44777 | 192.168.1.160 | 4 | 16 GB | template (32 GB) |
+| k3s-2 | 44778 | 192.168.1.161 | 4 | 16 GB | template (32 GB) |
+| k3s-3 | 44779 | 192.168.1.162 | 4 | 16 GB | template (32 GB) |
+
+Al termine genera `../k3s/inventory.ini` (sovrascrive il placeholder).
 
 ### Output
 
@@ -425,9 +459,51 @@ Al termine, il kubeconfig viene scaricato in `~/.kube/config` sul bastion.
 
 ---
 
-## Fase 5 — Verifica post-deploy
+## Fase 5 — Cluster K3S (opzionale)
 
-### Stato del cluster
+K3S è un Kubernetes leggero certificato CNCF, ideale per edge/IoT. Il cluster K3S è separato dal cluster K8s (Kubespray) e usa le VM create da `terraform-k3s/`.
+
+### Deploy (due fasi)
+
+La procedura si compone di due fasi per permettere la verifica intermedia:
+
+```bash
+cd ../k3s
+
+# Fase 1: installa K3S su k3s-1 (single-node con cluster-init per embedded etcd)
+./deploy.sh install
+
+# Verifica
+kubectl --kubeconfig ~/.kube/k3s-config get nodes
+
+# Fase 2: unisce k3s-2 e k3s-3 per formare un cluster HA a 3 server
+./deploy.sh join
+
+# Verifica finale
+kubectl --kubeconfig ~/.kube/k3s-config get nodes
+```
+
+### Cosa fa deploy.sh
+
+- **`install`**: si connette a `k3s-1`, installa K3S con `--cluster-init` (embedded etcd), salva il token di join in `.k3s-token` e il kubeconfig in `~/.kube/k3s-config`
+- **`join`**: si connette a `k3s-2` e `k3s-3`, legge il token da `.k3s-token`, unisce i nodi al cluster come server (control plane + worker, nessun taint `NoSchedule`)
+- **`reset`**: esegue `k3s-uninstall.sh` su tutti e 3 i nodi
+
+### Resoconto
+
+Al termine avrai un cluster HA a 3 nodi K3S:
+
+```bash
+kubectl --kubeconfig ~/.kube/k3s-config get nodes -o wide
+# NAME   STATUS   ROLES                  AGE   VERSION        INTERNAL-IP
+# k3s-1  Ready    control-plane,master   5m    v1.32.x        192.168.1.160
+# k3s-2  Ready    control-plane,master   3m    v1.32.x        192.168.1.161
+# k3s-3  Ready    control-plane,master   3m    v1.32.x        192.168.1.162
+```
+
+## Fase 6 — Verifica post-deploy
+
+### Stato del cluster K8s
 
 ```bash
 # Tutti i nodi devono essere Ready
@@ -492,6 +568,26 @@ kubectl exec test-b -- ping -c 3 "$POD_A_IP"
 kubectl delete pod test-a test-b
 ```
 
+### Verifica cluster K3S
+
+Se hai deployato K3S:
+
+```bash
+# Stato nodi
+kubectl --kubeconfig ~/.kube/k3s-config get nodes -o wide
+
+# Componenti di sistema
+kubectl --kubeconfig ~/.kube/k3s-config get pods -A
+
+# Deploy test
+kubectl --kubeconfig ~/.kube/k3s-config create deployment nginx --image=nginx
+kubectl --kubeconfig ~/.kube/k3s-config wait --for=condition=available deployment/nginx --timeout=60s
+kubectl --kubeconfig ~/.kube/k3s-config get pods -o wide
+
+# Cleanup
+kubectl --kubeconfig ~/.kube/k3s-config delete deployment nginx
+```
+
 ---
 
 ## Struttura del repository
@@ -527,13 +623,15 @@ home-lab/
 │   ├── base.yml                        #   cleanup template (Packer) + config base (post-clone)
 │   └── proxmox_image_import.yml
 │
-├── terraform/                          # Fase 3: VM del cluster K8s
+├── terraform/                          # Fase 3a: VM del cluster K8s
 │   ├── main.tf                         #   provider bpg/proxmox
 │   ├── variables.tf                    #   tutte le variabili
 │   ├── k8s-cluster.tf                  #   topologia cluster + inventory
 │   ├── configure-cluster.sh            #   wizard interattivo topologia
 │   ├── outputs.tf                      #   IP, comandi SSH, path inventory
 │   ├── terraform.tfvars.example        #   esempio valori
+│   ├── terraform.auto.tfvars*          #   credenziali + rete (da init-project.sh)
+│   ├── terraform.tfvars                #   topologia cluster (tracciato)
 │   ├── templates/
 │   │   └── kubespray-inventory.tftpl   #   template per hosts.ini
 │   ├── generated/                      #   (gitignored) output post-apply
@@ -541,6 +639,20 @@ home-lab/
 │       ├── main.tf
 │       ├── variables.tf
 │       └── outputs.tf
+│
+├── terraform-k3s/                      # Fase 3b: VM del cluster K3S (opzionale)
+│   ├── providers.tf                    #   provider Proxmox
+│   ├── variables.tf                    #   variabili rete, VM, risorse
+│   ├── main.tf                         #   3 VM k3s-{1..3} + inventory
+│   ├── terraform.tfvars.example        #   esempio valori
+│   ├── terraform.auto.tfvars*          #   credenziali + rete (da init-project.sh)
+│   ├── terraform.tfvars*               #   topologia K3S (generato da init-project.sh)
+│   └── templates/
+│       └── k3s-inventory.tftpl         #   template per k3s/inventory.ini
+│
+├── k3s/                                # Fase 5: deploy K3S (opzionale)
+│   ├── deploy.sh                       #   install (single-node) / join (HA) / reset
+│   └── inventory.ini                   #   generato da terraform-k3s
 │
 ├── kubespray/                          # Fase 4: installazione Kubernetes
 │   ├── deploy.sh                       #   script deploy/upgrade/remove/reset
@@ -579,6 +691,7 @@ home-lab/
 | [init-project.md](init-project.md) | Inizializzazione automatica del progetto, token, Vault |
 | [cluster-configuration.md](cluster-configuration.md) | Configurazione cluster, topologia, addon |
 | [packer-multiple-distributions.md](packer-multiple-distributions.md) | Build multi-distribuzione (Rocky, Debian, Ubuntu) |
+| `k3s/deploy.sh` | Deploy K3S: install (single-node), join (HA), reset |
 
 ---
 
@@ -596,16 +709,24 @@ bash init-project.sh
 # 2. Template Packer
 cd packer && ./build.sh
 
-# 3. Topologia cluster + VM Terraform
+# 3. Topologia cluster + VM Terraform K8s
 cd ../terraform
-bash configure-cluster.sh              # wizard topologia (opzionale)
 terraform init && terraform apply -parallelism=2
 
 # 4. Cluster Kubernetes (deploy.sh copia inventory automaticamente)
 cd ../kubespray && ./deploy.sh
 
-# 5. Verifica
+# 5. Verifica cluster K8s
 kubectl get nodes
+
+# 6. (Opzionale) VM K3S
+cd ../terraform-k3s && terraform init && terraform apply -parallelism=2
+
+# 7. (Opzionale) Deploy K3S (due fasi)
+cd ../k3s && ./deploy.sh install && ./deploy.sh join
+
+# 8. (Opzionale) Verifica cluster K3S
+kubectl --kubeconfig ~/.kube/k3s-config get nodes
 ```
 
 ### Operazioni ricorrenti
