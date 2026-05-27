@@ -88,6 +88,35 @@ pass "terraform/terraform.auto.tfvars contiene storage_pool valido"
 
 # ───────────────────────────────────────────────────────────────────────────────
 echo ""
+echo "📁 TERRAFORM K3S"
+echo "───────────────────────────────────────────────────────────────────────────"
+
+[ -f "$SCRIPT_DIR/terraform-k3s/terraform.tfvars" ] || fail "terraform-k3s/terraform.tfvars non esiste"
+pass "terraform-k3s/terraform.tfvars esiste"
+
+[ -f "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" ] || fail "terraform-k3s/terraform.auto.tfvars non esiste"
+pass "terraform-k3s/terraform.auto.tfvars esiste"
+
+grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" || \
+  fail "terraform-k3s/terraform.auto.tfvars token non valido o vuoto"
+pass "terraform-k3s/terraform.auto.tfvars contiene token valido"
+
+grep -q "k3s_subnet" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" || \
+  fail "terraform-k3s/terraform.auto.tfvars manca k3s_subnet"
+pass "terraform-k3s/terraform.auto.tfvars contiene k3s_subnet"
+
+grep -q "k3s_gateway" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" || \
+  fail "terraform-k3s/terraform.auto.tfvars manca k3s_gateway"
+pass "terraform-k3s/terraform.auto.tfvars contiene k3s_gateway"
+
+grep -q "storage_pool" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" || \
+  fail "terraform-k3s/terraform.auto.tfvars manca storage_pool"
+grep -q "storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" && \
+  fail "terraform-k3s/terraform.auto.tfvars ha PLACEHOLDER non sostituito per storage_pool"
+pass "terraform-k3s/terraform.auto.tfvars contiene storage_pool valido"
+
+# ───────────────────────────────────────────────────────────────────────────────
+echo ""
 echo "🔐 ANSIBLE VAULT"
 echo "───────────────────────────────────────────────────────────────────────────"
 
@@ -146,7 +175,7 @@ pass "Utente automation: $AUTOMATION_USERNAME@pve"
 info "Test token API Proxmox..."
 
 API_RESPONSE=$(curl -s -k -X GET \
-  "https://$PROXMOX_URL:8006/api2/json/access/users/$AUTOMATION_USERNAME@pve/token" \
+  "$PROXMOX_URL/access/users/$AUTOMATION_USERNAME@pve/token" \
   -H "Authorization: PVEAPIToken=$PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_SECRET" 2>&1 || echo '{"data":[]}')
 
 if echo "$API_RESPONSE" | grep -q "\"data\""; then

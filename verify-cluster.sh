@@ -151,6 +151,32 @@ else
   warn "Nessuna StorageClass"
 fi
 
+# ── 15. Cluster K3S (opzionale) ───────────────────────────────────────────────
+K3S_CONFIG="$HOME/.kube/k3s-config"
+if [ -f "$K3S_CONFIG" ]; then
+  echo ""
+  info "15. Cluster K3S"
+  k3s_nodes=$(kubectl --kubeconfig "$K3S_CONFIG" get nodes --no-headers 2>/dev/null || true)
+  if [ -n "$k3s_nodes" ]; then
+    k3s_total=$(echo "$k3s_nodes" | wc -l)
+    k3s_ready=$(echo "$k3s_nodes" | grep -c ' Ready' || true)
+    echo "  $k3s_total nodi, $k3s_ready Ready"
+    for node in $(echo "$k3s_nodes" | awk '{print $1}'); do
+      st=$(echo "$k3s_nodes" | awk -v n="$node" '$1==n{print $2}')
+      if [ "$st" = "Ready" ]; then pass "  $node"; else fail "  $node ($st)"; fi
+    done
+    k3s_pods=$(kubectl --kubeconfig "$K3S_CONFIG" get pods -A --no-headers 2>/dev/null | grep -c Running || true)
+    k3s_all=$(kubectl --kubeconfig "$K3S_CONFIG" get pods -A --no-headers 2>/dev/null | wc -l)
+    echo "  $k3s_pods/$k3s_all pod Running"
+  else
+    warn "K3S non raggiungibile o non installato"
+  fi
+else
+  echo ""
+  info "15. Cluster K3S"
+  warn "~/.kube/k3s-config assente — K3S non configurato"
+fi
+
 # ── Riepilogo ─────────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

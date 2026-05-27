@@ -79,3 +79,7 @@ Thumbs.db
 # ── Log ───────────────────────────────────────────────────────────────────────
 *.log
 .k3s-token
+packer/logs/
+
+# ── Artifacts Kubespray (kubeconfig, kubectl binary) ─────────────────────────
+kubespray/inventory/homelab/artifacts/
