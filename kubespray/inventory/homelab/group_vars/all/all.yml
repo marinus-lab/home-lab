@@ -1,16 +1,15 @@
 ---
 # ── Cluster ────────────────────────────────────────────────────────────────────
-cluster_name: homelab
+cluster_name: ninjam-k8s
 
 # ── Versione Kubernetes ────────────────────────────────────────────────────────
 # Verificare la compatibilità con la versione Kubespray in uso:
 # https://github.com/kubernetes-sigs/kubespray#supported-components
-kube_version: 1.36.0
+kube_version: 1.35.4
 
 # ── Versione Kubespray ─────────────────────────────────────────────────────────
 # Tag release da usare per il clone. Vuoto = branch main.
-# Impostato da init-project.sh.
-# kubespray_version: v2.31.0
+kubespray_version: v2.31.0
 
 # ── DNS upstream ───────────────────────────────────────────────────────────────
 upstream_dns_servers:
@@ -18,12 +17,10 @@ upstream_dns_servers:
   - 8.8.8.8
 
 # ── Ottimizzazione download binari ────────────────────────────────────────────
-# Scarica i binari una sola volta e li distribuisce ai nodi (più veloce).
 download_run_once: true
 download_localhost: false
 
 # ── NTP ────────────────────────────────────────────────────────────────────────
-# La sincronizzazione temporale è critica per etcd e i certificati TLS.
 ntp_enabled: true
 ntp_manage_config: true
 ntp_servers:
@@ -32,6 +29,5 @@ ntp_servers:
   - 2.it.pool.ntp.org
 
 # ── SSH ────────────────────────────────────────────────────────────────────────
-# Kubespray si connette ai nodi come utente ubuntu con escalation sudo.
 ansible_user: ubuntu
 ansible_become: true
