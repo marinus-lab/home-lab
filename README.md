@@ -177,12 +177,13 @@ home-lab/
 ├── group_vars/
 │   └── all.yml                            # Credenziali Proxmox cifrate con Ansible Vault
 │
-└── docs/                                  # Documentazione dettagliata
+├── docs/                                  # Documentazione dettagliata
     ├── init-project.md                    # Setup iniziale, credenziali, Vault
     ├── cluster-configuration.md           # Topologia, MetalLB, Dashboard
     ├── packer-multiple-distributions.md   # Ubuntu 22.04/24.04, Rocky 9
     ├── packer-ubuntu-base.md              # Dettaglio build Packer Ubuntu
-    ├── terraform-k8s-cluster.md           # Provider, moduli, cloud-init, scalabilità
+    ├── terraform-k8s-cluster.md           # Provider, moduli, cloud-init, scalabilità (K8s)
+    ├── terraform-k3s-cluster.md           # Provisioning VM K3S (NEW)
     ├── kubespray-deploy.md                # group_vars, Calico, gestione nodi
     ├── proxmox-api-user.md                # Utente API, Vault, permessi, token
     └── end-to-end.md                      # Guida completa end-to-end
@@ -302,7 +303,8 @@ Esempio di output:
 | [docs/cluster-configuration.md](docs/cluster-configuration.md) | Topologia cluster: 3 master + 3 worker, MetalLB, Dashboard |
 | [docs/packer-multiple-distributions.md](docs/packer-multiple-distributions.md) | Packer: buildare Ubuntu 22.04 / 24.04 / Debian 13 / Rocky 9 templates |
 | [docs/end-to-end.md](docs/end-to-end.md) | Guida completa: architettura, fasi, cheatsheet operativo |
-| [docs/terraform-k8s-cluster.md](docs/terraform-k8s-cluster.md) | Terraform: provider, moduli, cloud-init, scalabilità |
+| [docs/terraform-k8s-cluster.md](docs/terraform-k8s-cluster.md) | Terraform: provider, moduli, cloud-init, scalabilità (K8s) |
+| [docs/terraform-k3s-cluster.md](docs/terraform-k3s-cluster.md) | Terraform: provisioning VM K3S (NUOVO) |
 | [docs/kubespray-deploy.md](docs/kubespray-deploy.md) | Kubespray: group_vars, Calico, gestione nodi |
 | [docs/proxmox-api-user.md](docs/proxmox-api-user.md) | Utente API Proxmox: Vault, permessi, token |
 | `k3s/deploy.sh` | Deploy K3S: install (single-node), join (HA), reset |

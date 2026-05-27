@@ -672,7 +672,8 @@ home-lab/
     ├── init-project.md                 #   setup automatico progetto
     ├── packer-ubuntu-base.md           #   dettagli Packer Ubuntu
     ├── packer-multiple-distributions.md #   build multi-distribuzione
-    ├── terraform-k8s-cluster.md        #   dettagli Terraform
+    ├── terraform-k8s-cluster.md        #   dettagli Terraform K8s
+    ├── terraform-k3s-cluster.md        #   dettagli Terraform K3S
     ├── kubespray-deploy.md             #   dettagli Kubespray
     ├── cluster-configuration.md        #   topologia e addon
     └── proxmox-api-user.md             #   dettagli utente API
@@ -685,7 +686,8 @@ home-lab/
 | Documento | Contenuto |
 |-----------|-----------|
 | [packer-ubuntu-base.md](packer-ubuntu-base.md) | Funzionamento autoinstall Ubuntu, boot_command GRUB, cleanup template, troubleshooting |
-| [terraform-k8s-cluster.md](terraform-k8s-cluster.md) | Provider bpg/proxmox, for_each, cloud-init, scalabilità cluster, troubleshooting |
+| [terraform-k8s-cluster.md](terraform-k8s-cluster.md) | Provider bpg/proxmox, for_each, cloud-init, scalabilità cluster K8s, troubleshooting |
+| [terraform-k3s-cluster.md](terraform-k3s-cluster.md) | Provisioning VM K3S: topologia, variabili, inventory, integrazione con deploy.sh |
 | [kubespray-deploy.md](kubespray-deploy.md) | group_vars, Calico IPIP, venv, gestione nodi, troubleshooting |
 | [proxmox-api-user.md](proxmox-api-user.md) | Creazione utente API, Ansible Vault, permessi token |
 | [init-project.md](init-project.md) | Inizializzazione automatica del progetto, token, Vault |
