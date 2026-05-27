@@ -6,10 +6,6 @@ proxmox_token_id     = "automation@pve!packer"
 proxmox_token_secret = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 proxmox_node         = "pve"
 
-ubuntu_version = "22.04"
-vm_id          = 9000
-storage_pool   = "local-lvm"
-network_bridge = "vmbr0"
-disk_size      = "32G"
-cores          = 4
-memory         = 8192
+network_bridge       = "vmbr0"
+iso_storage_pool     = "local"
+template_storage_pool = "local-lvm"

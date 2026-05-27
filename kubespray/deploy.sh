@@ -89,10 +89,8 @@ if [ ! -d "$KUBESPRAY_DIR" ]; then
   git clone --depth 1 https://github.com/kubernetes-sigs/kubespray.git "$KUBESPRAY_DIR"
   if [ -n "${KUBESPRAY_VERSION:-}" ]; then
     info "Checkout versione $KUBESPRAY_VERSION..."
-    cd "$KUBESPRAY_DIR"
-    git fetch --tags --depth 1
-    git checkout "tags/$KUBESPRAY_VERSION"
-    cd "$OLDPWD"
+    git -C "$KUBESPRAY_DIR" fetch --tags --depth 1
+    git -C "$KUBESPRAY_DIR" checkout "tags/$KUBESPRAY_VERSION"
   fi
   info "Clone completato."
 else
@@ -104,10 +102,8 @@ else
       warn "Versione richiesta: $KUBESPRAY_VERSION"
       read -r -p "  Eseguire checkout di $KUBESPRAY_VERSION? (s/N): " confirm
       if [[ "$confirm" =~ ^[sSyY] ]]; then
-        cd "$KUBESPRAY_DIR"
-        git fetch --tags --depth 1
-        git checkout "tags/$KUBESPRAY_VERSION"
-        cd "$OLDPWD"
+        git -C "$KUBESPRAY_DIR" fetch --tags --depth 1
+        git -C "$KUBESPRAY_DIR" checkout "tags/$KUBESPRAY_VERSION"
         ok "Checkout $KUBESPRAY_VERSION completato."
       fi
     fi
@@ -192,29 +188,34 @@ _print_post_install() {
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
 
+# ── Install: installa il cluster ──────────────────────────────────────────────
+_install() {
+  info "Avvio installazione cluster Kubernetes..."
+  info "Inventory: $INVENTORY"
+  _ssh_ping_test
+  warn "Durata stimata: 20-40 minuti a seconda dell'hardware."
+  "${ANSIBLE_CMD[@]}" cluster.yml
+  info "Cluster installato con successo!"
+
+  # ── Copia kubectl e kubeconfig sul bastion ──────────────────────────────────
+  local artifacts
+  artifacts="$(dirname "$INVENTORY")/artifacts"
+  if [ -f "$artifacts/kubectl" ] && [ -f "$artifacts/admin.conf" ]; then
+    install -m 755 "$artifacts/kubectl" /usr/local/bin/kubectl
+    mkdir -p ~/.kube
+    cp "$artifacts/admin.conf" ~/.kube/config
+    chmod 600 ~/.kube/config
+    ok "kubectl e kubeconfig installati su ~/.kube/config"
+  fi
+
+  _print_post_install
+}
+
 # ── Esegui il comando richiesto ───────────────────────────────────────────────
 case "$COMMAND" in
 
   install)
-    info "Avvio installazione cluster Kubernetes..."
-    info "Inventory: $INVENTORY"
-    _ssh_ping_test
-    warn "Durata stimata: 20-40 minuti a seconda dell'hardware."
-    "${ANSIBLE_CMD[@]}" cluster.yml
-    info "Cluster installato con successo!"
-
-    # ── Copia kubectl e kubeconfig sul bastion ──────────────────────────────────
-    local artifacts
-    artifacts="$(dirname "$INVENTORY")/artifacts"
-    if [ -f "$artifacts/kubectl" ] && [ -f "$artifacts/admin.conf" ]; then
-      install -m 755 "$artifacts/kubectl" /usr/local/bin/kubectl
-      mkdir -p ~/.kube
-      cp "$artifacts/admin.conf" ~/.kube/config
-      chmod 600 ~/.kube/config
-      ok "kubectl e kubeconfig installati su ~/.kube/config"
-    fi
-
-    _print_post_install
+    _install
     ;;
 
   upgrade)

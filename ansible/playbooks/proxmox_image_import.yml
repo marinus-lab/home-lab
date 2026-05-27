@@ -6,13 +6,13 @@
   tasks:
     - name: Import image to Proxmox as a VM
       community.general.proxmox:
-        api_user: "{{ lookup('env','PPROXMOX_USER') }}"
-        api_password: "{{ lookup('env','PPROXMOX_PASSWORD') }}"
-        api_host: "{{ lookup('env','PPROXMOX_HOST') }}"
-        node: "{{ lookup('env','PPROXMOX_NODE') | default('pve') }}"
+        api_user: "{{ lookup('env','PROXMOX_USER') }}"
+        api_password: "{{ lookup('env','PROXMOX_PASSWORD') }}"
+        api_host: "{{ lookup('env','PROXMOX_HOST') }}"
+        node: "{{ lookup('env','PROXMOX_NODE') | default('pve') }}"
         vmid: 9001
         name: "{{ template_name }}"
-        storage: "{{ lookup('env','PPROXMOX_STORAGE') | default('local-lvm') }}"
+        storage: "{{ lookup('env','PROXMOX_STORAGE') | default('local-lvm') }}"
         iso: ""
         clone: no
         force: yes
@@ -25,10 +25,10 @@
 
     - name: Convert VM to template
       community.general.proxmox:
-        api_user: "{{ lookup('env','PPROXMOX_USER') }}"
-        api_password: "{{ lookup('env','PPROXMOX_PASSWORD') }}"
-        api_host: "{{ lookup('env','PPROXMOX_HOST') }}"
-        node: "{{ lookup('env','PPROXMOX_NODE') | default('pve') }}"
+        api_user: "{{ lookup('env','PROXMOX_USER') }}"
+        api_password: "{{ lookup('env','PROXMOX_PASSWORD') }}"
+        api_host: "{{ lookup('env','PROXMOX_HOST') }}"
+        node: "{{ lookup('env','PROXMOX_NODE') | default('pve') }}"
         vmid: 9001
         template: true
         state: present

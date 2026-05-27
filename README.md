@@ -163,7 +163,7 @@ home-lab/
 │       ├── hosts.ini                      # Inventory (generato da Terraform)
 │       └── group_vars/
 │           ├── all/
-│           │   ├── all.yml                # Cluster name, K8s v1.30.4, DNS, NTP, SSH
+│           │   ├── all.yml                # Cluster name, K8s v1.35.4, DNS, NTP, SSH
 │           │   └── containerd.yml         # Runtime containerd
 │           └── k8s_cluster/
 │               ├── k8s-cluster.yml        # CIDR, kube-proxy, DNS, NTP, registry, certificati

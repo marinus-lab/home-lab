@@ -84,7 +84,7 @@ d-i apt-setup/services-select multiselect security, updates
 
 ### Package selection
 tasksel tasksel/first multiselect standard
-d-i pkgsel/include string openssh-server qemu-guest-agent cloud-init cloud-utils curl wget git vim python3 python3-pip xfsprogs
+d-i pkgsel/include string openssh-server qemu-guest-agent cloud-init cloud-utils curl wget git vim python3 python3-pip xfsprogs apt-transport-https ca-certificates gnupg lsb-release
 d-i pkgsel/install-language-support boolean false
 d-i pkgsel/upgrade select none
 
