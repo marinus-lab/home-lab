@@ -81,35 +81,32 @@ kubespray/
 ## Flusso completo end-to-end
 
 ```
-1. setup-bastion.sh
-   └── Crea ~/kubespray-env (venv con dipendenze Ansible/Kubespray)
-
-2. init-project.sh
-   └── Prompt interattivo: scegli Kubespray version, K8s version, cluster name
+1. init-project.sh
+   ├── Prompt interattivo: Proxmox creds, rete, storage
+   ├── Crea ~/kubespray-env (venv con dipendenze Ansible/Kubespray)
+   ├── Crea token API Proxmox per Packer e Terraform
+   └── Prompt: scegli Kubespray version, K8s version, cluster name
    └── Genera kubespray/inventory/homelab/group_vars/all/all.yml
 
-3. create_proxmox_user.yml  (ansible-playbook)
-   └── Crea token API Proxmox per Terraform e Packer
-
-4. packer/build.sh
+2. packer/build.sh
    └── Costruisce template Ubuntu 22.04 (VMID 9000) su Proxmox
 
-5. cd terraform && terraform init && terraform apply -parallelism=2
+3. cd terraform && terraform init && terraform apply -parallelism=2
    ├── Clona template → VM k8s-master-*, k8s-worker-*
    ├── Configura cloud-init (IP statico, SSH key)
    └── Genera terraform/generated/kubespray-inventory.ini
 
-6. cp terraform/generated/kubespray-inventory.ini \
+4. cp terraform/generated/kubespray-inventory.ini \
        kubespray/inventory/homelab/hosts.ini
 
-7. cd kubespray && ./deploy.sh
+5. cd kubespray && ./deploy.sh
    ├── Legge kubespray_version da all.yml
    ├── Clona / checkout tag Kubespray richiesto
    ├── Applica patch automatiche (nerdctl stderr, admin.conf insecure-skip-tls-verify)
    ├── Attiva ~/kubespray-env
    └── ansible-playbook cluster.yml → installa K8s su tutti i nodi
 
-8. kubectl get nodes     ← cluster pronto
+6. kubectl get nodes     ← cluster pronto
 ```
 
 ---
