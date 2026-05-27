@@ -1,6 +1,8 @@
-# Homelab Kubernetes su Proxmox
+# Homelab Kubernetes + K3S su Proxmox
 
-Infrastructure-as-Code per un cluster Kubernetes su Proxmox VE, costruito con Packer, Terraform e Kubespray.
+Infrastructure-as-Code per cluster Kubernetes su Proxmox VE:
+- **K8s** (Kubespray): cluster HA con 3 master + 3 worker, Calico, kube-vip, MetalLB
+- **K3S** (leggero): cluster HA con 3 server, embedded etcd (opzionale, separato)
 
 ## Getting Started from scratch (fresh Proxmox)
 
@@ -34,9 +36,11 @@ bash init-project.sh
 |------|----------|-------|
 | Proxmox VE | 7.x / 8.x | Hypervisor |
 | Packer | ≥ 1.9 | Build template VM (Ubuntu 22.04/24.04, Debian 13, Rocky 9) |
-| Terraform | ≥ 1.5 | Provisioning VM dal template |
-| Kubespray | latest | Installazione Kubernetes |
-| Kubernetes | v1.36.0 | Container orchestration |
+| Terraform | ≥ 1.5 | Provisioning VM dal template (K8s + K3S) |
+| Kubespray | v2.31.0 | Installazione Kubernetes |
+| K3S | latest | Kubernetes leggero (cluster separato) |
+| Kubernetes | v1.35.4 | Container orchestration (via Kubespray, cluster K8s) |
+| K3S | latest | Container orchestration (via install script, cluster K3S separato) |
 | Calico | bundled | CNI (overlay IPIP) |
 | containerd | bundled | Container runtime |
 | kube-vip | bundled | HA control plane (VIP 192.168.0.80 via ARP) |
@@ -64,19 +68,28 @@ Bastion ──API──▶ Proxmox VE
                     │       ├─ clone ──▶ k8s-master-3  192.168.0.152  (16GB RAM, 4 CPU)
                     │       ├─ clone ──▶ k8s-worker-1  192.168.0.155  (16GB RAM, 4 CPU)
                     │       ├─ clone ──▶ k8s-worker-2  192.168.0.156  (16GB RAM, 4 CPU)
-                    │       └─ clone ──▶ k8s-worker-3  192.168.0.157  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-3  192.168.0.157  (16GB RAM, 4 CPU)
+                    │       │
+                    │       └─ clone ──▶ k3s-1  192.168.0.160  (16GB RAM, 4 CPU)  ◄── K3S
+                    │         └─ clone ──▶ k3s-2  192.168.0.161  (16GB RAM, 4 CPU)  ◄──
+                    │           └─ clone ──▶ k3s-3  192.168.0.162  (16GB RAM, 4 CPU)  ◄──
                     │
-Bastion ──SSH──▶ 6 nodi K8s  (Kubespray installa il cluster HA)
+Bastion ──SSH──▶ 6 nodi K8s  (Kubespray)
+Bastion ──SSH──▶ 3 nodi K3S  (k3s/deploy.sh)
                     │
                     ├─ kube-vip: 192.168.0.80 (VIP control plane via ARP)
                     ├─ MetalLB: 192.168.0.120-192.168.0.135 (load balancing servizi)
                     └─ Registry locale immagini su ogni nodo
 ```
 
-**Topologia cluster:**
+**Topologia cluster K8s:**
 - **3 nodi Control Plane** (HA etcd): k8s-master-1/2/3
 - **3 nodi Worker**: k8s-worker-1/2/3
-- **Totale**: 6 VM, ognuna con 16GB RAM + 4 CPU
+- **Totale K8s**: 6 VM, ognuna con 16GB RAM + 4 CPU
+
+**Topologia cluster K3S (opzionale):**
+- **3 nodi Server** (HA embedded etcd): k3s-1/2/3 (control plane + worker, nessun taint)
+- **Totale K3S**: 3 VM, ognuna con 16GB RAM + 4 CPU
 
 ## Struttura del repository
 
@@ -108,7 +121,7 @@ home-lab/
 │   └── scripts/
 │       └── install-tools.sh               # Provisioner: apt update/upgrade + cleanup
 │
-├── terraform/                             # Provisioning VM cluster K8s
+├── terraform/                             # Provisioning VM cluster K8s (Kubespray)
 │   ├── main.tf                            # Provider proxmox (bpg), locals (SSH, CIDR)
 │   ├── variables.tf                       # Variabili: Proxmox, rete, storage, master/worker
 │   ├── k8s-cluster.tf                     # Core: topologia dinamica, moduli VM, inventory
@@ -128,6 +141,20 @@ home-lab/
 │   │   └── outputs.tf                     # IP, nome, VM ID
 │   └── templates/
 │       └── kubespray-inventory.tftpl      # Template Ansible inventory per Kubespray
+│
+├── terraform-k3s/                         # Provisioning VM cluster K3S
+│   ├── providers.tf                       # Provider Proxmox (stesso modulo proxmox-vm)
+│   ├── variables.tf                       # Variabili: ID VM, IP, risorse, rete
+│   ├── main.tf                            # 3 VM k3s-{1..3} + inventory generato
+│   ├── terraform.tfvars*                  # Topologia (generato da init-project.sh)
+│   ├── terraform.tfvars.example           # Template topologia
+│   ├── terraform.auto.tfvars*             # Credenziali + rete (*in .gitignore)
+│   └── templates/
+│       └── k3s-inventory.tftpl            # Template inventory per k3s/deploy.sh
+│
+├── k3s/                                   # Deploy K3S
+│   ├── deploy.sh                          # Comandi: install | join | reset
+│   └── inventory.ini                      # Inventory (generato da terraform-k3s)
 │
 ├── kubespray/                             # Deploy Kubernetes
 │   ├── ansible.cfg                        # Config Ansible (ruoli, SSH, parallelismo)
@@ -209,12 +236,24 @@ terraform apply -parallelism=2
 # 9. Kubespray — installa Kubernetes
 cd ../kubespray && ./deploy.sh
 
-# 10. Verifica cluster
+# 10. Verifica cluster K8s
 bash ../verify-cluster.sh
 # Oppure manualmente:
 # kubectl get nodes
 # kubectl get pods -A
 # kubectl get svc -A  # verifica MetalLB
+
+# 11. (Opzionale) Terraform — crea il cluster K3S (3 VM)
+cd ../terraform-k3s && terraform init && terraform apply -parallelism=2
+
+# 12. (Opzionale) K3S — deploy (due fasi)
+cd ../k3s && ./deploy.sh install     # Fase 1: single-node su k3s-1
+kubectl --kubeconfig ~/.kube/k3s-config get nodes
+./deploy.sh join                     # Fase 2: join k3s-2, k3s-3 per HA
+
+# 13. (Opzionale) Verifica cluster K3S
+kubectl --kubeconfig ~/.kube/k3s-config get nodes
+kubectl --kubeconfig ~/.kube/k3s-config get pods -A
 ```
 
 **Nota:** `init-project.sh` automatizza la creazione di credenziali e token API. 
@@ -266,6 +305,7 @@ Esempio di output:
 | [docs/terraform-k8s-cluster.md](docs/terraform-k8s-cluster.md) | Terraform: provider, moduli, cloud-init, scalabilità |
 | [docs/kubespray-deploy.md](docs/kubespray-deploy.md) | Kubespray: group_vars, Calico, gestione nodi |
 | [docs/proxmox-api-user.md](docs/proxmox-api-user.md) | Utente API Proxmox: Vault, permessi, token |
+| `k3s/deploy.sh` | Deploy K3S: install (single-node), join (HA), reset |
 
 ## Configurazione cluster
 
@@ -275,6 +315,8 @@ I parametri del cluster sono distribuiti in quattro file:
 |------|----------------|-------------|
 | `terraform/terraform.auto.tfvars` | Subnet K8s, gateway, IP base master/worker | `init-project.sh` |
 | `terraform/terraform.tfvars` | Conteggio master/worker, risorse VM (CPU/RAM), storage | Manuale |
+| `terraform-k3s/terraform.auto.tfvars` | Subnet K3S, gateway, IP pool | `init-project.sh` |
+| `terraform-k3s/terraform.tfvars` | Conteggio nodi K3S (3), risorse VM | Manuale |
 | `kubespray/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml` | CIDR pod, kube-proxy (ipvs), DNS, NTP, registry, certificati | Manuale |
 | `kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml` | Helm, Dashboard, Ingress-nginx, cert-manager, MetalLB, kube-vip | Manuale |
 
@@ -292,3 +334,14 @@ I parametri del cluster sono distribuiti in quattro file:
 - **Pod subnet**: `10.244.0.0/16`
 - **Service subnet**: `10.96.0.0/12`
 - **Load balancer**: MetalLB con range `192.168.0.120-192.168.0.135`
+
+### Default K3S
+
+- **3 server** (HA con embedded etcd) — configurabile con `k3s_count` in `terraform-k3s/terraform.tfvars`
+- **Risorse per nodo**: 16GB RAM + 4 CPU — modificabili in `terraform-k3s/terraform.tfvars`
+- **Storage**: ereditato dal template (32GB)
+- **Subnet K3S**: `192.168.0.0/24` — stessa subnet K8s
+- **Gateway**: `192.168.0.1`
+- **K3S VM IP**: primo da `.160` (es. `.160`, `.161`, `.162`) — configurabile in `terraform-k3s/terraform.tfvars`
+- **VM ID**: primo da `44777` (es. `44777`, `44778`, `44779`) — configurabile in `terraform-k3s/terraform.tfvars`
+- **Tutti i nodi** sono control plane + worker (nessun taint NoSchedule)
