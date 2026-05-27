@@ -246,15 +246,13 @@ for tag in "${KUBESPRAY_TAGS[@]}"; do
   # Prova nuovo path (v2.30+)
   k8s_ver=$(curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kubespray/$tag/roles/kubespray_defaults/vars/main/checksums.yml" 2>/dev/null | \
     awk '/^kubelet_checksums:/{f=1} f && /^  amd64:/{a=1; next} a && /^    [0-9]/{print; exit}' | \
-    sed 's/.*://' | tr -d ' ' || true)
+    grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
   # Fallback path (v2.26.x)
   if [ -z "$k8s_ver" ]; then
     k8s_ver=$(curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kubespray/$tag/roles/kubespray-defaults/defaults/main/checksums.yml" 2>/dev/null | \
       awk '/^kubelet_checksums:/{f=1} f && /^  amd64:/{a=1; next} a && /^    [0-9]/{print; exit}' | \
-      sed 's/.*://' | tr -d ' ' || true)
+      grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
   fi
-  # Estrai solo numero versione (senza sha)
-  k8s_ver=$(echo "$k8s_ver" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
   [ -z "$k8s_ver" ] && k8s_ver="N/D"
   KUBESPRAY_MAX_K8S+=("$k8s_ver")
 done
