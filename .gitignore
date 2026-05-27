@@ -10,7 +10,9 @@ terraform/terraform.auto.tfvars
 terraform/generated/
 terraform-k3s/.terraform/
 terraform-k3s/terraform.auto.tfvars
+terraform-k3s/terraform.tfvars
 terraform-k3s/generated/
+k3s/inventory.ini
 crash.log
 crash.*.log
 override.tf

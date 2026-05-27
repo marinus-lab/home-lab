@@ -480,6 +480,31 @@ EOF
 
 ok "terraform-k3s/terraform.auto.tfvars creato"
 
+# ── Genera terraform-k3s/terraform.tfvars (topologia — pubblico) ───────────────
+cat > "$SCRIPT_DIR/terraform-k3s/terraform.tfvars" << EOF
+# Configurazione cluster K3S — Generato da init-project.sh
+
+# ── Rete ───────────────────────────────────────────────────────────────────────
+proxmox_node    = "PLACEHOLDER_NODO"
+k3s_subnet      = "$K8S_SUBNET"
+k3s_gateway     = "$K8S_GATEWAY"
+
+# ── Template Packer ─────────────────────────────────────────────────────────────
+template_vm_id = 9002
+
+# ── Topologia ───────────────────────────────────────────────────────────────────
+k3s_count       = 3
+k3s_vm_id_start = 44777
+k3s_ip_start    = 160
+
+# ── Risorse (stesse dei master K8s) ─────────────────────────────────────────────
+k3s_cpu_cores = 4
+k3s_memory    = 16384
+k3s_disk_size = 0
+EOF
+
+ok "terraform-k3s/terraform.tfvars creato"
+
 # ── Genera terraform/terraform.tfvars (topologia — pubblico) ────────────────────
 info "Generazione terraform/terraform.tfvars..."
 
@@ -838,6 +863,7 @@ sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DI
 # Aggiorna placeholder in terraform-k3s
 sed -i "s|\"PLACEHOLDER_GENERATO_DA_CURL\"|\"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"
 sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"
+sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform-k3s/terraform.tfvars"
 sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"
 
 ok "Token, nodo e storage Proxmox inseriti nei file di configurazione"
@@ -854,6 +880,7 @@ echo "  • packer/packer.pkrvars.hcl             (token Packer)"
 echo "  • terraform/terraform.auto.tfvars       (credenziali + rete Kubernetes)"
 echo "  • terraform/terraform.tfvars            (topologia cluster - pubblico)"
 echo "  • terraform-k3s/terraform.auto.tfvars   (credenziali + rete K3S)"
+echo "  • terraform-k3s/terraform.tfvars        (topologia K3S - pubblico)"
 echo "  • kubespray/inventory/.../all.yml       (config cluster K8s)"
 echo ""
 echo "Configurazione Kubernetes:"
