@@ -10,8 +10,8 @@ Questo documento descrive la configurazione attuale del cluster Kubernetes e com
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Cluster Kubernetes                        │
-│                                                              │
+│                    Cluster Kubernetes                       │
+│                                                             │
 │  ┌──────────┬──────────┬──────────┐                         │
 │  │ Master 1 │ Master 2 │ Master 3 │  (HA etcd + API server) │
 │  └──────────┴──────────┴──────────┘                         │
@@ -21,8 +21,8 @@ Questo documento descrive la configurazione attuale del cluster Kubernetes e com
 │  │ Worker 1 │ Worker 2 │ Worker 3 │  (carichi di lavoro)    │
 │  └──────────┴──────────┴──────────┘                         │
 │           (192.168.1.220-222)                               │
-│                                                              │
-│  MetalLB: 192.168.0.120-192.168.0.135 (16 IP)              │
+│                                                             │
+│  MetalLB: 192.168.0.120-192.168.0.135 (16 IP)               │
 │  Dashboard: Kubernetes Dashboard UI                         │
 └─────────────────────────────────────────────────────────────┘
 ```

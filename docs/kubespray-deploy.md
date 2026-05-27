@@ -85,7 +85,7 @@ kubespray/
    ├── Prompt interattivo: Proxmox creds, rete, storage
    ├── Crea ~/kubespray-env (venv con dipendenze Ansible/Kubespray)
    ├── Crea token API Proxmox per Packer e Terraform
-   └── Prompt: scegli Kubespray version, K8s version, cluster name
+   ├── Prompt: scegli Kubespray version, K8s version, cluster name
    └── Genera kubespray/inventory/homelab/group_vars/all/all.yml
 
 2. packer/build.sh

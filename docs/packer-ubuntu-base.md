@@ -71,8 +71,8 @@ packer/
 ┌─────────────────────────────────────────────────────────┐
 │  build.sh                                               │
 │  1. Genera hash SHA-512 della password ubuntu           │
-│  2. Sostituisce i segnaposto in ubuntu-user-data.tpl     │
-│     → produce http/user-data                           │
+│  2. Sostituisce i segnaposto in ubuntu-user-data.tpl    │
+│     → produce http/user-data                            │
 │  3. packer init  (scarica i plugin proxmox + ansible)   │
 │  4. packer build ubuntu-24.04.pkr.hcl (o altra distro)  │
 └─────────────────────────────┬───────────────────────────┘
