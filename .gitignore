@@ -8,6 +8,9 @@ terraform/terraform.auto.tfvars
 *.tfstate.backup
 # inventory Kubespray generato da terraform apply
 terraform/generated/
+terraform-k3s/.terraform/
+terraform-k3s/terraform.auto.tfvars
+terraform-k3s/generated/
 crash.log
 crash.*.log
 override.tf
@@ -73,3 +76,4 @@ Thumbs.db
 
 # ── Log ───────────────────────────────────────────────────────────────────────
 *.log
+.k3s-token

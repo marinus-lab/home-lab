@@ -1,0 +1,7 @@
+# Generato automaticamente da Terraform — non modificare manualmente.
+# Copiare in: k3s/inventory.ini
+
+[k3s_cluster]
+%{~ for name, ip in nodes }
+${name} ansible_host=${ip} ansible_user=ubuntu
+%{~ endfor }

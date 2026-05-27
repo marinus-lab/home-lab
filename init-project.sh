@@ -457,6 +457,29 @@ EOF
 
 ok "terraform/terraform.auto.tfvars creato (credenziali + rete Kubernetes)"
 
+# ── Genera terraform-k3s/terraform.auto.tfvars (credenziali) ────────────────────
+info "Generazione terraform-k3s/terraform.auto.tfvars..."
+mkdir -p "$SCRIPT_DIR/terraform-k3s"
+
+cat > "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" << EOF
+# CREDENZIALI E CONFIGURAZIONE RETE — Generato automaticamente da init-project.sh
+
+# ── Credenziali Proxmox ────────────────────────────────────────────────────────
+proxmox_url          = "https://$PROXMOX_HOST:8006/api2/json"
+proxmox_token_id     = "$API_USERNAME@pve!terraform"
+proxmox_token_secret = "PLACEHOLDER_GENERATO_DA_CURL"
+proxmox_node         = "PLACEHOLDER_NODO"
+
+# ── Rete K3S ───────────────────────────────────────────────────────────────────
+k3s_subnet       = "$K8S_SUBNET"
+k3s_gateway      = "$K8S_GATEWAY"
+
+# ── Storage Proxmox (rilevato dinamicamente) ──────────────────────────────────
+storage_pool = "PLACEHOLDER_TEMPLATE_POOL"
+EOF
+
+ok "terraform-k3s/terraform.auto.tfvars creato"
+
 # ── Genera terraform/terraform.tfvars (topologia — pubblico) ────────────────────
 info "Generazione terraform/terraform.tfvars..."
 
@@ -812,6 +835,11 @@ sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform/terra
 sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform/terraform.tfvars"
 sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"
 
+# Aggiorna placeholder in terraform-k3s
+sed -i "s|\"PLACEHOLDER_GENERATO_DA_CURL\"|\"$TERRAFORM_SECRET\"|g" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"
+sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"
+sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"
+
 ok "Token, nodo e storage Proxmox inseriti nei file di configurazione"
 
 # ── Riepilogo ─────────────────────────────────────────────────────────────────
@@ -825,6 +853,7 @@ echo "  • group_vars/all.yml                    (credenziali Proxmox cifrate)"
 echo "  • packer/packer.pkrvars.hcl             (token Packer)"
 echo "  • terraform/terraform.auto.tfvars       (credenziali + rete Kubernetes)"
 echo "  • terraform/terraform.tfvars            (topologia cluster - pubblico)"
+echo "  • terraform-k3s/terraform.auto.tfvars   (credenziali + rete K3S)"
 echo "  • kubespray/inventory/.../all.yml       (config cluster K8s)"
 echo ""
 echo "Configurazione Kubernetes:"
@@ -852,5 +881,15 @@ echo "  1. (Opzionale) Modifica topologia: vim terraform/terraform.tfvars"
 echo "  2. cd packer && ./build.sh              (crea template VM)"
 echo "  3. cd ../terraform && terraform init    (inizializza provider)"
 echo "  4. terraform apply -parallelism=2       (crea VM K8s)"
-echo "  5. cd ../kubespray && ./deploy.sh       (installa Kubernetes)"
+echo ""
+echo "  Per creare anche le VM K3S:"
+echo "    5. cd ../terraform-k3s && terraform init"
+echo "    6. terraform apply -parallelism=2"
+echo ""
+echo "  Deploy K8s:"
+echo "    7. cd ../kubespray && ./deploy.sh"
+echo ""
+echo "  Deploy K3S:"
+echo "    8. cd ../k3s && ./deploy.sh install"
+echo "    9. ./deploy.sh join"
 echo ""
