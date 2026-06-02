@@ -56,7 +56,7 @@ phase_end() {
     local name_sed="${name//&/\\&}"
     set_phase_status "$idx" "done"
     if [ -n "$version" ]; then
-        [ -f "$STATUS_FILE" ] && sed -i "s/^$idx:done:$name:$/$idx:done:$name_sed:$version/" "$STATUS_FILE" || true
+        [ -f "$STATUS_FILE" ] && sed -i "s|^$idx:done:$name:$|$idx:done:$name_sed:$version|" "$STATUS_FILE" || true
         echo "  ✅ $name — $version"
     else
         echo "  ✅ $name — done"
@@ -252,13 +252,13 @@ phase_end 3 "$NODE_VER"
 # 5. GitHub Copilot CLI
 phase_start 4
 sudo npm i -g @github/copilot
-COPILOT_VER="$(npm list -g @github/copilot --depth=0 2>/dev/null | awk -F'@' '/copilot/{print $2}')"
+COPILOT_VER="$(npm list -g @github/copilot --depth=0 2>/dev/null | awk -F'@' '/copilot/{print $NF}')"
 phase_end 4 "$COPILOT_VER"
 
 # 6. Gemini CLI
 phase_start 5
 sudo npm i -g @google/gemini-cli
-GEMINI_VER="$(npm list -g @google/gemini-cli --depth=0 2>/dev/null | awk -F'@' '/gemini-cli/{print $2}')"
+GEMINI_VER="$(npm list -g @google/gemini-cli --depth=0 2>/dev/null | awk -F'@' '/gemini-cli/{print $NF}')"
 phase_end 5 "$GEMINI_VER"
 
 # 7. OpenCode AI Agent
@@ -278,13 +278,13 @@ cat > "$HOME/.opencode/tui.json" << 'EOF'
   "plugin": ["opencode-working-memory"]
 }
 EOF
-OPENCODE_VER="$(opencode --version 2>&1 || npm list -g opencode-ai --depth=0 2>/dev/null | awk -F'@' '/opencode-ai/{print $2}')"
-phase_end 4 "$OPENCODE_VER"
+OPENCODE_VER="$(opencode --version 2>&1 || npm list -g opencode-ai --depth=0 2>/dev/null | awk -F'@' '/opencode-ai/{print $NF}')"
+phase_end 6 "$OPENCODE_VER"
 
 # 8. OpenClaude
 phase_start 7
 sudo npm i -g @gitlawb/openclaude
-OPENCLAUDE_VER="$(npm list -g @gitlawb/openclaude --depth=0 2>/dev/null | awk -F'@' '/openclaude/{print $2}')"
+OPENCLAUDE_VER="$(npm list -g @gitlawb/openclaude --depth=0 2>/dev/null | awk -F'@' '/openclaude/{print $NF}')"
 phase_end 7 "$OPENCLAUDE_VER"
 
 # 9. Ansible & Proxmox Integration
@@ -372,7 +372,7 @@ fi
 export LESSOPEN='|~/.lessfilter %s'
 export LESS='-R'
 echo "✅ less will use pygmentize (rrt) for syntax-highlighted file viewing."
-phase_end 10
+phase_end 12
 
 echo ""
 echo "================================================================="
