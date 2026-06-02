@@ -529,10 +529,10 @@ ssh root@<IP_PROXMOX> "echo OK"
 
 ### "Token not generated"
 
-Il playbook `create_proxmox_user.yml` è fallito. Controlla il log di Ansible:
+Il playbook `ansible/playbooks/create_proxmox_user.yml` è fallito. Controlla il log di Ansible:
 
 ```bash
-ansible-playbook create_proxmox_user.yml \
+ansible-playbook ansible/playbooks/create_proxmox_user.yml \
   --vault-password-file ~/.vault_pass \
   -e "proxmox_host=<IP>"  # fornisci di nuovo l'IP
 ```
@@ -555,7 +555,7 @@ ansible-vault view group_vars/all.yml --vault-password-file ~/.vault_pass
 
 Se vuoi usare un nome diverso da quello che hai scelto:
 
-1. Modifica `create_proxmox_user.yml` variabile `api_username`
+1. Modifica `ansible/playbooks/create_proxmox_user.yml` variabile `api_username`
 2. Riesegui lo script
 3. Cancella il vecchio utente da Proxmox manualmente
 

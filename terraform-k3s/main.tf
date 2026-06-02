@@ -1,5 +1,5 @@
 locals {
-  ssh_public_key = trimspace(file(var.ssh_public_key_path))
+  ssh_public_key = trimspace(file(pathexpand(var.ssh_public_key_path)))
   cidr_prefix    = split("/", var.k3s_subnet)[1]
 
   k3s_nodes = {

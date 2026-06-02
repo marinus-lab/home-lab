@@ -48,7 +48,7 @@ Packer template (es. VMID 9002 per Ubuntu 24.04)
 ## Prerequisiti
 
 1. **Template Packer** — VMID corrispondente alla distribuzione scelta presente su Proxmox (es. 9002 per Ubuntu 24.04, creato da `packer/build.sh`)
-2. **Token API Proxmox** — con ruolo `PVEAdmin` sul nodo (creato da `create_proxmox_user.yml`)
+2. **Token API Proxmox** — con ruolo `PVEAdmin` sul nodo (creato da `ansible/playbooks/create_proxmox_user.yml`)
 3. **Chiave SSH** — `~/.ssh/id_rsa.pub` presente sul bastion (generata da `setup-bastion.sh`)
 4. **Terraform** ≥ 1.5.0 installato sul bastion (installato da `setup-bastion.sh`)
 

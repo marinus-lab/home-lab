@@ -32,7 +32,7 @@ metallb_config:
   address_pools:
     primary:
       ip_range:
-        - 192.168.0.120-192.168.0.135
+        - 192.168.1.120-192.168.1.135
       auto_assign: true
       avoid_buggy_ips: true
   layer2:
@@ -44,7 +44,7 @@ metallb_config:
 kube_vip_enabled: true
 kube_vip_arp_enabled: true
 kube_vip_controlplane_enabled: true
-kube_vip_address: 192.168.0.80
+kube_vip_address: 192.168.1.80
 kube_vip_interface: eth0
 kube_vip_services_enabled: false
 loadbalancer_apiserver:

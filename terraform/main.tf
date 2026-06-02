@@ -22,7 +22,7 @@ provider "proxmox" {
 
 locals {
   # Legge la chiave pubblica SSH dal file; generata da setup-bastion.sh in ~/.ssh/id_rsa.pub
-  ssh_public_key = trimspace(file(var.ssh_public_key_path))
+  ssh_public_key = trimspace(file(pathexpand(var.ssh_public_key_path)))
 
   # Estrae il prefisso CIDR dalla subnet  (es. "192.168.1.0/24" → "24")
   cidr_prefix = split("/", var.k8s_subnet)[1]

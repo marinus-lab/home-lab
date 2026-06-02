@@ -141,7 +141,7 @@ Il file è generato da Terraform con `templatefile()` a partire da `terraform/te
 
 ### `group_vars/all/all.yml`
 
-**`kube_version: 1.36.0`**
+**`kube_version: 1.35.4`**
 La versione di Kubernetes da installare (senza prefisso `v`). Kubespray usa questo valore per scaricare i binari corretti (`kubeadm`, `kubelet`, `kubectl`). Verificare la [matrice di compatibilità Kubespray](https://github.com/kubernetes-sigs/kubespray#supported-components) prima di cambiare versione.
 
 **`kubespray_version: v2.31.0`**
@@ -218,9 +218,9 @@ Addon abilitati di default:
 | `helm_enabled` | ✅ | Package manager Kubernetes |
 | `metrics_server_enabled` | ✅ | `kubectl top`, HPA |
 | `dashboard_enabled` | ✅ | Dashboard web K8s |
-| `ingress_nginx_enabled` | ❌ | Ingress Controller HTTP/HTTPS |
-| `cert_manager_enabled` | ❌ | Certificati TLS automatici |
-| `metallb_enabled` | ✅ | LoadBalancer per homelab (range: 192.168.0.120-192.168.0.135) |
+| `ingress_nginx_enabled` | ✅ | Ingress Controller HTTP/HTTPS |
+| `cert_manager_enabled` | ✅ | Certificati TLS automatici |
+| `metallb_enabled` | ✅ | LoadBalancer per homelab (range: 192.168.1.120-192.168.1.135) |
 | `local_volume_provisioner_enabled` | ❌ | Storage class hostPath |
 
 ---
