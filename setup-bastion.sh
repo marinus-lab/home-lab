@@ -23,6 +23,7 @@ PHASE_NAMES=(
     "Terraform & Packer"
     "Kubespray Python Environment"
     "SSH Key Generation"
+    "GitHub CLI (gh)"
     "less + Pygmentize Configuration"
 )
 
@@ -336,8 +337,22 @@ else
 fi
 phase_end 11
 
-# 13. less + Pygmentize configuration (rrt theme)
+# 13. GitHub CLI (gh) installation and authentication
 phase_start 12
+sudo apt-get install -y gh
+GH_VER="$(gh --version 2>&1 | head -1 | awk '{print $3}')"
+if gh auth status &>/dev/null; then
+    echo "✅ GitHub CLI already authenticated."
+else
+    echo "🔐 GitHub CLI not authenticated. Starting device flow login..."
+    echo "   Follow the instructions printed below to authenticate."
+    echo ""
+    gh auth login --hostname github.com --git-protocol ssh || echo "⚠ Login deferred — run 'gh auth login' manually later."
+fi
+phase_end 12 "$GH_VER"
+
+# 14. less + Pygmentize configuration (rrt theme)
+phase_start 13
 cat > "$HOME/.lessfilter" << 'LESSFILTER'
 #!/bin/bash
 case "$1" in
@@ -372,7 +387,7 @@ fi
 export LESSOPEN='|~/.lessfilter %s'
 export LESS='-R'
 echo "✅ less will use pygmentize (rrt) for syntax-highlighted file viewing."
-phase_end 12
+phase_end 13
 
 echo ""
 echo "================================================================="
@@ -380,7 +395,7 @@ echo "🎉 BASTION SETUP COMPLETED SUCCESSFULLY!"
 echo "================================================================="
 echo "• OpenJDK 17 Headless installed."
 echo "• Vim (desert theme, line numbers)."
-echo "• Node.js 22 + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + OpenClaude + Working Memory plugin."
+echo "• Node.js 22 + GitHub CLI + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + OpenClaude + Working Memory plugin."
 echo "• Ansible + Proxmox integration."
 echo "• Terraform + Packer installed."
 echo "• Kubespray venv ready at $HOME/kubespray-env"
