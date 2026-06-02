@@ -37,10 +37,10 @@ rd() {
 }
 
 # ── Legge subnet/gateway da auto.tfvars (sempre prioritari) ───────────────────
-K8S_SUBNET=$(read_var k8s_subnet "$AUTO_TFVARS" || echo "192.168.0.0/24")
-K8S_GATEWAY=$(read_var k8s_gateway "$AUTO_TFVARS" || echo "192.168.0.100")
+K8S_SUBNET=$(read_var k8s_subnet "$AUTO_TFVARS" || echo "192.168.1.0/24")
+K8S_GATEWAY=$(read_var k8s_gateway "$AUTO_TFVARS" || echo "192.168.1.1")
 STORAGE_POOL=$(read_var storage_pool "$AUTO_TFVARS" || echo "local-lvm")
-PROXMOX_NODE=$(read_var proxmox_node "$AUTO_TFVARS" || echo "prox-dell1")
+PROXMOX_NODE=$(read_var proxmox_node "$AUTO_TFVARS" || echo "pve")
 
 # ── Legge valori correnti da terraform.tfvars con fallback ai default di sistema ──
 CTRL_COUNT=$(rd control_plane_count 3)
@@ -51,15 +51,15 @@ WORKER_PREFIX=$(rd worker_name_prefix "k8s-worker")
 
 MASTER_VMID=$(rd master_vm_id_start 201)
 WORKER_VMID=$(rd worker_vm_id_start 211)
-MASTER_IP_START=$(rd master_ip_start 150)
-WORKER_IP_START=$(rd worker_ip_start 155)
+MASTER_IP_START=$(rd master_ip_start 210)
+WORKER_IP_START=$(rd worker_ip_start 220)
 
-MASTER_CPU=$(rd master_cpu_cores 4)
-MASTER_MEM=$(rd master_memory 16384)
-MASTER_DISK=$(rd master_disk_size 0)
+MASTER_CPU=$(rd master_cpu_cores 2)
+MASTER_MEM=$(rd master_memory 2048)
+MASTER_DISK=$(rd master_disk_size 30)
 
 WORKER_CPU=$(rd worker_cpu_cores 4)
-WORKER_MEM=$(rd worker_memory 16384)
+WORKER_MEM=$(rd worker_memory 4096)
 WORKER_DISK=$(rd worker_disk_size 50)
 
 TEMPLATE_ID=$(rd template_vm_id 9000)
@@ -110,7 +110,7 @@ WORKER_VMID="${input:-$WORKER_VMID}"
 echo ""
 
 # ── IP ────────────────────────────────────────────────────────────────────────
-echo "┌─ IP (subnet ${K8S_SUBNET##*/} ${K8S_SUBNET%.*}.X) ────────────────────────────────────┐"
+echo "┌─ IP (${K8S_SUBNET%.*}.X / ${K8S_SUBNET}) ─────────────────────────────────────────────┐"
 echo ""
 
 read -rp "  Ultimo ottetto primo master     [$MASTER_IP_START]: " input
@@ -214,11 +214,6 @@ cat > "$TFVARS" << EOF
 
 # ── Rete ────────────────────────────────────────────────────────────────────────
 proxmox_node = "${PROXMOX_NODE}"
-k8s_subnet   = "${K8S_SUBNET}"
-k8s_gateway  = "${K8S_GATEWAY}"
-
-# ── Template Packer ─────────────────────────────────────────────────────────────
-template_vm_id = ${TEMPLATE_ID}
 
 # ── Nomi VM ─────────────────────────────────────────────────────────────────────
 master_name_prefix = "${MASTER_PREFIX}"
@@ -235,6 +230,7 @@ worker_vm_id_start = ${WORKER_VMID}
 # ── IP ──────────────────────────────────────────────────────────────────────────
 master_ip_start = ${MASTER_IP_START}
 worker_ip_start = ${WORKER_IP_START}
+template_vm_id = ${TEMPLATE_ID}
 
 # ── Risorse master ──────────────────────────────────────────────────────────────
 master_cpu_cores = ${MASTER_CPU}

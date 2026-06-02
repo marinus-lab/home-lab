@@ -101,7 +101,7 @@ root/
 | **Create token** | Genera un token permanente `packer` per l'utente. |
 | **Show token** | Restituisce il valore del token (una tantum). Il valore deve essere salvato immediatamente; non sarà più recuperabile via API. |
 
-> **Nota:** Il playbook crea un solo token (`packer`). Lo script `init-project.sh` crea anche un secondo token (`terraform`) usando la stessa logica. Per l'ACL, Proxmox assegna automaticamente il ruolo `PVEAdmin` al primo login via API con il token.
+> **Nota:** Il playbook crea **due token**: `packer` (per la build Packer) e `terraform` (per il provisioning Terraform). Anche `init-project.sh` crea entrambi i token con la stessa logica. Avere token separati permette di ruotare/revocare le credenziali indipendentemente. Per l'ACL, Proxmox assegna automaticamente il ruolo `PVEAdmin` al primo login via API con il token.
 
 ---
 

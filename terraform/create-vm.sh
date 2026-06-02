@@ -58,7 +58,7 @@ DEFAULT_IP=$(echo "$PROXMOX_HOST_IP" | sed -E 's/\.[0-9]+$/.130/')
 # ── Helper: recupera dimensione disco template da Proxmox API ──────────────
 get_template_disk_size_gb() {
   local vmid="$1"
-  local auth_header="PVEAuthToken=${PROXMOX_TOKEN_ID}=${PROXMOX_TOKEN_SECRET}"
+  local auth_header="PVEAPIToken=${PROXMOX_TOKEN_ID}=${PROXMOX_TOKEN_SECRET}"
 
   curl -s -k -H "Authorization: $auth_header" \
     "$PROXMOX_URL/nodes/$PROXMOX_NODE/qemu/$vmid/config" 2>/dev/null \

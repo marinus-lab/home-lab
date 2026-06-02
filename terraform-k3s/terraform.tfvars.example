@@ -1,0 +1,15 @@
+# Copia in terraform.tfvars e compila con i valori del tuo ambiente.
+# terraform.tfvars NON deve essere committato su git (contiene segreti).
+
+# ── Topologia K3S ─────────────────────────────────────────
+k3s_count = 3
+
+k3s_vm_id_start = 44777
+k3s_ip_start    = 160
+
+k3s_cpu_cores = 4
+k3s_memory    = 16384
+k3s_disk_size = 0
+
+# ── Template Packer ───────────────────────────────────────
+# template_vm_id = 9002

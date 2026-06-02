@@ -2,15 +2,15 @@
 #
 # Nomi, VM ID e IP vengono calcolati dalle variabili:
 #
-#   master_name_prefix="cp" master_vm_id_start=101 master_ip_start=10 count=3
-#     → cp-1  VMID=101  IP=192.168.1.10
-#     → cp-2  VMID=102  IP=192.168.1.11
-#     → cp-3  VMID=103  IP=192.168.1.12
+#   master_name_prefix="k8s-master" master_vm_id_start=201 master_ip_start=210 count=3
+#     → k8s-master-1  VMID=201  IP=192.168.1.210
+#     → k8s-master-2  VMID=202  IP=192.168.1.211
+#     → k8s-master-3  VMID=203  IP=192.168.1.212
 #
-#   worker_name_prefix="node" worker_vm_id_start=201 worker_ip_start=20 count=3
-#     → node-1  VMID=201  IP=192.168.1.20
-#     → node-2  VMID=202  IP=192.168.1.21
-#     → node-3  VMID=203  IP=192.168.1.22
+#   worker_name_prefix="k8s-worker" worker_vm_id_start=211 worker_ip_start=220 count=3
+#     → k8s-worker-1  VMID=211  IP=192.168.1.220
+#     → k8s-worker-2  VMID=212  IP=192.168.1.221
+#     → k8s-worker-3  VMID=213  IP=192.168.1.222
 
 locals {
   control_plane_nodes = {

@@ -148,13 +148,13 @@ Variabili principali e relative scelte di default:
 | Variabile | Default | Motivazione |
 |-----------|---------|-------------|
 | `proxmox_node` | `"pve"` | Nome default del nodo Proxmox in un setup single-node |
-| `template_vm_id` | `9002` | Allineato con il VMID Ubuntu 24.04 di Packer; 9000=Rocky, 9001=22.04, 9003=Debian |
+| `template_vm_id` | `9000` | Default a Rocky 9 (variare in terraform.tfvars per altre distro: 9001=22.04, 9002=24.04, 9003=Debian) |
 | `k8s_subnet` | `192.168.1.0/24` | Subnet tipica di rete domestica/homelab |
 | `master_ip_start` | `210` | IP alti per non conflitti con DHCP (che tipicamente assegna 100-200) |
 | `worker_ip_start` | `220` | 10 IP di gap dai master per espansione futura |
 | `master_vm_id_start` | `201` | Range 201-210 per master (max 10 nodi) |
 | `worker_vm_id_start` | `211` | Range 211+ per worker |
-| `control_plane_count` | `3` | Setup HA (3 master) per homelab; `1` per minimal |
+| `control_plane_count` | `1` | Setup minimal (1 master); `3` per HA |
 
 La variabile `control_plane_count` include una validation:
 ```hcl

@@ -319,7 +319,7 @@ VMID=9002
 
 # Via API Proxmox
 curl -k -X GET \
-  "https://192.168.0.93:8006/api2/json/nodes/pve/qemu/${VMID}/status/current" \
+  "https://192.168.1.10:8006/api2/json/nodes/pve/qemu/${VMID}/status/current" \
   -H "Authorization: PVEAPIToken=automation@pve!packer=xxxxx"
 
 # Via CLI Proxmox
@@ -412,7 +412,7 @@ Il template Debian 13 non riesce a caricare il preseed e l'installer parte in mo
 **Soluzione:** usare la sintassi `auto url=http://...`:
 
 ```
-boot: auto url=http://192.168.0.219:8000/debian-preseed.cfg
+boot: auto url=http://192.168.1.10:8000/debian-preseed.cfg
 ```
 
 **Dettaglio:** `auto` abilita la modalità automatica, `url=...` specifica il preseed. Non serve anteporre `install` o aggiungere `preseed/url=`. Non funziona nemmeno via CLI ISOLINUX (`c` → `linux`/`initrd`/`boot`). L'unica combinazione funzionante è ESC×2 al menu ISOLINUX + `auto url=...` + Enter.

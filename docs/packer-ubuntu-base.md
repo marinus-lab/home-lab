@@ -129,7 +129,7 @@ packer/
 ┌─────────────────────────────────────────────────────────┐
 │  Packer: conversione in template Proxmox                │
 │  - Smonta ISO                                           │
-│  - Converte VM → template (ID 9000)                     │
+│  - Converte VM → template (ID 9002 per Ubuntu 24.04)    │
 │  - Template pronto per clonazione con Terraform         │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -454,7 +454,7 @@ Il cleanup viene fatto nell'ultimo step prima che Packer converta la VM in templ
 
 ```bash
 # 1. Crea l'utente API Proxmox (solo la prima volta)
-ansible-playbook ansible/playbooks/create_proxmox_user.yml
+ansible-playbook ansible/playbooks/create_proxmox_user.yml --ask-vault-pass
 
 # 2. Esporta le credenziali
 export PROXMOX_URL="https://192.168.1.10:8006/api2/json"

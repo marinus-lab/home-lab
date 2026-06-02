@@ -78,6 +78,11 @@ variable "k3s_count" {
   type        = number
   description = "Numero di nodi K3S"
   default     = 3
+
+  validation {
+    condition     = var.k3s_count > 0
+    error_message = "k3s_count deve essere maggiore di 0."
+  }
 }
 
 variable "k3s_vm_id_start" {
