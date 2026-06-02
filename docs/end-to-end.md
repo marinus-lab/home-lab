@@ -167,7 +167,7 @@ ansible-galaxy collection install -r requirements.yml
 
 # Crea l'utente automation@pve con ruolo PVEAdmin
 # e genera il token API
-ansible-playbook create_proxmox_user.yml \
+ansible-playbook ansible/playbooks/create_proxmox_user.yml \
   --ask-vault-pass \
   -e "proxmox_host=192.168.1.10"
 ```
@@ -598,7 +598,7 @@ home-lab/
 ├── setup-bastion.sh                    # Fase 0: installa tooling sul bastion
 ├── init-project.sh                     # Fase 1: inizializzazione progetto
 ├── verify-init.sh                      #   verifica configurazione
-├── create_proxmox_user.yml             #   playbook creazione utente API
+├── ansible/playbooks/create_proxmox_user.yml  #   playbook creazione utente API
 ├── requirements.yml                    #   dipendenze Ansible Galaxy
 ├── group_vars/all.yml                  #   secrets Ansible Vault
 │

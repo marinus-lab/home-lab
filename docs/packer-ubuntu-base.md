@@ -407,7 +407,7 @@ Token ID:     automation@pve!packer
 Token Secret: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
 
-Il token deve essere creato con il playbook `create_proxmox_user.yml` (vedi `proxmox-api-user.md`). I permessi richiesti per la build Packer sono almeno `PVEAdmin` sul nodo di destinazione.
+Il token deve essere creato con il playbook `ansible/playbooks/create_proxmox_user.yml` (vedi `proxmox-api-user.md`). I permessi richiesti per la build Packer sono almeno `PVEAdmin` sul nodo di destinazione.
 
 Le variabili d'ambiente da esportare prima di `build.sh`:
 
@@ -454,7 +454,7 @@ Il cleanup viene fatto nell'ultimo step prima che Packer converta la VM in templ
 
 ```bash
 # 1. Crea l'utente API Proxmox (solo la prima volta)
-ansible-playbook create_proxmox_user.yml
+ansible-playbook ansible/playbooks/create_proxmox_user.yml
 
 # 2. Esporta le credenziali
 export PROXMOX_URL="https://192.168.1.10:8006/api2/json"

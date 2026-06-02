@@ -37,6 +37,6 @@ module "vm" {
   dns_servers = var.dns_servers
   domain      = var.domain
 
-  ssh_public_key = trimspace(file(var.ssh_public_key_path))
+  ssh_public_key = trimspace(file(pathexpand(var.ssh_public_key_path)))
   tags           = ["single-vm"]
 }

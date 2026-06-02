@@ -372,6 +372,15 @@ while true; do
     continue
   fi
 
+  read -rsp "Riscrivi la password Vault per conferma: " VAULT_CONFIRM
+  echo ""
+
+  if [ "$VAULT_PASSWORD" != "$VAULT_CONFIRM" ]; then
+    warn "Le password non coincidono, riprova"
+    echo ""
+    continue
+  fi
+
   ok "Password Vault accettata"
   break
 done

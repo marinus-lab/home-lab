@@ -43,7 +43,7 @@ bash init-project.sh
 | K3S | latest | Container orchestration (via install script, cluster K3S separato) |
 | Calico | bundled | CNI (overlay IPIP) |
 | containerd | bundled | Container runtime |
-| kube-vip | bundled | HA control plane (VIP 192.168.0.80 via ARP) |
+| kube-vip | bundled | HA control plane (VIP 192.168.1.80 via ARP) |
 | MetalLB | latest | Load balancer bare-metal (Layer 2) |
 | cert-manager | latest | Certificati TLS automatici |
 | ingress-nginx | latest | Ingress controller |
@@ -63,33 +63,33 @@ Bastion ──API──▶ Proxmox VE
                     │
                     ├─ Template VMID 9000-9003  (Packer)
                     │       │
-                    │       ├─ clone ──▶ k8s-master-1  192.168.0.150  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-master-2  192.168.0.151  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-master-3  192.168.0.152  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-1  192.168.0.155  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-2  192.168.0.156  (16GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-3  192.168.0.157  (16GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-1  192.168.1.210  (2 GB RAM, 2 CPU)
+                    │       ├─ clone ──▶ k8s-master-2  192.168.1.211  (2 GB RAM, 2 CPU)
+                    │       ├─ clone ──▶ k8s-master-3  192.168.1.212  (2 GB RAM, 2 CPU)
+                    │       ├─ clone ──▶ k8s-worker-1  192.168.1.220  (4 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-2  192.168.1.221  (4 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-3  192.168.1.222  (4 GB RAM, 4 CPU)
                     │       │
-                    │       └─ clone ──▶ k3s-1  192.168.0.160  (16GB RAM, 4 CPU)  ◄── K3S
-                    │         └─ clone ──▶ k3s-2  192.168.0.161  (16GB RAM, 4 CPU)  ◄──
-                    │           └─ clone ──▶ k3s-3  192.168.0.162  (16GB RAM, 4 CPU)  ◄──
+                    │       └─ clone ──▶ k3s-1  192.168.1.160  (16 GB RAM, 4 CPU)  ◄── K3S
+                    │         └─ clone ──▶ k3s-2  192.168.1.161  (16 GB RAM, 4 CPU)  ◄──
+                    │           └─ clone ──▶ k3s-3  192.168.1.162  (16 GB RAM, 4 CPU)  ◄──
                     │
 Bastion ──SSH──▶ 6 nodi K8s  (Kubespray)
 Bastion ──SSH──▶ 3 nodi K3S  (k3s/deploy.sh)
                     │
-                    ├─ kube-vip: 192.168.0.80 (VIP control plane via ARP)
-                    ├─ MetalLB: 192.168.0.120-192.168.0.135 (load balancing servizi)
+                    ├─ kube-vip: 192.168.1.80 (VIP control plane via ARP)
+                    ├─ MetalLB: 192.168.1.120-192.168.1.135 (load balancing servizi)
                     └─ Registry locale immagini su ogni nodo
 ```
 
 **Topologia cluster K8s:**
 - **3 nodi Control Plane** (HA etcd): k8s-master-1/2/3
 - **3 nodi Worker**: k8s-worker-1/2/3
-- **Totale K8s**: 6 VM, ognuna con 16GB RAM + 4 CPU
+- **Totale K8s**: 6 VM (default: master 2 GB/2 CPU, worker 4 GB/4 CPU)
 
 **Topologia cluster K3S (opzionale):**
 - **3 nodi Server** (HA embedded etcd): k3s-1/2/3 (control plane + worker, nessun taint)
-- **Totale K3S**: 3 VM, ognuna con 16GB RAM + 4 CPU
+- **Totale K3S**: 3 VM (default: 16 GB RAM, 4 CPU)
 
 ## Struttura del repository
 
@@ -100,7 +100,6 @@ home-lab/
 ├── verify-cluster.sh                      # Health check cluster K8s: nodi, componenti, addon
 ├── demo-cluster.sh                        # Demo: Tetris, Hello K8s, Podinfo, registry, MetalLB
 ├── setup-bastion.sh                       # Installa tooling sul bastion (tmux dashboard)
-├── create_proxmox_user.yml                # Playbook Ansible alternativo per utente Proxmox
 ├── requirements.yml                       # Dipendenze Ansible Galaxy (community.general)
 │
 ├── packer/                                # Build template VM (Ubuntu 22.04, Ubuntu 24.04, Debian 13, Rocky 9)
@@ -126,7 +125,7 @@ home-lab/
 │   ├── variables.tf                       # Variabili: Proxmox, rete, storage, master/worker
 │   ├── k8s-cluster.tf                     # Core: topologia dinamica, moduli VM, inventory
 │   ├── outputs.tf                         # IP nodi, inventory path, comandi SSH
-│   ├── terraform.tfvars                   # Config cluster (tracciato: topologia, risorse)
+│   ├── terraform.tfvars                   # Config cluster (topologia, risorse; generato da init-project.sh)
 │   ├── terraform.tfvars.example           # Template completo con tutti i parametri
 │   ├── terraform.auto.tfvars*             # Credenziali + rete (*in .gitignore, da init-project.sh)
 │   ├── terraform.auto.tfvars.example      # Template credenziali
@@ -172,6 +171,7 @@ home-lab/
 │
 ├── ansible/playbooks/                     # Playbook per preparazione template VM
 │   ├── base.yml                           # Locale IT, qemu-agent, cloud-init reset, SSH keys
+│   ├── create_proxmox_user.yml            # Crea utente API Proxmox con token e permessi
 │   └── proxmox_image_import.yml           # Import alternativo immagini qcow2
 │
 ├── group_vars/
@@ -190,8 +190,8 @@ home-lab/
 ```
 
 **Legenda file:**
-- ✅ Tracciati in git: `terraform.tfvars`, `group_vars/all.yml` (Vault cifrato), documentazione, `.example`
-- ❌ Ignorati da git (`*.auto.tfvars`, `packer.pkrvars.hcl`): contengono token e credenziali
+- ✅ Tracciati in git: `group_vars/all.yml` (Vault cifrato), documentazione, `.example`
+- ❌ Ignorati da git (`terraform.tfvars`, `*.auto.tfvars`, `packer.pkrvars.hcl`): segreti o generati localmente
 - 🔐 File `.example`: template da copiare e compilare per setup manuale
 
 ## Quick start
@@ -269,9 +269,9 @@ bash demo-cluster.sh
 ```
 
 Lo script testa:
-1. **Tetris** (service NodePort) → `http://192.168.0.120`
-2. **Hello Kubernetes** (Deployment + LoadBalancer) → `http://192.168.0.121`
-3. **Podinfo** (Deployment + LoadBalancer) → `http://192.168.0.122:9898`
+1. **Tetris** (service NodePort) → `http://192.168.1.120`
+2. **Hello Kubernetes** (Deployment + LoadBalancer) → `http://192.168.1.121`
+3. **Podinfo** (Deployment + LoadBalancer) → `http://192.168.1.122:9898`
 4. **Registry interno** — verifica API tramite port-forward
 5. **Push al registry** via nerdctl su SSH — testa che il registry locale funzioni
 
@@ -281,11 +281,11 @@ Esempio di output:
   DEMO CLUSTER KUBERNETES HOMELAB
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [INFO] 1. Tetris
-[PASS] http://192.168.0.120 (Tetris)
+[PASS] http://192.168.1.120 (Tetris)
 [INFO] 2. Hello Kubernetes
-[PASS] http://192.168.0.121 (Hello K8s)
+[PASS] http://192.168.1.121 (Hello K8s)
 [INFO] 3. Podinfo
-[PASS] http://192.168.0.122:9898 (Podinfo)
+[PASS] http://192.168.1.122:9898 (Podinfo)
 [INFO] 4. Registry interno
 [PASS] Registry 10.98.158.126:5000 — "repositories":["nginx"]
 [INFO] 5. Registry push/pull
@@ -326,24 +326,24 @@ I parametri del cluster sono distribuiti in quattro file:
 
 - **3 master** (HA with etcd) — configurabile con `control_plane_count` in `terraform/terraform.tfvars`
 - **3 worker** — configurabile con `worker_count` in `terraform/terraform.tfvars`
-- **Risorse per nodo**: 16GB RAM + 4 CPU — modificabili in `terraform/terraform.tfvars`
+- **Risorse per nodo**: master 2GB RAM + 2 CPU, worker 4GB RAM + 4 CPU — modificabili in `terraform/terraform.tfvars`
 - **Storage**: 30GB disco per master, 50GB per worker
-- **Subnet Kubernetes**: `192.168.0.0/24` — configurabile in `init-project.sh`, salvato in `terraform/terraform.auto.tfvars`
-- **Gateway**: `192.168.0.1` — configurabile in `init-project.sh`
-- **Master IP**: primo da `.150` (es. `.150`, `.151`, `.152`) — configurabile in `init-project.sh`
-- **Worker IP**: primo da `.155` (es. `.155`, `.156`, `.157`) — configurabile in `init-project.sh`
-- **kube-vip**: `192.168.0.80` (VIP control plane via ARP)
+- **Subnet Kubernetes**: `192.168.1.0/24` — configurabile in `init-project.sh`, salvato in `terraform/terraform.auto.tfvars`
+- **Gateway**: `192.168.1.1` — configurabile in `init-project.sh`
+- **Master IP**: primo da `.210` (es. `.210`, `.211`, `.212`) — configurabile in `init-project.sh`
+- **Worker IP**: primo da `.220` (es. `.220`, `.221`, `.222`) — configurabile in `init-project.sh`
+- **kube-vip**: `192.168.1.80` (VIP control plane via ARP)
 - **Pod subnet**: `10.244.0.0/16`
 - **Service subnet**: `10.96.0.0/12`
-- **Load balancer**: MetalLB con range `192.168.0.120-192.168.0.135`
+- **Load balancer**: MetalLB con range `192.168.1.120-192.168.1.135`
 
 ### Default K3S
 
 - **3 server** (HA con embedded etcd) — configurabile con `k3s_count` in `terraform-k3s/terraform.tfvars`
 - **Risorse per nodo**: 16GB RAM + 4 CPU — modificabili in `terraform-k3s/terraform.tfvars`
 - **Storage**: ereditato dal template (32GB)
-- **Subnet K3S**: `192.168.0.0/24` — stessa subnet K8s
-- **Gateway**: `192.168.0.1`
+- **Subnet K3S**: `192.168.1.0/24` — stessa subnet K8s
+- **Gateway**: `192.168.1.1`
 - **K3S VM IP**: primo da `.160` (es. `.160`, `.161`, `.162`) — configurabile in `terraform-k3s/terraform.tfvars`
 - **VM ID**: primo da `44777` (es. `44777`, `44778`, `44779`) — configurabile in `terraform-k3s/terraform.tfvars`
 - **Tutti i nodi** sono control plane + worker (nessun taint NoSchedule)

@@ -1,0 +1,65 @@
+---
+- name: Create Proxmox API user and token
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    proxmox_host: "{{ lookup('env', 'PROXMOX_HOST') | default('', true) }}"
+    api_username: "{{ lookup('env', 'API_USERNAME') | default('automation', true) }}"
+  tasks:
+    - name: Fail if PROXMOX_HOST is not set
+      fail:
+        msg: "Export PROXMOX_HOST before running this playbook (e.g. export PROXMOX_HOST=proxmox.mio.lan)"
+      when: proxmox_host | length == 0
+
+    - name: Create Proxmox user
+      uri:
+        url: "https://{{ proxmox_host }}:8006/api2/json/access/users"
+        method: POST
+        user: "root@pam"
+        password: "{{ vault_proxmox_root_pw }}"
+        force_basic_auth: true
+        validate_certs: false
+        body_format: form-urlencoded
+        body:
+          userid: "{{ api_username }}@pve"
+          password: "{{ vault_automation_user_pw }}"
+          comment: "Automation user for Packer and Terraform"
+      register: user_result
+      failed_when: user_result.status not in [200, 400]
+
+    - name: Create token for Packer
+      uri:
+        url: "https://{{ proxmox_host }}:8006/api2/json/access/users/{{ api_username }}@pve/token/packer"
+        method: POST
+        user: "root@pam"
+        password: "{{ vault_proxmox_root_pw }}"
+        force_basic_auth: true
+        validate_certs: false
+        body_format: form-urlencoded
+        body:
+          comment: "Packer automation token"
+      register: packer_token
+      failed_when: packer_token.status not in [200, 400]
+
+    - name: Create token for Terraform
+      uri:
+        url: "https://{{ proxmox_host }}:8006/api2/json/access/users/{{ api_username }}@pve/token/terraform"
+        method: POST
+        user: "root@pam"
+        password: "{{ vault_proxmox_root_pw }}"
+        force_basic_auth: true
+        validate_certs: false
+        body_format: form-urlencoded
+        body:
+          comment: "Terraform automation token"
+      register: tf_token
+      failed_when: tf_token.status not in [200, 400]
+
+    - name: Show Packer token
+      debug:
+        msg: "Packer → {{ api_username }}@pve!packer={{ packer_token.json.data.value }}"
+
+    - name: Show Terraform token
+      debug:
+        msg: "Terraform → {{ api_username }}@pve!terraform={{ tf_token.json.data.value }}"

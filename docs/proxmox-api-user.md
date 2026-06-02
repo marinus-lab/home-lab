@@ -7,7 +7,7 @@ Questo documento descrive passo‑passo come configurare, mediante Ansible, un u
 ## 📋 Sommario
 1. [Prerequisiti](#prerequisiti)
 2. [Struttura del progetto Ansible](#struttura-del-progetto-ansible)
-3. [Playbook `create_proxmox_user.yml`](#playbook-create_proxmox_useryml)
+3. [Playbook `ansible/playbooks/create_proxmox_user.yml`](#playbook-create_proxmox_useryml)
 4. [Gestione sicura delle credenziali](#gestione-sicura-delle-credenziali)
 5. [Esecuzione del playbook](#esecuzione-del-playbook)
 6. [Utilizzo del token generato per le successive operazioni](#utilizzo-del-token-generato-per-le-successive-operazioni)
@@ -36,7 +36,7 @@ ansible-galaxy install -r requirements.yml
 ```
 root/
 ├── requirements.yml                # Collection da installare
-├── create_proxmox_user.yml         # Playbook principale
+├── ansible/playbooks/create_proxmox_user.yml  # Playbook principale
 ├── group_vars/
 │   └── all.yml                     # Variabili (credeziali) da cifrare con Vault
 └── docs/
@@ -44,12 +44,12 @@ root/
 ```
 
 * `requirements.yml` – definisce le collection necessarie.
-* `create_proxmox_user.yml` – contiene tutti i task per creare l'utente, assegnare i permessi e generare il token.
+* `ansible/playbooks/create_proxmox_user.yml` – contiene tutti i task per creare l'utente, assegnare i permessi e generare il token.
 * `group_vars/all.yml` – file dove inserire le password in **Ansible Vault** (vedere sotto).
 
 ---
 
-## 3️⃣ Playbook `create_proxmox_user.yml` <a name="playbook-create_proxmox_useryml"></a>
+## 3️⃣ Playbook `ansible/playbooks/create_proxmox_user.yml` <a name="playbook-create_proxmox_useryml"></a>
 ```yaml
 ---
 - name: Create Proxmox API user
@@ -116,11 +116,11 @@ Copia l'output (che include il blocco `!vault |`) dentro `group_vars/all.yml`.
 
 Per eseguire il playbook con il vault:
 ```bash
-ansible-playbook create_proxmox_user.yml --ask-vault-pass
+ansible-playbook ansible/playbooks/create_proxmox_user.yml --ask-vault-pass
 ```
 Oppure specifica un file di password:
 ```bash
-ansible-playbook create_proxmox_user.yml --vault-password-file ~/.vault_pass.txt
+ansible-playbook ansible/playbooks/create_proxmox_user.yml --vault-password-file ~/.vault_pass.txt
 ```
 
 ---
@@ -134,7 +134,7 @@ export PROXMOX_HOST=proxmox.mio.lan
 ansible-galaxy install -r requirements.yml
 
 # 3. Esegui il playbook
-ansible-playbook create_proxmox_user.yml --ask-vault-pass
+ansible-playbook ansible/playbooks/create_proxmox_user.yml --ask-vault-pass
 ```
 Al termine vedrai un messaggio del tipo:
 ```
