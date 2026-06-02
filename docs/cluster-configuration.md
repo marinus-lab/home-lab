@@ -22,14 +22,18 @@ Questo documento descrive la configurazione attuale del cluster Kubernetes e com
 │  └──────────┴──────────┴──────────┘                         │
 │           (192.168.1.220-222)                               │
 │                                                             │
-│  MetalLB: 192.168.0.120-192.168.0.135 (16 IP)               │
+│  MetalLB: 192.168.1.120-192.168.1.135 (16 IP)               │
 │  Dashboard: Kubernetes Dashboard UI                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Risorse per VM
 
-Tutti i nodi hanno la stessa configurazione:
+I valori predefiniti di Terraform (`variables.tf`) usano risorse contenute:
+- **Master**: 2 GB RAM, 2 CPU, 30 GB disco
+- **Worker**: 4 GB RAM, 4 CPU, 50 GB disco
+
+Dopo aver eseguito `init-project.sh` (o `configure-cluster.sh`), le risorse vengono sovrascritte con valori più generosi:
 - **RAM**: 16 GB
 - **CPU**: 4 core
 - **Disco**: preserva la dimensione del template (default 32G) per i master; 50 GB per i worker
@@ -77,8 +81,15 @@ dashboard_enabled: true
 
 # ── MetalLB ────────────────────────────────────────────────
 metallb_enabled: true
-metallb_ip_range: "192.168.0.120-192.168.0.135"
-metallb_protocol: layer2
+metallb_config:
+  address_pools:
+    primary:
+      ip_range:
+        - 192.168.1.120-192.168.1.135
+      auto_assign: true
+      avoid_buggy_ips: true
+  layer2:
+    - primary
 
 # ── Metrics Server ─────────────────────────────────────────
 metrics_server_enabled: true
@@ -118,7 +129,7 @@ MetalLB è un load balancer software per homelab/on-premise Kubernetes. Permette
 
 ### Range IP
 
-**Range configurato**: 192.168.0.120-192.168.0.135 (16 IP)
+**Range configurato**: 192.168.1.120-192.168.1.135 (16 IP)
 
 - **Protocollo**: Layer2 (ARP, funziona sulla stessa subnet)
 - **Uso**: Automatico per servizi di tipo `LoadBalancer`
@@ -140,12 +151,12 @@ spec:
       targetPort: 8080
 ```
 
-MetalLB assegnerà automaticamente un IP da 192.168.0.120-192.168.0.135:
+MetalLB assegnerà automaticamente un IP da 192.168.1.120-192.168.1.135:
 
 ```bash
 $ kubectl get svc
 NAME           TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)        AGE
-mio-servizio   LoadBalancer   10.233.x.x      192.168.0.120    80:32xxx/TCP   1m
+mio-servizio   LoadBalancer   10.233.x.x      192.168.1.120    80:32xxx/TCP   1m
 ```
 
 ## Prossimi step
@@ -159,7 +170,7 @@ mio-servizio   LoadBalancer   10.233.x.x      192.168.0.120    80:32xxx/TCP   1m
 
 ## Documentazione completa
 
-- Terraform: `docs/init-project.md` (setup credenziali)
+- Terraform: `docs/terraform-k8s-cluster.md` (setup credenziali)
 - Kubespray: `docs/kubespray-deploy.md` (deployment K8s)
 - MetalLB: https://metallb.universe.tf/
 - Kubernetes Dashboard: https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/

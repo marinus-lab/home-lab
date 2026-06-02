@@ -1,7 +1,9 @@
 - hosts: localhost
   connection: local
   vars:
-    image_path: "{{ lookup('env','GITHUB_WORKSPACE') }}/packer/output/ubuntu-{{ ubuntu_version }}.qcow2"
+    ubuntu_version: "{{ lookup('env', 'UBUNTU_VERSION') | default('24.04', true) }}"
+    workspace: "{{ lookup('env','GITHUB_WORKSPACE') | default(lookup('env','PWD'), true) }}"
+    image_path: "{{ workspace }}/packer/output/ubuntu-{{ ubuntu_version }}.qcow2"
     template_name: "ubuntu-{{ ubuntu_version }}-template"
   tasks:
     - name: Import image to Proxmox as a VM
@@ -19,7 +21,6 @@
         state: present
         scsi0: "{{ image_path }},backup=0"
         ostype: l26
-        hotplug: 1
         accept_eula: yes
       delegate_to: localhost
 

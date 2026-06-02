@@ -39,6 +39,11 @@ variable "k8s_subnet" {
   type        = string
   description = "Subnet del cluster Kubernetes in notazione CIDR  (es. 192.168.1.0/24)"
   default     = "192.168.1.0/24"
+
+  validation {
+    condition     = can(regex("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/[0-9]{1,2}$", var.k8s_subnet))
+    error_message = "k8s_subnet deve essere in formato CIDR valido (es. 192.168.1.0/24)."
+  }
 }
 
 variable "k8s_gateway" {

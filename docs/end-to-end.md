@@ -191,9 +191,9 @@ export PROXMOX_TOKEN_ID="automation@pve!terraform"
 export PROXMOX_TOKEN_SECRET="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
-> Lo stesso token viene usato da Packer (step 2) e da Terraform (step 3).
-> Se si preferisce separare i permessi, creare due token distinti:
-> `automation@pve!packer` e `automation@pve!terraform`.
+> Sia il playbook `create_proxmox_user.yml` che `init-project.sh` creano **due token separati**:
+> `automation@pve!packer` (per Packer) e `automation@pve!terraform` (per Terraform).
+> Questo permette di ruotare/revocare i token indipendentemente.
 
 ---
 
@@ -271,7 +271,7 @@ PACKER_ARGS="-var-file=packer.pkrvars.hcl" \
 ```bash
 # Il template deve comparire nella lista VM di Proxmox
 ssh root@192.168.1.10 "qm list | grep 9000"
-# 9000 ubuntu-22.04-base  stopped  ...  template
+# 9000 rocky-9-base  stopped  ...  template
 ```
 
 ---
@@ -372,7 +372,7 @@ terraform apply -parallelism=2
 | k3s-2 | 44778 | 192.168.1.161 | 4 | 16 GB | template (32 GB) |
 | k3s-3 | 44779 | 192.168.1.162 | 4 | 16 GB | template (32 GB) |
 
-Al termine genera `../k3s/inventory.ini` (sovrascrive il placeholder).
+Al termine genera `terraform-k3s/generated/k3s-inventory.ini` (poi copiato in `k3s/inventory.ini` da `k3s/deploy.sh`).
 
 ### Output
 
@@ -509,9 +509,9 @@ kubectl --kubeconfig ~/.kube/k3s-config get nodes -o wide
 # Tutti i nodi devono essere Ready
 kubectl get nodes -o wide
 # NAME           STATUS   ROLES           AGE   VERSION   INTERNAL-IP
-# k8s-master-1   Ready    control-plane   5m    1.36.0   192.168.1.210
-# k8s-worker-1   Ready    <none>          3m    1.36.0   192.168.1.220
-# k8s-worker-2   Ready    <none>          3m    1.36.0   192.168.1.221
+# k8s-master-1   Ready    control-plane   5m    1.35.4   192.168.1.210
+# k8s-worker-1   Ready    <none>          3m    1.35.4   192.168.1.220
+# k8s-worker-2   Ready    <none>          3m    1.35.4   192.168.1.221
 
 # Tutti i pod di sistema devono essere Running o Completed
 kubectl get pods -A
@@ -644,8 +644,6 @@ home-lab/
 │   ├── providers.tf                    #   provider Proxmox
 │   ├── variables.tf                    #   variabili rete, VM, risorse
 │   ├── main.tf                         #   3 VM k3s-{1..3} + inventory
-│   ├── terraform.tfvars.example        #   esempio valori
-│   ├── terraform.auto.tfvars*          #   credenziali + rete (da init-project.sh)
 │   ├── terraform.tfvars*               #   topologia K3S (generato da init-project.sh)
 │   └── templates/
 │       └── k3s-inventory.tftpl         #   template per k3s/inventory.ini
