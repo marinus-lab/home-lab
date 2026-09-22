@@ -54,7 +54,7 @@ bash init-project.sh
 La fase **Packer** (build template VM) richiede:
 
 - **Server DHCP attivo** sulla rete Proxmox — la VM di build riceve un IP temporaneo via DHCP durante l'installazione automatica da ISO. Dopo il clone con Terraform, i nodi K8s usano invece IP statici assegnati via cloud-init.
-- **Bastion raggiungibile dalla rete VM** — Packer avvia un server HTTP temporaneo (porta 8613+) dal quale l'installer scarica la configurazione kickstart/autoinstall. Il bastion e la VM devono essere sulla stessa rete o comunque instradabili.
+- **Bastion raggiungibile dalla rete VM** — Packer avvia un server HTTP temporaneo (porta casuale 8000-9000, configurabile via `http_port_min/max`) dal quale l'installer scarica la configurazione kickstart/autoinstall. Il bastion e la VM devono essere sulla stessa rete o comunque instradabili.
 
 ## Architettura
 
@@ -63,12 +63,12 @@ Bastion ──API──▶ Proxmox VE
                     │
                     ├─ Template VMID 9000-9003  (Packer)
                     │       │
-                    │       ├─ clone ──▶ k8s-master-1  192.168.1.210  (2 GB RAM, 2 CPU)
-                    │       ├─ clone ──▶ k8s-master-2  192.168.1.211  (2 GB RAM, 2 CPU)
-                    │       ├─ clone ──▶ k8s-master-3  192.168.1.212  (2 GB RAM, 2 CPU)
-                    │       ├─ clone ──▶ k8s-worker-1  192.168.1.220  (4 GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-2  192.168.1.221  (4 GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-3  192.168.1.222  (4 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-1  192.168.1.210  VMID 44555 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-2  192.168.1.211  VMID 44556 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-3  192.168.1.212  VMID 44557 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-1  192.168.1.220  VMID 44666 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-2  192.168.1.221  VMID 44667 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-3  192.168.1.222  VMID 44668 (16 GB RAM, 4 CPU)
                     │       │
                     │       └─ clone ──▶ k3s-1  192.168.1.160  (16 GB RAM, 4 CPU)  ◄── K3S
                     │         └─ clone ──▶ k3s-2  192.168.1.161  (16 GB RAM, 4 CPU)  ◄──
@@ -85,7 +85,7 @@ Bastion ──SSH──▶ 3 nodi K3S  (k3s/deploy.sh)
 **Topologia cluster K8s:**
 - **3 nodi Control Plane** (HA etcd): k8s-master-1/2/3
 - **3 nodi Worker**: k8s-worker-1/2/3
-- **Totale K8s**: 6 VM (default: master 2 GB/2 CPU, worker 4 GB/4 CPU)
+- **Totale K8s**: 6 VM (default: master e worker 16 GB RAM / 4 CPU — valori in `terraform/variables.tf` e `terraform.tfvars`)
 
 **Topologia cluster K3S (opzionale):**
 - **3 nodi Server** (HA embedded etcd): k3s-1/2/3 (control plane + worker, nessun taint)
@@ -269,7 +269,7 @@ bash demo-cluster.sh
 ```
 
 Lo script testa:
-1. **Tetris** (service NodePort) → `http://192.168.1.120`
+1. **Tetris** (service LoadBalancer) → `http://192.168.1.120`
 2. **Hello Kubernetes** (Deployment + LoadBalancer) → `http://192.168.1.121`
 3. **Podinfo** (Deployment + LoadBalancer) → `http://192.168.1.122:9898`
 4. **Registry interno** — verifica API tramite port-forward
@@ -326,8 +326,8 @@ I parametri del cluster sono distribuiti in quattro file:
 
 - **3 master** (HA with etcd) — configurabile con `control_plane_count` in `terraform/terraform.tfvars`
 - **3 worker** — configurabile con `worker_count` in `terraform/terraform.tfvars`
-- **Risorse per nodo**: master 2GB RAM + 2 CPU, worker 4GB RAM + 4 CPU — modificabili in `terraform/terraform.tfvars`
-- **Storage**: 30GB disco per master, 50GB per worker
+- **Risorse per nodo**: master e worker 16 GB RAM + 4 CPU — modificabili in `terraform/terraform.tfvars`
+- **Storage**: master eredita il disco dal template (32G di default in Packer); worker 50 GB
 - **Subnet Kubernetes**: `192.168.1.0/24` — configurabile in `init-project.sh`, salvato in `terraform/terraform.auto.tfvars`
 - **Gateway**: `192.168.1.1` — configurabile in `init-project.sh`
 - **Master IP**: primo da `.210` (es. `.210`, `.211`, `.212`) — configurabile in `init-project.sh`

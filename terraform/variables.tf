@@ -24,8 +24,8 @@ variable "proxmox_node" {
 # ── Template sorgente (prodotto da Packer) ─────────────────────────────────────
 variable "template_vm_id" {
   type        = number
-  description = "VM ID del template Ubuntu creato da Packer"
-  default     = 9000
+  description = "VM ID del template Packer (9000=Rocky 9, 9001=Ubuntu 22.04, 9002=Ubuntu 24.04, 9003=Debian 13)"
+  default     = 9002
 }
 
 # ── Rete ───────────────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ variable "worker_name_prefix" {
 variable "control_plane_count" {
   type        = number
   description = "Numero di nodi control plane  (1 = minimal, 3 = HA)"
-  default     = 1
+  default     = 3
 
   validation {
     condition     = contains([1, 3], var.control_plane_count)
@@ -106,7 +106,7 @@ variable "control_plane_count" {
 variable "master_vm_id_start" {
   type        = number
   description = "VM ID del primo nodo master  (i successivi sono incrementali)"
-  default     = 201
+  default     = 44555
 }
 
 variable "master_ip_start" {
@@ -118,32 +118,32 @@ variable "master_ip_start" {
 variable "master_cpu_cores" {
   type        = number
   description = "Core CPU per ogni nodo master"
-  default     = 2
+  default     = 4
 }
 
 variable "master_memory" {
   type        = number
   description = "RAM in MB per ogni nodo master"
-  default     = 2048
+  default     = 16384
 }
 
 variable "master_disk_size" {
   type        = number
-  description = "Dimensione disco in GB per ogni nodo master"
-  default     = 30
+  description = "Dimensione disco in GB per ogni nodo master (0 = eredita dal template; Proxmox non supporta shrink)"
+  default     = 0
 }
 
 # ── Worker ─────────────────────────────────────────────────────────────────────
 variable "worker_count" {
   type        = number
   description = "Numero di nodi worker"
-  default     = 2
+  default     = 3
 }
 
 variable "worker_vm_id_start" {
   type        = number
   description = "VM ID del primo nodo worker"
-  default     = 211
+  default     = 44666
 }
 
 variable "worker_ip_start" {
@@ -161,7 +161,7 @@ variable "worker_cpu_cores" {
 variable "worker_memory" {
   type        = number
   description = "RAM in MB per ogni nodo worker"
-  default     = 4096
+  default     = 16384
 }
 
 variable "worker_disk_size" {

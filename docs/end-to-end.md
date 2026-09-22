@@ -31,13 +31,13 @@
 │  │ Ansible      │        │  └──────────┬───────────────────┘   │   │
 │  │ Kubespray    │        │             │ clone (Terraform)     │   │
 │  │ k3s          │        │  ┌──────────▼───────────────────┐   │   │
-│  └──────────────┘        │  │  k8s-master-1  VMID 201      │   │   │
+│  └──────────────┘        │  │  k8s-master-1  VMID 44555    │   │   │
 │         │                │  │  192.168.1.210               │   │   │
 │         │ ansible        │  ├──────────────────────────────┤   │   │
-│         ├───────────────▶│  │  k8s-worker-1  VMID 211      │   │   │
+│         ├───────────────▶│  │  k8s-worker-1  VMID 44666    │   │   │
 │         │                │  │  192.168.1.220               │   │   │
 │         │ / k3s          │  ├──────────────────────────────┤   │   │
-│         │ deploy.sh      │  │  k8s-worker-2  VMID 212      │   │   │
+│         │ deploy.sh      │  │  k8s-worker-2  VMID 44667    │   │   │
 │         │                │  │  192.168.1.221               │   │   │
 │         │                │  └──────────────────────────────┘   │   │
 │         │                │  ┌──────────────────────────────┐   │   │
@@ -331,12 +331,12 @@ Con la configurazione di default (`control_plane_count=3`, `worker_count=3`):
 
 | VM | VMID | IP | CPU | RAM | Disco |
 |----|------|----|-----|-----|-------|
-| k8s-master-1 | 201 | 192.168.1.210 | 2 | 2 GB | 30 GB |
-| k8s-master-2 | 202 | 192.168.1.211 | 2 | 2 GB | 30 GB |
-| k8s-master-3 | 203 | 192.168.1.212 | 2 | 2 GB | 30 GB |
-| k8s-worker-1 | 211 | 192.168.1.220 | 4 | 4 GB | 50 GB |
-| k8s-worker-2 | 212 | 192.168.1.221 | 4 | 4 GB | 50 GB |
-| k8s-worker-3 | 213 | 192.168.1.222 | 4 | 4 GB | 50 GB |
+| k8s-master-1 | 44555 | 192.168.1.210 | 4 | 16 GB | template (32 GB) |
+| k8s-master-2 | 44556 | 192.168.1.211 | 4 | 16 GB | template (32 GB) |
+| k8s-master-3 | 44557 | 192.168.1.212 | 4 | 16 GB | template (32 GB) |
+| k8s-worker-1 | 44666 | 192.168.1.220 | 4 | 16 GB | 50 GB |
+| k8s-worker-2 | 44667 | 192.168.1.221 | 4 | 16 GB | 50 GB |
+| k8s-worker-3 | 44668 | 192.168.1.222 | 4 | 16 GB | 50 GB |
 
 Per ogni VM, Terraform:
 1. Clona (full clone) il template Packer

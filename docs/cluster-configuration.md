@@ -29,14 +29,14 @@ Questo documento descrive la configurazione attuale del cluster Kubernetes e com
 
 ## Risorse per VM
 
-I valori predefiniti di Terraform (`variables.tf`) usano risorse contenute:
-- **Master**: 2 GB RAM, 2 CPU, 30 GB disco
-- **Worker**: 4 GB RAM, 4 CPU, 50 GB disco
+I valori di default (`variables.tf` e `terraform.tfvars` generato da `init-project.sh`):
+- **Master**: 16 GB RAM, 4 CPU, disco ereditato dal template (32G di default)
+- **Worker**: 16 GB RAM, 4 CPU, 50 GB disco
 
-Dopo aver eseguito `init-project.sh` (o `configure-cluster.sh`), le risorse vengono sovrascritte con valori più generosi:
-- **RAM**: 16 GB
-- **CPU**: 4 core
-- **Disco**: preserva la dimensione del template (default 32G) per i master; 50 GB per i worker
+Modificabili in `terraform/terraform.tfvars`:
+- **RAM**: 16 GB (`master_memory` / `worker_memory`)
+- **CPU**: 4 core (`master_cpu_cores` / `worker_cpu_cores`)
+- **Disco**: `master_disk_size = 0` (nessun resize) e `worker_disk_size = 50`
 
 **Totale cluster**: 96 GB RAM + 24 CPU
 

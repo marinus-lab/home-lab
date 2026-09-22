@@ -118,9 +118,18 @@ while true; do
     continue
   fi
 
+  # kube-vip, pool MetalLB e allocazione IP usano ottetti fitti dentro un /24
+  if [ "${K8S_SUBNET#*/}" != "24" ]; then
+    warn "Solo subnet /24 supportite (kube-vip .80, pool MetalLB .120-.135)"
+    echo ""
+    continue
+  fi
+
   ok "Subnet Kubernetes: $K8S_SUBNET"
   break
 done
+
+NET_PREFIX="${K8S_SUBNET%.*}"   # es. 192.168.1.0 → 192.168.1
 
 # Gateway Kubernetes
 while true; do
@@ -193,6 +202,15 @@ while true; do
     warn "Ultimo ottetto worker deve essere > $((MASTER_IP_OCTET + 2)) per evitare conflitti con master"
     echo ""
     continue
+  fi
+
+  # Avvisa se gli IP nodi collide con VIP (.80) o pool MetalLB (.120-.135)
+  _node_max=$((WORKER_IP_OCTET + 5))
+  if [ "$MASTER_IP_OCTET" -le 80 ] && [ "$_node_max" -ge 80 ]; then
+    warn "Attenzione: IP nodi in conflitto con kube-vip (ottetto 80)"
+  fi
+  if [ "$MASTER_IP_OCTET" -le 135 ] && [ "$_node_max" -ge 120 ]; then
+    warn "Attenzione: IP nodi in conflitto con pool MetalLB (ottetti 120-135)"
   fi
 
   ok "IP primo worker: ultimo ottetto $WORKER_IP_OCTET"
@@ -544,6 +562,28 @@ worker_disk_size = 50
 EOF
 
 ok "terraform/terraform.tfvars creato (topologia cluster)"
+
+# ── Sincronizza IP in addons.yml + commenti k8s-cluster.yml in base alla subnet ─
+# kube-vip = .80, pool MetalLB = .120-.135 (ottetti fissi nel /24).
+ADDONS_YML="$SCRIPT_DIR/kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml"
+K8SCLUSTER_YML="$SCRIPT_DIR/kubespray/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml"
+
+if [ -f "$ADDONS_YML" ]; then
+  info "Sincronizzo kube-vip/MetalLB su subnet $K8S_SUBNET in addons.yml..."
+  sed -i "s|^kube_vip_address: .*|kube_vip_address: ${NET_PREFIX}.80|" "$ADDONS_YML"
+  # Sostituisce qualsiasi range pool esistente (192.168.1.x di default o run precedenti)
+  sed -i "s|^\( *- \)[0-9.]*\.120-[0-9.]*\.135 *$|\1${NET_PREFIX}.120-${NET_PREFIX}.135|" "$ADDONS_YML"
+  if grep -q "kube_vip_address: ${NET_PREFIX}.80" "$ADDONS_YML" && \
+     grep -q "${NET_PREFIX}.120-${NET_PREFIX}.135" "$ADDONS_YML"; then
+    ok "addons.yml aggiornato (VIP ${NET_PREFIX}.80, pool ${NET_PREFIX}.120-${NET_PREFIX}.135)"
+  else
+    warn "addon.yml: sostituzione parziale — verifica manualmente kube_vip_address e metallb ip_range"
+  fi
+fi
+
+if [ -f "$K8SCLUSTER_YML" ]; then
+  sed -i "s|(default 192\.168\.1\.0/24)|(default $K8S_SUBNET)|" "$K8SCLUSTER_YML"
+fi
 
 # ── Crea l'utente API su Proxmox con curl ─────────────────────────────────────
 echo ""

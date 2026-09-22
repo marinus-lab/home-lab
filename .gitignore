@@ -83,3 +83,6 @@ packer/logs/
 
 # ── Artifacts Kubespray (kubeconfig, kubectl binary) ─────────────────────────
 kubespray/inventory/homelab/artifacts/
+
+# inventory generati (copiati da deploy.sh / Terraform)
+kubespray/inventory/homelab/hosts.ini

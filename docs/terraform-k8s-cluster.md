@@ -35,10 +35,10 @@ Al termine del `terraform apply`, viene generato automaticamente il file `genera
 ```
 Packer template (es. VMID 9002 per Ubuntu 24.04)
         │
-        ├── clone ──→ k8s-master-1 (VMID 201, 192.168.1.210)
-        ├── clone ──→ k8s-master-2 (VMID 202, 192.168.1.211)  ← solo se control_plane_count=3
-        ├── clone ──→ k8s-master-3 (VMID 203, 192.168.1.212)  ← solo se control_plane_count=3
-        ├── clone ──→ k8s-worker-1 (VMID 211, 192.168.1.220)
+        ├── clone ──→ k8s-master-1 (VMID 44555, 192.168.1.210)
+        ├── clone ──→ k8s-master-2 (VMID 44556, 192.168.1.211)  ← solo se control_plane_count=3
+        ├── clone ──→ k8s-master-3 (VMID 44557, 192.168.1.212)  ← solo se control_plane_count=3
+        ├── clone ──→ k8s-worker-1 (VMID 44666, 192.168.1.220)
         ├── clone ──→ k8s-worker-2 (VMID 212, 192.168.1.221)
         └── clone ──→ k8s-worker-3 (VMID 213, 192.168.1.222)
 ```
@@ -148,12 +148,12 @@ Variabili principali e relative scelte di default:
 | Variabile | Default | Motivazione |
 |-----------|---------|-------------|
 | `proxmox_node` | `"pve"` | Nome default del nodo Proxmox in un setup single-node |
-| `template_vm_id` | `9000` | Default a Rocky 9 (variare in terraform.tfvars per altre distro: 9001=22.04, 9002=24.04, 9003=Debian) |
+| `template_vm_id` | `9002` | Default a Ubuntu 24.04 (distribuzioni disponibili: 9000=Rocky 9, 9001=Ubuntu 22.04, 9002=Ubuntu 24.04, 9003=Debian 13) |
 | `k8s_subnet` | `192.168.1.0/24` | Subnet tipica di rete domestica/homelab |
 | `master_ip_start` | `210` | IP alti per non conflitti con DHCP (che tipicamente assegna 100-200) |
 | `worker_ip_start` | `220` | 10 IP di gap dai master per espansione futura |
-| `master_vm_id_start` | `201` | Range 201-210 per master (max 10 nodi) |
-| `worker_vm_id_start` | `211` | Range 211+ per worker |
+| `master_vm_id_start` | `44555` | Base VMID master (incrementali: 44555, 44556, 44557) |
+| `worker_vm_id_start` | `44666` | Base VMID worker (incrementali) |
 | `control_plane_count` | `1` | Setup minimal (1 master); `3` per HA |
 
 La variabile `control_plane_count` include una validation:
@@ -192,9 +192,9 @@ cidrhost("192.168.1.0/24", 211) = "192.168.1.211"
 Il risultato con `control_plane_count = 3` e `master_ip_start = 210`:
 ```
 {
-  "k8s-master-1" = { vm_id = 201, ip_address = "192.168.1.210" }
-  "k8s-master-2" = { vm_id = 202, ip_address = "192.168.1.211" }
-  "k8s-master-3" = { vm_id = 203, ip_address = "192.168.1.212" }
+  "k8s-master-1" = { vm_id = 44555, ip_address = "192.168.1.210" }
+  "k8s-master-2" = { vm_id = 44556, ip_address = "192.168.1.211" }
+  "k8s-master-3" = { vm_id = 44557, ip_address = "192.168.1.212" }
 }
 ```
 
@@ -477,7 +477,7 @@ cat generated/kubespray-inventory.ini
 terraform destroy
 ```
 
-Proxmox spegne e cancella le VM. Il template (VMID 9000) non viene toccato.
+Proxmox spegne e cancella le VM. Il template (VMID 9002) non viene toccato.
 
 ---
 
@@ -507,7 +507,7 @@ ssh root@<proxmox-ip> "qm list"
 terraform import 'module.k8s_master["k8s-master-1"].proxmox_virtual_environment_vm.this' <node>/qemu/<vmid>
 
 # Opzione B: distruggi manualmente e riapplica
-ssh root@<proxmox-ip> "qm stop 201 && qm destroy 201"
+ssh root@<proxmox-ip> "qm stop 44555 && qm destroy 44555"
 terraform apply -parallelism=2
 ```
 

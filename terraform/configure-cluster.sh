@@ -49,20 +49,20 @@ WORKER_COUNT=$(rd worker_count 3)
 MASTER_PREFIX=$(rd master_name_prefix "k8s-master")
 WORKER_PREFIX=$(rd worker_name_prefix "k8s-worker")
 
-MASTER_VMID=$(rd master_vm_id_start 201)
-WORKER_VMID=$(rd worker_vm_id_start 211)
+MASTER_VMID=$(rd master_vm_id_start 44555)
+WORKER_VMID=$(rd worker_vm_id_start 44666)
 MASTER_IP_START=$(rd master_ip_start 210)
 WORKER_IP_START=$(rd worker_ip_start 220)
 
-MASTER_CPU=$(rd master_cpu_cores 2)
-MASTER_MEM=$(rd master_memory 2048)
-MASTER_DISK=$(rd master_disk_size 30)
+MASTER_CPU=$(rd master_cpu_cores 4)
+MASTER_MEM=$(rd master_memory 16384)
+MASTER_DISK=$(rd master_disk_size 0)
 
 WORKER_CPU=$(rd worker_cpu_cores 4)
-WORKER_MEM=$(rd worker_memory 4096)
+WORKER_MEM=$(rd worker_memory 16384)
 WORKER_DISK=$(rd worker_disk_size 50)
 
-TEMPLATE_ID=$(rd template_vm_id 9000)
+TEMPLATE_ID=$(rd template_vm_id 9002)
 
 # ── Intestazione ──────────────────────────────────────────────────────────────
 clear

@@ -24,8 +24,8 @@ variable "proxmox_node" {
 # ── Template sorgente (prodotto da Packer) ─────────────────────────────────────
 variable "template_vm_id" {
   type        = number
-  description = "VM ID del template Ubuntu creato da Packer"
-  default     = 9000
+  description = "VM ID del template Packer (9000=Rocky 9, 9001=Ubuntu 22.04, 9002=Ubuntu 24.04, 9003=Debian 13)"
+  default     = 9002
 }
 
 # ── Rete ───────────────────────────────────────────────────────────────────────

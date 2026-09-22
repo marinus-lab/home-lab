@@ -93,6 +93,10 @@ autoinstall:
 
   # ── Comandi post-installazione ───────────────────────────────────────────────
   late-commands:
+    # Rende persistenti net.ifnames=0 biosdevname=0: dopo il reboot
+    # l'interfaccia resta eth0 (richiesto da cloud-init Proxmox e kube-vip).
+    - "sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"net.ifnames=0 biosdevname=0\"/' /target/etc/default/grub"
+    - "curtin in-target -- update-grub"
     # Abilita login root con password per Packer
     - "curtin in-target -- bash -c \"echo 'root:%%ROOT_PASSWORD%%' | chpasswd\""
     - "sed -i 's/^#\\?PermitRootLogin.*/PermitRootLogin yes/' /target/etc/ssh/sshd_config"

@@ -56,7 +56,7 @@ source "proxmox-iso" "debian_13" {
   boot_command = [
     "<esc><wait>",
     "<esc><wait>",
-    "auto url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian-preseed.cfg<enter>"
+    "auto url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian-preseed.cfg net.ifnames=0 biosdevname=0<enter>"
   ]
 
   # ── SSH ─────────────────────────────────────────────────────────────────────

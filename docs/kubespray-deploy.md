@@ -89,7 +89,7 @@ kubespray/
    └── Genera kubespray/inventory/homelab/group_vars/all/all.yml
 
 2. packer/build.sh
-   └── Costruisce template Ubuntu 22.04 (VMID 9000) su Proxmox
+   └── Costruisce template Ubuntu 24.04 (VMID 9002) su Proxmox
 
 3. cd terraform && terraform init && terraform apply -parallelism=2
    ├── Clona template → VM k8s-master-*, k8s-worker-*

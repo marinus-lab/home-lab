@@ -34,8 +34,12 @@ ntp_enabled: true
 registry_enabled: true
 
 # ── Preflight ──────────────────────────────────────────────────────────────────
-# Ignora errori preflight non bloccanti (es. warning su docker assente)
-kubeadm_ignore_preflight_errors: ['all']
+# Ignora solo errori preflight non bloccanti noti. NON usare ['all']: mascherebbe
+# problemi reali (porte occupate, swap attivo, certificati corrotti, ecc.).
+# Se un deploy fallisce su un preflight specifico, aggiungi qui solo quello.
+kubeadm_ignore_preflight_errors:
+  - 'NumaCPUManagerFeatureFlags'
+  - 'SystemVerification'
 
 # ── Certificati ────────────────────────────────────────────────────────────────
 # Rinnovo automatico dei certificati K8s (scadono ogni anno di default).

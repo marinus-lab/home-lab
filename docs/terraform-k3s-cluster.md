@@ -122,10 +122,10 @@ Variabili principali e relative scelte di default:
 | Variabile | Default | Motivazione |
 |-----------|---------|-------------|
 | `proxmox_node` | `"pve"` | Nome default del nodo Proxmox in un setup single-node |
-| `template_vm_id` | `9000` | Template Ubuntu 22.04; va adattato alla distribuzione usata (9002 per 24.04) |
+| `template_vm_id` | `9002` | Template Ubuntu 24.04; va adattato alla distribuzione usata (9000=Rocky 9, 9001=22.04, 9003=Debian) |
 | `k3s_subnet` | `192.168.1.0/24` | Subnet tipica di rete domestica/homelab |
 | `k3s_ip_start` | `160` | 3 IP consecutivi dopo lo spazio dei worker K8s (che finiscono a `.157`) |
-| `k3s_vm_id_start` | `44777` | Range alto per non confliggere con le VM K8s (VMID 200-299) |
+| `k3s_vm_id_start` | `44777` | Range alto per non confliggere con le VM K8s (VMID 44555/44666) |
 | `k3s_count` | `3` | 3 nodi server per HA con embedded etcd |
 | `k3s_cpu_cores` | `4` | Stesso dei master K8s |
 | `k3s_memory` | `16384` | 16 GB, stesso dei master K8s |
@@ -303,7 +303,7 @@ cd /root/home-lab/packer && ./build.sh
 
 ### `Error: VM ID already exists`
 
-Causa: una VM con lo stesso VMID esiste già su Proxmox. I VMID K3S (44777+) sono volutamente alti per evitare conflitti con le VM K8s (200-299).
+Causa: una VM con lo stesso VMID esiste già su Proxmox. I VMID K3S (44777+) sono volutamente alti per evitare conflitti con le VM K8s (44555/44666).
 
 ```bash
 # Lista VM Proxmox

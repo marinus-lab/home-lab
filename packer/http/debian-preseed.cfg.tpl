@@ -101,6 +101,8 @@ d-i preseed/early_command string \
 
 ### Late commands — enable services, SSH, sudo
 d-i preseed/late_command string \
+    in-target sh -c "sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"net.ifnames=0 biosdevname=0\"/' /etc/default/grub" ; \
+    in-target update-grub ; \
     in-target systemctl enable qemu-guest-agent ; \
     in-target systemctl enable ssh ; \
     in-target sh -c "sed -i 's/^#\\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config" ; \

@@ -55,7 +55,7 @@ source "proxmox-iso" "rocky" {
   boot_wait = "5s"
   boot_command = [
     "<tab><wait>",
-    " inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rocky-ks.cfg<enter><wait>"
+    " inst.ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/rocky-ks.cfg net.ifnames=0 biosdevname=0<enter><wait>"
   ]
 
   # ── SSH ─────────────────────────────────────────────────────────────────────

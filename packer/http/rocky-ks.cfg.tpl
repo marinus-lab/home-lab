@@ -24,7 +24,7 @@ url --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?arch=x86_64&repo=Bas
 repo --name="AppStream" --mirrorlist="https://mirrors.rockylinux.org/mirrorlist?arch=x86_64&repo=AppStream-9"
 
 # ── Storage ──────────────────────────────────────────────────────────────────
-bootloader --location=mbr --driveorder=sda
+bootloader --location=mbr --driveorder=sda --append="net.ifnames=0 biosdevname=0"
 zerombr
 clearpart --all --initlabel
 part /boot --fstype=xfs --size=1024
