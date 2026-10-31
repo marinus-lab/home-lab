@@ -11,6 +11,11 @@ kube_version: 1.36.4
 # Tag release da usare per il clone. Vuoto = branch main.
 kubespray_version: v2.32.0
 
+# ── etcd ────────────────────────────────────────────────────────────────────────
+# Dischi lenti (fdatasync > 1s): il default 5000ms causa elezioni leader spurie.
+# Equivalente di --etcd-election-timeout 10s in k3s (qui si esprime in ms).
+etcd_election_timeout: "10000"
+
 # ── DNS upstream ───────────────────────────────────────────────────────────────
 upstream_dns_servers:
   - 1.1.1.1
