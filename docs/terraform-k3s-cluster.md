@@ -82,7 +82,7 @@ terraform plan
     ├── Mostra le 3 VM che verranno create (k3s-1, k3s-2, k3s-3)
     └── Non crea nulla
 
-terraform apply -parallelism=2
+terraform apply -parallelism=1
     ├── Per ogni nodo:
     │   ├── Clone full del template Packer (es. VMID 9002)
     │   ├── Resize disco se k3s_disk_size > disco template
@@ -239,7 +239,7 @@ Il deploy script `k3s/deploy.sh` interagisce con Terraform in due modi:
 Il flusso completo è quindi:
 
 ```bash
-cd terraform-k3s && terraform apply -parallelism=2   # crea le VM
+cd terraform-k3s && terraform apply -parallelism=1   # crea le VM
 cd ../k3s && ./deploy.sh install                      # installa su k3s-1
 kubectl --kubeconfig ~/.kube/k3s-config get nodes     # verifica
 ./deploy.sh join                                       # join k3s-2, k3s-3 per HA
@@ -264,8 +264,8 @@ terraform init
 # 3. Verifica il piano
 terraform plan
 
-# 4. Applica (2 VM alla volta per non sovraccaricare lo storage)
-terraform apply -parallelism=2
+# 4. Applica (una VM alla volta: su storage lento i clone paralleli vanno in timeout HTTP 596)
+terraform apply -parallelism=1
 
 # 5. Verifica output
 cat generated/k3s-inventory.ini
@@ -311,7 +311,7 @@ ssh root@<proxmox-ip> "qm list"
 
 # Distruggi manualmente e riapplica
 ssh root@<proxmox-ip> "qm stop 44777 && qm destroy 44777"
-terraform apply -parallelism=2
+terraform apply -parallelism=1
 ```
 
 ### La VM si avvia ma cloud-init non configura la rete

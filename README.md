@@ -236,9 +236,9 @@ cd packer && ./download-isos.sh    # Menu interattivo (usa aria2c + API Proxmox)
 cd ../terraform && bash create-vm.sh
 # Dopo il test: cd single-vm && terraform destroy
 
-# 8. Terraform — crea il cluster K8s (6 VM) — 2 VM alla volta per non sovraccaricare lo storage
+# 8. Terraform — crea il cluster K8s (6 VM) — una alla volta: clone paralleli causano timeout (HTTP 596) su storage lento
 terraform init
-terraform apply -parallelism=2
+terraform apply -parallelism=1
 
 # 9. Kubespray — installa Kubernetes
 cd ../kubespray && ./deploy.sh
@@ -251,7 +251,7 @@ bash ../verify-cluster.sh
 # kubectl get svc -A  # verifica MetalLB
 
 # 11. (Opzionale) Terraform — crea il cluster K3S (3 VM)
-cd ../terraform-k3s && terraform init && terraform apply -parallelism=2
+cd ../terraform-k3s && terraform init && terraform apply -parallelism=1
 
 # 12. (Opzionale) K3S — deploy (due fasi)
 cd ../k3s && ./deploy.sh install     # Fase 1: single-node su k3s-1

@@ -282,8 +282,8 @@ Due directory Terraform separate per i due cluster:
 
 | Cluster | Directory | VM create | Comando |
 |---------|-----------|-----------|---------|
-| **K8s** (Kubespray) | `terraform/` | 3 master + 3 worker | `terraform apply -parallelism=2` |
-| **K3S** (leggero) | `terraform-k3s/` | 3 server (opzionale) | `terraform apply -parallelism=2` |
+| **K8s** (Kubespray) | `terraform/` | 3 master + 3 worker | `terraform apply -parallelism=1` |
+| **K3S** (leggero) | `terraform-k3s/` | 3 server (opzionale) | `terraform apply -parallelism=1` |
 
 ### Cluster K8s (Kubespray)
 
@@ -322,7 +322,7 @@ worker_ip_start = 220
 ```bash
 terraform init
 terraform plan
-terraform apply -parallelism=2
+terraform apply -parallelism=1
 ```
 
 ### Cosa crea Terraform per K8s
@@ -361,7 +361,7 @@ cd ../terraform-k3s
 terraform init
 
 # Crea le 3 VM K3S (k3s-1, k3s-2, k3s-3)
-terraform apply -parallelism=2
+terraform apply -parallelism=1
 ```
 
 ### Cosa crea Terraform per K3S
@@ -711,7 +711,7 @@ cd packer && ./build.sh
 
 # 3. Topologia cluster + VM Terraform K8s
 cd ../terraform
-terraform init && terraform apply -parallelism=2
+terraform init && terraform apply -parallelism=1
 
 # 4. Cluster Kubernetes (deploy.sh copia inventory automaticamente)
 cd ../kubespray && ./deploy.sh
@@ -720,7 +720,7 @@ cd ../kubespray && ./deploy.sh
 kubectl get nodes
 
 # 6. (Opzionale) VM K3S
-cd ../terraform-k3s && terraform init && terraform apply -parallelism=2
+cd ../terraform-k3s && terraform init && terraform apply -parallelism=1
 
 # 7. (Opzionale) Deploy K3S (due fasi)
 cd ../k3s && ./deploy.sh install && ./deploy.sh join
@@ -734,7 +734,7 @@ kubectl --kubeconfig ~/.kube/k3s-config get nodes
 ```bash
 # Aggiungere un worker
 # → terraform.tfvars: worker_count = 3
-cd terraform && terraform init && terraform apply -parallelism=2
+cd terraform && terraform init && terraform apply -parallelism=1
 cd ../kubespray && EXTRA_ARGS="--limit k8s-worker-3" ./deploy.sh
 
 # Aggiornare Kubernetes
@@ -746,7 +746,7 @@ kubectl drain k8s-worker-2 --ignore-daemonsets --delete-emptydir-data
 kubectl delete node k8s-worker-2
 cd kubespray && ./deploy.sh remove-node k8s-worker-2
 # → terraform.tfvars: worker_count = 1
-cd ../terraform && terraform init && terraform apply -parallelism=2
+cd ../terraform && terraform init && terraform apply -parallelism=1
 
 # Ricostruire il template Packer (es. Ubuntu 24.04)
 ssh root@192.168.1.10 "qm destroy 9002"

@@ -162,7 +162,7 @@ mio-servizio   LoadBalancer   10.233.x.x      192.168.1.120    80:32xxx/TCP   1m
 ## Prossimi step
 
 1. **Aggiorna terraform/terraform.tfvars** con i parametri della topologia
-2. **Esegui Terraform**: `cd terraform && terraform init && terraform apply -parallelism=2`
+2. **Esegui Terraform**: `cd terraform && terraform init && terraform apply -parallelism=1`
 3. **Esegui Kubespray**: `./deploy.sh`
 4. **Accedi al cluster**:
    - Dashboard: `kubectl port-forward -n kube-system svc/kubernetes-dashboard 8443:443`

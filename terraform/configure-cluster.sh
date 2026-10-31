@@ -248,5 +248,5 @@ echo ""
 
 info "Prossimi passi:"
 info "  terraform plan              — verifica le modifiche"
-info "  terraform apply -parallelism=2  — crea le VM (2 alla volta per evitare timeout)"
+info "  terraform apply -parallelism=1  — crea le VM (una alla volta: su storage lento i clone paralleli vanno in timeout HTTP 596)"
 echo ""
