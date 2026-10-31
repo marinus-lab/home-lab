@@ -120,7 +120,7 @@ while true; do
 
   # kube-vip, pool MetalLB e allocazione IP usano ottetti fitti dentro un /24
   if [ "${K8S_SUBNET#*/}" != "24" ]; then
-    warn "Solo subnet /24 supportite (kube-vip .80, pool MetalLB .120-.135)"
+    warn "Solo subnet /24 supportite"
     echo ""
     continue
   fi
@@ -204,16 +204,31 @@ while true; do
     continue
   fi
 
-  # Avvisa se gli IP nodi collide con VIP (.80) o pool MetalLB (.120-.135)
-  _node_max=$((WORKER_IP_OCTET + 5))
-  if [ "$MASTER_IP_OCTET" -le 80 ] && [ "$_node_max" -ge 80 ]; then
-    warn "Attenzione: IP nodi in conflitto con kube-vip (ottetto 80)"
-  fi
-  if [ "$MASTER_IP_OCTET" -le 135 ] && [ "$_node_max" -ge 120 ]; then
-    warn "Attenzione: IP nodi in conflitto con pool MetalLB (ottetti 120-135)"
+  ok "IP primo worker: ultimo ottetto $WORKER_IP_OCTET"
+  break
+done
+
+# ── Rete MetalLB ─────────────────────────────────────────────────────────────
+echo ""
+echo "🌐 CONFIGURAZIONE METALLB"
+echo ""
+while true; do
+  read -rp "Ottetto inizio pool MetalLB (es. 120): " METALLB_START
+  read -rp "Ottetto fine pool MetalLB (es. 135): " METALLB_END
+  echo ""
+
+  if [ -z "$METALLB_START" ] || [ -z "$METALLB_END" ]; then
+    warn "Ottetti richiesti"
+    continue
   fi
 
-  ok "IP primo worker: ultimo ottetto $WORKER_IP_OCTET"
+  if ! echo "$METALLB_START" | grep -qE '^[0-9]{1,3}$' || ! echo "$METALLB_END" | grep -qE '^[0-9]{1,3}$' || \
+     [ "$METALLB_START" -ge "$METALLB_END" ]; then
+    warn "Range non valido"
+    continue
+  fi
+
+  ok "Pool MetalLB: ${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}"
   break
 done
 
@@ -371,9 +386,6 @@ ok "$KUBESPRAY_ALL_YML generato (cluster: $CLUSTER_NAME, K8s: $KUBE_VERSION, Kub
 
 echo ""
 ok "Configurazione Kubernetes completata"
-
-# NOTA: Gli storage pool Proxmox vengono rilevati dinamicamente dopo aver
-# ottenuto il ticket di sessione (vedi sezione "RILEVAMENTO STORAGE PROXMOX")
 
 # ── VAULT PASSWORD ────────────────────────────────────────────────────────────
 echo ""
@@ -564,7 +576,6 @@ EOF
 ok "terraform/terraform.tfvars creato (topologia cluster)"
 
 # ── Sincronizza IP in addons.yml + commenti k8s-cluster.yml in base alla subnet ─
-# kube-vip = .80, pool MetalLB = .120-.135 (ottetti fissi nel /24).
 ADDONS_YML="$SCRIPT_DIR/kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml"
 K8SCLUSTER_YML="$SCRIPT_DIR/kubespray/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml"
 
@@ -572,10 +583,10 @@ if [ -f "$ADDONS_YML" ]; then
   info "Sincronizzo kube-vip/MetalLB su subnet $K8S_SUBNET in addons.yml..."
   sed -i "s|^kube_vip_address: .*|kube_vip_address: ${NET_PREFIX}.80|" "$ADDONS_YML"
   # Sostituisce qualsiasi range pool esistente (192.168.1.x di default o run precedenti)
-  sed -i "s|^\( *- \)[0-9.]*\.120-[0-9.]*\.135 *$|\1${NET_PREFIX}.120-${NET_PREFIX}.135|" "$ADDONS_YML"
+  sed -i "s|^\( *- \)[0-9.]*\.[0-9]*-[0-9.]*\.[0-9]* *$|\1${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}|" "$ADDONS_YML"
   if grep -q "kube_vip_address: ${NET_PREFIX}.80" "$ADDONS_YML" && \
-     grep -q "${NET_PREFIX}.120-${NET_PREFIX}.135" "$ADDONS_YML"; then
-    ok "addons.yml aggiornato (VIP ${NET_PREFIX}.80, pool ${NET_PREFIX}.120-${NET_PREFIX}.135)"
+     grep -q "${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}" "$ADDONS_YML"; then
+    ok "addons.yml aggiornato (VIP ${NET_PREFIX}.80, pool ${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END})"
   else
     warn "addon.yml: sostituzione parziale — verifica manualmente kube_vip_address e metallb ip_range"
   fi
@@ -908,6 +919,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "  ✅ INIZIALIZZAZIONE COMPLETATA"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
+
 echo "File creati/aggiornati:"
 echo "  • group_vars/all.yml                    (credenziali Proxmox cifrate)"
 echo "  • packer/packer.pkrvars.hcl             (token Packer)"
@@ -922,6 +934,7 @@ echo "  • Subnet: $K8S_SUBNET"
 echo "  • Gateway: $K8S_GATEWAY"
 echo "  • Master IP: $MASTER_IP_OCTET-$((MASTER_IP_OCTET+2))"
 echo "  • Worker IP: $WORKER_IP_OCTET-$((WORKER_IP_OCTET+2))"
+echo "  • MetalLB Pool: ${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}"
 echo "  • Cluster name: $CLUSTER_NAME"
 echo "  • K8s version: $KUBE_VERSION"
 echo "  • Kubespray: $KUBESPRAY_VERSION"
