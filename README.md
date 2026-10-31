@@ -21,7 +21,7 @@ apt update && apt install -y git
 git clone https://github.com/marinus-lab/home-lab.git
 cd home-lab
 
-# 4. Installa tutto il tooling (Packer, Terraform, Ansible, kubectl, Claude Code, OpenCode, Pi Agent, ...)
+# 4. Installa tutto il tooling (Packer, Terraform, Ansible, kubectl, Claude Code, OpenCode v2, Pi Agent, ...)
 bash setup-bastion.sh
 
 # 5. Configura credenziali Proxmox, rete K8s e vault cifrato
@@ -197,7 +197,7 @@ home-lab/
 ## Quick start
 
 ```bash
-# 1. Bastion — installa tutto il tooling (inclusi Claude Code, OpenCode e Pi Agent)
+# 1. Bastion — installa tutto il tooling (inclusi Claude Code, OpenCode v2 e Pi Agent)
 bash setup-bastion.sh
 
 # 2. Inizializzazione — crea credenziali Proxmox e configurazione rete

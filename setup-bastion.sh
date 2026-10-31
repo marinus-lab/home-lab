@@ -16,7 +16,7 @@ PHASE_NAMES=(
     "Vim Configuration"
     "Node.js 26 Installation"
     "Claude Code"
-    "OpenCode AI Agent"
+    "OpenCode AI Agent v2"
     "Pi Agent"
     "Ansible & Proxmox"
     "Terraform & Packer"
@@ -254,24 +254,11 @@ sudo npm i -g @anthropic-ai/claude-code
 CLAUDE_VER="$(npm list -g @anthropic-ai/claude-code --depth=0 2>/dev/null | awk -F'@' '/claude-code/{print $NF}')"
 phase_end 4 "$CLAUDE_VER"
 
-# 6. OpenCode AI Agent
+# 6. OpenCode AI Agent v2
 phase_start 5
-sudo npm i -g opencode-ai
-echo "🧠 Configuring OpenCode Working Memory plugin..."
-mkdir -p "$HOME/.opencode"
-cat > "$HOME/.opencode/opencode.json" << 'EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-working-memory"]
-}
-EOF
-cat > "$HOME/.opencode/tui.json" << 'EOF'
-{
-  "$schema": "https://opencode.ai/tui.json",
-  "plugin": ["opencode-working-memory"]
-}
-EOF
-OPENCODE_VER="$(opencode --version 2>&1 || npm list -g opencode-ai --depth=0 2>/dev/null | awk -F'@' '/opencode-ai/{print $NF}')"
+curl -fsSL https://opencode.ai/v2/install | bash
+export PATH="$HOME/.opencode/bin:$PATH"
+OPENCODE_VER="$(opencode --version 2>&1 | head -1 | awk '{print $NF}')"
 phase_end 5 "$OPENCODE_VER"
 
 # 7. Pi Agent
@@ -375,7 +362,7 @@ echo "🎉 BASTION SETUP COMPLETED SUCCESSFULLY!"
 echo "================================================================="
 echo "• OpenJDK 17 Headless installed."
 echo "• Vim (desert theme, line numbers)."
-echo "• Node.js 26 + Claude Code + OpenCode-AI + Pi Agent + Working Memory plugin."
+echo "• Node.js 26 + Claude Code + OpenCode v2 + Pi Agent."
 echo "• Ansible + Proxmox integration."
 echo "• Terraform + Packer installed."
 echo "• Kubespray venv ready at $HOME/kubespray-env"

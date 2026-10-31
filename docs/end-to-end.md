@@ -123,7 +123,7 @@ Lo script usa una dashboard tmux per mostrare il progresso in tempo reale:
 | 3 | Vim con tema desert e plugin Terraform |
 | 4 | Node.js 26 |
 | 5 | Claude Code |
-| 6 | OpenCode AI Agent |
+| 6 | OpenCode AI Agent v2 |
 | 7 | Pi Agent |
 | 8 | Ansible + modulo community.proxmox + proxmoxer |
 | 9 | Terraform + Packer (HashiCorp APT repo) |
