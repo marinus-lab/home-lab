@@ -391,6 +391,10 @@ terraform output ssh_command_examples
 # }
 ```
 
+### Persistenza
+
+`init-project.sh` salva tutte le risposte fornite nel file locale `init-project.conf` (stessa directory, ignorato da `.gitignore`). Se il file esiste, lo script rilegge i valori e chiede solo quelli mancanti o quelli che l'utente vuole modificare.
+
 ### Verifica connettività
 
 ```bash

@@ -72,6 +72,9 @@ venv/
 .vscode/
 *.iml
 
+# ── Configurazione persistente init-project.sh ───────────────────────────────
+init-project.conf
+
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

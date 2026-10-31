@@ -37,6 +37,16 @@ Lo script è **interattivo** — pone domande in sequenza. Non è necessario agg
 
 **Validazione:** Tutti gli input vengono validati. Se un input non è accettato, lo script chiede di nuovo finché non inserisci un valore valido. Non puoi saltare nessun campo.
 
+### Persistenza delle risposte
+
+A partire dalla versione aggiornata di `init-project.sh`, tutte le risposte fornite vengono salvate nel file `init-project.conf` nella stessa directory dello script. Se il file esiste, le risposte vengono rilette automaticamente e lo script chiede solo quelle mancanti o da modificare. Il file `init-project.conf` è ignorato da `.gitignore` e non viene mai committato.
+
+### File generati / ignorati
+
+`init-project.conf` (persistenza locale delle risposte) è ignorato da `.gitignore` insieme a `*.auto.tfvars`, `packer.pkrvars.hcl`, `group_vars/all.yml.bak` e i file generati nelle directory `terraform/generated/` e `k3s/`.
+
+---
+
 Le domande sono organizzate per sezioni con **linee vuote di separazione** per maggiore leggibilità:
 
 ```

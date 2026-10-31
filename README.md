@@ -29,6 +29,7 @@ bash configure-ai-agents.sh
 
 # 5. Configura credenziali Proxmox, rete K8s e vault cifrato
 bash init-project.sh
+# Il file `init-project.conf` (ignoto da git, stessa dir) salva le risposte per ri-esecuzioni successive.
 
 # 6. Ora sei pronto per il Quick start qui sotto
 ```
