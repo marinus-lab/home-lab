@@ -17,6 +17,7 @@ PHASE_NAMES=(
     "Node.js 26 Installation"
     "Claude Code"
     "OpenCode AI Agent v2"
+    "Hermes Agent"
     "Pi Agent"
     "Ansible & Proxmox"
     "Terraform & Packer"
@@ -261,36 +262,44 @@ export PATH="$HOME/.opencode/bin:$PATH"
 OPENCODE_VER="$(opencode --version 2>&1 | head -1 | awk '{print $NF}')"
 phase_end 5 "$OPENCODE_VER"
 
-# 7. Pi Agent
+# 7. Hermes Agent
 phase_start 6
+# --non-interactive: l'installer chiederebbe input; in tmux bloccherebbe la dashboard
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive
+export PATH="$HOME/.local/bin:$PATH"
+HERMES_VER="$(hermes --version 2>&1 | head -1 | awk '{print $NF}')"
+phase_end 6 "$HERMES_VER"
+
+# 8. Pi Agent
+phase_start 7
 # setsid: l'installer è interattivo su /dev/tty; in tmux verrebbe in attesa di conferma
 curl -fsSL https://pi.dev/install.sh | setsid -w sh
 export PATH="$HOME/.local/bin:$HOME/.pi/agent/bin:$PATH"
 PI_VER="$(pi --version 2>&1 | head -1 | awk '{print $NF}')"
-phase_end 6 "$PI_VER"
+phase_end 7 "$PI_VER"
 
-# 8. Ansible & Proxmox Integration
-phase_start 7
+# 9. Ansible & Proxmox Integration
+phase_start 8
 sudo add-apt-repository -y ppa:ansible/ansible
 sudo apt-get update
 sudo apt-get install -y ansible
 sudo pip3 install --break-system-packages proxmoxer requests
 ansible-galaxy collection install community.proxmox
 ANSIBLE_VER="$(ansible --version 2>&1 | head -1 | sed 's/.*\[core \([^]]*\).*/\1/')"
-phase_end 7 "$ANSIBLE_VER"
+phase_end 8 "$ANSIBLE_VER"
 
-# 9. HashiCorp Packer and Terraform
-phase_start 8
+# 10. HashiCorp Packer and Terraform
+phase_start 9
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 sudo apt-get update
 sudo apt-get install -y terraform packer
 TF_VER="$(terraform --version 2>&1 | head -1 | awk '{print $2}')"
 PACKER_VER="$(packer --version 2>&1)"
-phase_end 8 "TF $TF_VER / Packer $PACKER_VER"
+phase_end 9 "TF $TF_VER / Packer $PACKER_VER"
 
-# 10. Python venv for Kubespray
-phase_start 9
+# 11. Python venv for Kubespray
+phase_start 10
 mkdir -p "$HOME/kubespray-env"
 python3 -m venv "$HOME/kubespray-env"
 source "$HOME/kubespray-env/bin/activate"
@@ -306,20 +315,20 @@ else
 fi
 rm -rf "$TMP_DIR"
 deactivate
-phase_end 9
+phase_end 10
 
-# 11. SSH key generation
-phase_start 10
+# 12. SSH key generation
+phase_start 11
 if [ ! -f "$HOME/.ssh/id_rsa" ]; then
     ssh-keygen -t rsa -b 4096 -f "$HOME/.ssh/id_rsa" -N ""
     echo "✅ New SSH key generated."
 else
     echo "ℹ️  SSH key already exists, skipping."
 fi
-phase_end 10
+phase_end 11
 
-# 12. less + Pygmentize configuration (rrt theme)
-phase_start 11
+# 13. less + Pygmentize configuration (rrt theme)
+phase_start 12
 cat > "$HOME/.lessfilter" << 'LESSFILTER'
 #!/bin/bash
 case "$1" in
@@ -354,7 +363,7 @@ fi
 export LESSOPEN='|~/.lessfilter %s'
 export LESS='-R'
 echo "✅ less will use pygmentize (rrt) for syntax-highlighted file viewing."
-phase_end 11
+phase_end 12
 
 echo ""
 echo "================================================================="
@@ -362,7 +371,7 @@ echo "🎉 BASTION SETUP COMPLETED SUCCESSFULLY!"
 echo "================================================================="
 echo "• OpenJDK 17 Headless installed."
 echo "• Vim (desert theme, line numbers)."
-echo "• Node.js 26 + Claude Code + OpenCode v2 + Pi Agent."
+echo "• Node.js 26 + Claude Code + OpenCode v2 + Hermes Agent + Pi Agent."
 echo "• Ansible + Proxmox integration."
 echo "• Terraform + Packer installed."
 echo "• Kubespray venv ready at $HOME/kubespray-env"
