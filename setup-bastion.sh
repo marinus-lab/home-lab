@@ -14,7 +14,7 @@ PHASE_NAMES=(
     "Java 17 Installation"
     "System Update & Dependencies"
     "Vim Configuration"
-    "Node.js 26 Installation"
+    "Node.js 26 & Claude Code Installation"
     "GitHub Copilot CLI"
     "Gemini CLI"
     "OpenCode AI Agent"
