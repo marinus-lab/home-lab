@@ -7,11 +7,13 @@
 #   ./deploy.sh reset           # Disinstalla K3S da tutti i nodi
 #
 # Variabili d'ambiente opzionali:
-#   INVENTORY   path all'inventory  (default: ./inventory.ini)
+#   INVENTORY               path all'inventory  (default: ./inventory.ini)
+#   ETCD_ELECTION_TIMEOUT    timeout elezione etcd  (default: 10s, dischi lenti)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INVENTORY="${INVENTORY:-$SCRIPT_DIR/inventory.ini}"
+ETCD_ELECTION_TIMEOUT="${ETCD_ELECTION_TIMEOUT:-10s}"
 COMMAND="${1:-help}"
 
 # ── Colori ────────────────────────────────────────────────────────────────────
@@ -63,6 +65,25 @@ _ssh() {
   ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@"$ip" "$@"
 }
 
+# ── Attende che un nodo risulti Ready nel cluster ──────────────────────────
+# L'installer di k3s può fallire anche quando il join riuscirà: systemd
+# (Restart=always) riparte da solo e il nodo si registra pochi secondi dopo.
+# Il criterio di successo è quindi il nodo Ready, non l'exit dell'installer.
+_wait_node_ready() {
+  local node="$1" timeout="${2:-180}"
+  info "Attendo che $node sia Ready nel cluster (max ${timeout}s)..."
+  local i
+  for i in $(seq 1 $((timeout / 5))); do
+    if _ssh "$node" "sudo k3s kubectl wait --for=condition=Ready node/$node --timeout=4s" >/dev/null 2>&1; then
+      ok "$node Ready"
+      return 0
+    fi
+    sleep 5
+  done
+  error "$node non risulta Ready entro ${timeout}s.
+  Controllare: ssh ubuntu@<ip> 'sudo journalctl -u k3s --no-pager | tail -30'"
+}
+
 # ── Fase 1: installa K3S sul primo nodo ────────────────────────────────────
 _install() {
   _auto_inventory
@@ -82,15 +103,13 @@ _install() {
   fi
 
   # Installa K3S server con cluster-init (embedded etcd)
+  # election-timeout alzato: su dischi lenti il default causa elezioni etcd spurie
   info "Avvio installazione K3S su $first..."
-  _ssh "$first" "curl -sfL https://get.k3s.io | sh -s - --cluster-init --tls-san $first_ip" </dev/null
+  _ssh "$first" "curl -sfL https://get.k3s.io | sh -s - --cluster-init --tls-san $first_ip --etcd-election-timeout $ETCD_ELECTION_TIMEOUT" </dev/null
   ok "K3S installato su $first"
 
   # Attendi che il nodo sia Ready
-  info "Attendo che il nodo sia Ready..."
-  sleep 5
-  _ssh "$first" "k3s kubectl wait --for=condition=Ready node/$first --timeout=120s" 2>/dev/null || true
-  ok "Nodo $first pronto"
+  _wait_node_ready "$first"
 
   # Copia kubeconfig sul bastion
   info "Copio kubeconfig sul bastion..."
@@ -140,19 +159,25 @@ _join() {
   for node in $others; do
     local ip; ip=$(grep "^$node " "$INVENTORY" | grep -oP 'ansible_host=\K[0-9.]+')
 
-    # Verifica che non sia già joined
-    if _ssh "$node" "command -v k3s &>/dev/null"; then
-      warn "K3S già installato su $node, salto"
+    # Già registrato nel cluster -> salta (idempotente)
+    if kubectl --kubeconfig ~/.kube/k3s-config get node "$node" >/dev/null 2>&1; then
+      warn "$node già nel cluster, salto"
       continue
     fi
 
-    info "Join di $node ($ip)..."
-    _ssh "$node" "curl -sfL https://get.k3s.io | sh -s - --server https://$first_ip:6443 --token $token" </dev/null
-    ok "$node joined"
+    # k3s installato ma mai registrato (join precedente fallito a metà):
+    # pulizia dello stato orfano prima di riprovare
+    if _ssh "$node" "command -v k3s &>/dev/null"; then
+      warn "K3S presente su $node ma non nel cluster — pulizia e rejoin"
+      _ssh "$node" "sudo /usr/local/bin/k3s-uninstall.sh >/dev/null 2>&1; echo done" </dev/null
+    fi
 
-    # Attendi che il nodo sia Ready
-    _ssh "$first" "k3s kubectl wait --for=condition=Ready node/$node --timeout=120s" 2>/dev/null || true
-    ok "$node pronto"
+    info "Join di $node ($ip)..."
+    # L'exit dell'installer non è affidabile (systemd può riavviare k3s
+    # dopo un primo avvio fallito): il successo è il nodo Ready nel cluster
+    _ssh "$node" "curl -sfL https://get.k3s.io | sh -s - --server https://$first_ip:6443 --token $token --etcd-election-timeout $ETCD_ELECTION_TIMEOUT" </dev/null \
+      || warn "Installer non-zero exit su $node — verifico comunque lo stato"
+    _wait_node_ready "$node"
   done
 
   echo ""
@@ -194,7 +219,8 @@ _help() {
   echo "  reset       Disinstalla K3S da tutti i nodi"
   echo ""
   echo "Variabili:"
-  echo "  INVENTORY   path all'inventory  (default: ./inventory.ini)"
+  echo "  INVENTORY               path all'inventory  (default: ./inventory.ini)"
+  echo "  ETCD_ELECTION_TIMEOUT   timeout elezione etcd  (default: 10s)"
 }
 
 # ── Main ────────────────────────────────────────────────────────────────────
