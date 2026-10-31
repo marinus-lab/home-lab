@@ -24,6 +24,9 @@ cd home-lab
 # 4. Installa tutto il tooling (Packer, Terraform, Ansible, kubectl, Claude Code, OpenCode v2, Hermes Agent, Pi Agent, ...)
 bash setup-bastion.sh
 
+# 4b. (Opzionale) Provider LLM custom OpenAI-compatible per OpenCode / Hermes / Pi
+bash configure-ai-agents.sh
+
 # 5. Configura credenziali Proxmox, rete K8s e vault cifrato
 bash init-project.sh
 
@@ -199,6 +202,9 @@ home-lab/
 ```bash
 # 1. Bastion — installa tutto il tooling (inclusi Claude Code, OpenCode v2, Hermes Agent e Pi Agent)
 bash setup-bastion.sh
+
+# 1b. (Opzionale) Provider LLM custom OpenAI-compatible
+bash configure-ai-agents.sh
 
 # 2. Inizializzazione — crea credenziali Proxmox e configurazione rete
 bash init-project.sh
