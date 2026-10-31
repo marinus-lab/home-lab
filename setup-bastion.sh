@@ -247,6 +247,7 @@ phase_end 2 "$VIM_VER"
 phase_start 3
 curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash -
 sudo apt-get install -y nodejs
+sudo npm i -g @anthropic-ai/claude-code
 NODE_VER="$(node --version 2>&1 | cut -c2-)"
 phase_end 3 "$NODE_VER"
 
@@ -395,7 +396,7 @@ echo "🎉 BASTION SETUP COMPLETED SUCCESSFULLY!"
 echo "================================================================="
 echo "• OpenJDK 17 Headless installed."
 echo "• Vim (desert theme, line numbers)."
-echo "• Node.js 26 + GitHub CLI + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + OpenClaude + Working Memory plugin."
+echo "• Node.js 26 + Claude Code + GitHub CLI + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + OpenClaude + Working Memory plugin."
 echo "• Ansible + Proxmox integration."
 echo "• Terraform + Packer installed."
 echo "• Kubespray venv ready at $HOME/kubespray-env"
