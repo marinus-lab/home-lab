@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Configura un provider LLM custom OpenAI-compatible su Claude Code,
+# Configura un provider LLM custom OpenAI-compatible su
 # OpenCode, Hermes Agent e Pi Agent (solo se installati).
 #
 # Uso:
@@ -51,7 +51,6 @@ find_bin() {
   return 1
 }
 
-CLAUDE_BIN="$(find_bin claude || true)"
 OPENCODE_BIN="$(find_bin opencode || true)"
 HERMES_BIN="$(find_bin hermes || true)"
 PI_BIN="$(find_bin pi || true)"
@@ -301,23 +300,18 @@ command -v python3 >/dev/null || error "python3 non trovato"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  PROVIDER CUSTOM OPENAI — Claude Code / OpenCode / Hermes / Pi"
+echo "  PROVIDER CUSTOM OPENAI — OpenCode / Hermes / Pi"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 info "Verifica installazioni..."
 FOUND=0
-if [ -n "$CLAUDE_BIN" ]; then ok "Claude Code  ($CLAUDE_BIN)"; FOUND=1; else warn "Claude Code  non installato — skip"; fi
 if [ -n "$OPENCODE_BIN" ]; then ok "OpenCode     ($OPENCODE_BIN)"; FOUND=1; else warn "OpenCode     non installato — skip"; fi
 if [ -n "$HERMES_BIN" ]; then ok "Hermes Agent ($HERMES_BIN)"; FOUND=1; else warn "Hermes Agent non installato — skip"; fi
 if [ -n "$PI_BIN" ]; then ok "Pi Agent     ($PI_BIN)"; FOUND=1; else warn "Pi Agent     non installato — skip"; fi
 echo ""
 [ "$FOUND" -eq 1 ] || error "Nessun agente installato. Esegui prima setup-bastion.sh"
 
-if [ -n "$CLAUDE_BIN" ]; then
-  warn "Claude Code parla solo Anthropic Messages API, non OpenAI Chat Completions."
-  warn "Non verrà configurato. Serve un gateway /anthropic, non un endpoint /v1 OpenAI."
-fi
 [ -n "$OPENCODE_BIN$HERMES_BIN$PI_BIN" ] || error "Nessun agente compatibile con API OpenAI è installato."
 
 echo ""

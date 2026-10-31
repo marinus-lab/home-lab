@@ -21,7 +21,7 @@ apt update && apt install -y git
 git clone https://github.com/marinus-lab/home-lab.git
 cd home-lab
 
-# 4. Installa tutto il tooling (Packer, Terraform, Ansible, kubectl, Claude Code, OpenCode v2, Hermes Agent, Pi Agent, ...)
+# 4. Installa tutto il tooling (Packer, Terraform, Ansible, kubectl, OpenCode v2, Hermes Agent, Pi Agent, ...)
 bash setup-bastion.sh
 
 # 4b. (Opzionale) Provider LLM custom OpenAI-compatible per OpenCode / Hermes / Pi
@@ -200,7 +200,7 @@ home-lab/
 ## Quick start
 
 ```bash
-# 1. Bastion — installa tutto il tooling (inclusi Claude Code, OpenCode v2, Hermes Agent e Pi Agent)
+# 1. Bastion — installa tutto il tooling (inclusi OpenCode v2, Hermes Agent e Pi Agent)
 bash setup-bastion.sh
 
 # 1b. (Opzionale) Provider LLM custom OpenAI-compatible
