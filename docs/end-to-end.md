@@ -127,9 +127,10 @@ Lo script usa una dashboard tmux per mostrare il progresso in tempo reale:
 | 7 | Pi Agent |
 | 8 | Ansible + modulo community.proxmox + proxmoxer |
 | 9 | Terraform + Packer (HashiCorp APT repo) |
-| 10 | **Venv Python `~/kubespray-env`** con dipendenze Kubespray |
-| 11 | Chiave SSH RSA 4096-bit in `~/.ssh/id_rsa` |
-| 12 | less + Pygmentize (syntax highlight nei file) |
+| 10 | kubectl (binario ufficiale da dl.k8s.io) |
+| 11 | **Venv Python `~/kubespray-env`** con dipendenze Kubespray |
+| 12 | Chiave SSH RSA 4096-bit in `~/.ssh/id_rsa` |
+| 13 | less + Pygmentize (syntax highlight nei file) |
 
 ### Verifica
 

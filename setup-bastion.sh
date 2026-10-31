@@ -365,7 +365,7 @@ fi
 export LESSOPEN='|~/.lessfilter %s'
 export LESS='-R'
 echo "✅ less will use pygmentize (rrt) for syntax-highlighted file viewing."
-phase_end 11
+phase_end 12
 
 echo ""
 echo "================================================================="
