@@ -18,12 +18,10 @@ PHASE_NAMES=(
     "GitHub Copilot CLI"
     "Gemini CLI"
     "OpenCode AI Agent"
-    "OpenClaude"
     "Ansible & Proxmox"
     "Terraform & Packer"
     "Kubespray Python Environment"
     "SSH Key Generation"
-    "GitHub CLI (gh)"
     "less + Pygmentize Configuration"
 )
 
@@ -283,34 +281,28 @@ EOF
 OPENCODE_VER="$(opencode --version 2>&1 || npm list -g opencode-ai --depth=0 2>/dev/null | awk -F'@' '/opencode-ai/{print $NF}')"
 phase_end 6 "$OPENCODE_VER"
 
-# 8. OpenClaude
+# 8. Ansible & Proxmox Integration
 phase_start 7
-sudo npm i -g @gitlawb/openclaude
-OPENCLAUDE_VER="$(npm list -g @gitlawb/openclaude --depth=0 2>/dev/null | awk -F'@' '/openclaude/{print $NF}')"
-phase_end 7 "$OPENCLAUDE_VER"
-
-# 9. Ansible & Proxmox Integration
-phase_start 8
 sudo add-apt-repository -y ppa:ansible/ansible
 sudo apt-get update
 sudo apt-get install -y ansible
 sudo pip3 install --break-system-packages proxmoxer requests
 ansible-galaxy collection install community.proxmox
 ANSIBLE_VER="$(ansible --version 2>&1 | head -1 | sed 's/.*\[core \([^]]*\).*/\1/')"
-phase_end 8 "$ANSIBLE_VER"
+phase_end 7 "$ANSIBLE_VER"
 
-# 10. HashiCorp Packer and Terraform
-phase_start 9
+# 9. HashiCorp Packer and Terraform
+phase_start 8
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
 sudo apt-get update
 sudo apt-get install -y terraform packer
 TF_VER="$(terraform --version 2>&1 | head -1 | awk '{print $2}')"
 PACKER_VER="$(packer --version 2>&1)"
-phase_end 9 "TF $TF_VER / Packer $PACKER_VER"
+phase_end 8 "TF $TF_VER / Packer $PACKER_VER"
 
-# 11. Python venv for Kubespray
-phase_start 10
+# 10. Python venv for Kubespray
+phase_start 9
 mkdir -p "$HOME/kubespray-env"
 python3 -m venv "$HOME/kubespray-env"
 source "$HOME/kubespray-env/bin/activate"
@@ -326,34 +318,20 @@ else
 fi
 rm -rf "$TMP_DIR"
 deactivate
-phase_end 10
+phase_end 9
 
-# 12. SSH key generation
-phase_start 11
+# 11. SSH key generation
+phase_start 10
 if [ ! -f "$HOME/.ssh/id_rsa" ]; then
     ssh-keygen -t rsa -b 4096 -f "$HOME/.ssh/id_rsa" -N ""
     echo "✅ New SSH key generated."
 else
     echo "ℹ️  SSH key already exists, skipping."
 fi
-phase_end 11
+phase_end 10
 
-# 13. GitHub CLI (gh) installation and authentication
-phase_start 12
-sudo apt-get install -y gh
-GH_VER="$(gh --version 2>&1 | head -1 | awk '{print $3}')"
-if gh auth status &>/dev/null; then
-    echo "✅ GitHub CLI already authenticated."
-else
-    echo "🔐 GitHub CLI not authenticated. Starting device flow login..."
-    echo "   Follow the instructions printed below to authenticate."
-    echo ""
-    gh auth login --hostname github.com --git-protocol ssh || echo "⚠ Login deferred — run 'gh auth login' manually later."
-fi
-phase_end 12 "$GH_VER"
-
-# 14. less + Pygmentize configuration (rrt theme)
-phase_start 13
+# 12. less + Pygmentize configuration (rrt theme)
+phase_start 11
 cat > "$HOME/.lessfilter" << 'LESSFILTER'
 #!/bin/bash
 case "$1" in
@@ -388,7 +366,7 @@ fi
 export LESSOPEN='|~/.lessfilter %s'
 export LESS='-R'
 echo "✅ less will use pygmentize (rrt) for syntax-highlighted file viewing."
-phase_end 13
+phase_end 11
 
 echo ""
 echo "================================================================="
@@ -396,7 +374,7 @@ echo "🎉 BASTION SETUP COMPLETED SUCCESSFULLY!"
 echo "================================================================="
 echo "• OpenJDK 17 Headless installed."
 echo "• Vim (desert theme, line numbers)."
-echo "• Node.js 26 + Claude Code + GitHub CLI + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + OpenClaude + Working Memory plugin."
+echo "• Node.js 26 + Claude Code + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + Working Memory plugin."
 echo "• Ansible + Proxmox integration."
 echo "• Terraform + Packer installed."
 echo "• Kubespray venv ready at $HOME/kubespray-env"
