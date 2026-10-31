@@ -254,8 +254,8 @@ mapfile -t KUBESPRAY_DATES < <(echo "$KUBESPRAY_JSON" | cut -d'|' -f2)
 
 if [ ${#KUBESPRAY_TAGS[@]} -lt 1 ]; then
   warn "Impossibile recuperare release Kubespray — uso default"
-  KUBESPRAY_TAGS=("v2.31.0" "v2.30.0" "v2.29.1")
-  KUBESPRAY_DATES=("2026-04-25" "2026-01-29" "2025-12-11")
+  KUBESPRAY_TAGS=("v2.32.0" "v2.31.0" "v2.30.0")
+  KUBESPRAY_DATES=("2026-09-22" "2026-04-25" "2026-01-29")
 fi
 
 # Per ogni tag, recupera la max K8s supportata

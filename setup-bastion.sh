@@ -306,7 +306,7 @@ source "$HOME/kubespray-env/bin/activate"
 pip install --upgrade pip
 echo "📥 Installing Kubespray Python dependencies..."
 TMP_DIR=$(mktemp -d)
-git clone --depth 1 https://github.com/kubernetes-sigs/kubespray.git "$TMP_DIR/kubespray"
+git clone --depth 1 --branch v2.32.0 https://github.com/kubernetes-sigs/kubespray.git "$TMP_DIR/kubespray"
 if [ -f "$TMP_DIR/kubespray/requirements.txt" ]; then
     pip install -r "$TMP_DIR/kubespray/requirements.txt"
     echo "✅ Kubespray dependencies installed in venv!"

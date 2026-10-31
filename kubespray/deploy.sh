@@ -118,6 +118,11 @@ _apply_patches
 info "Attivando venv: $VENV_DIR"
 # shellcheck disable=SC1091
 source "$VENV_DIR/bin/activate"
+# Ansible 12 / ansible-core 2.19: ricrea le dipendenze dal requirements.txt del tag in uso
+if [ -f "$KUBESPRAY_DIR/requirements.txt" ]; then
+  info "Aggiorno dipendenze Python da $KUBESPRAY_DIR/requirements.txt..."
+  pip install -r "$KUBESPRAY_DIR/requirements.txt"
+fi
 
 # ── Cambia directory nel repo Kubespray ───────────────────────────────────────
 # ansible-playbook deve girare dalla root del repo per trovare ruoli e collezioni.
@@ -222,7 +227,7 @@ case "$COMMAND" in
 
   upgrade)
     K8S_VER=$(grep '^kube_version:' \
-      "$SCRIPT_DIR/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml" \
+      "$SCRIPT_DIR/inventory/homelab/group_vars/all/all.yml" \
       | awk '{print $2}')
     info "Upgrade cluster a Kubernetes $K8S_VER..."
     warn "Processo non distruttivo ma richiede un drain/uncordon di ogni nodo."
@@ -236,8 +241,7 @@ case "$COMMAND" in
     info "Rimozione nodo: $NODE"
     warn "Il nodo verrà drenato e rimosso dal cluster."
     "${ANSIBLE_CMD[@]}" remove-node.yml \
-      -e "node=$NODE" \
-      -e "skip_confirmation=yes"
+      -e "{\"node\": \"$NODE\", \"skip_confirmation\": true}"
     info "Nodo $NODE rimosso. Ricordarsi di eseguire 'terraform apply' per distruggere la VM."
     ;;
 
@@ -245,7 +249,7 @@ case "$COMMAND" in
     warn "ATTENZIONE: questa operazione rimuove Kubernetes da tutti i nodi!"
     read -r -p "Digitare 'reset' per confermare: " CONFIRM
     [ "$CONFIRM" = "reset" ] || { info "Operazione annullata."; exit 0; }
-    "${ANSIBLE_CMD[@]}" reset.yml -e "reset_confirmation=yes"
+    "${ANSIBLE_CMD[@]}" reset.yml -e '{"reset_confirmation": true}'
     info "Reset completato. Il cluster è stato rimosso."
     ;;
 

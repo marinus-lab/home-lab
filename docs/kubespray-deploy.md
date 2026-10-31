@@ -141,10 +141,10 @@ Il file è generato da Terraform con `templatefile()` a partire da `terraform/te
 
 ### `group_vars/all/all.yml`
 
-**`kube_version: 1.35.4`**
+**`kube_version: 1.36.4`**
 La versione di Kubernetes da installare (senza prefisso `v`). Kubespray usa questo valore per scaricare i binari corretti (`kubeadm`, `kubelet`, `kubectl`). Verificare la [matrice di compatibilità Kubespray](https://github.com/kubernetes-sigs/kubespray#supported-components) prima di cambiare versione.
 
-**`kubespray_version: v2.31.0`**
+**`kubespray_version: v2.32.0`**
 Tag di release Kubespray da clonare. Se vuoto, usa il branch `main`. Impostato automaticamente da `init-project.sh` durante l'inizializzazione del progetto. `deploy.sh` verifica la versione corrente e fa checkout del tag richiesto (chiedendo conferma se diverso).
 
 **`download_run_once: true`**
@@ -282,7 +282,7 @@ INVENTORY=/path/to/other/hosts.ini ./deploy.sh
 
 ## Come funziona il venv Kubespray
 
-`setup-bastion.sh` crea `~/kubespray-env` installando le dipendenze Python di Kubespray (principalmente `ansible-core`, `cryptography`, `netaddr`, `jinja2`). Il repo Kubespray stesso viene clonato da `deploy.sh` solo al momento del deploy in `~/kubespray`.
+`setup-bastion.sh` crea `~/kubespray-env` installando le dipendenze Python di Kubespray v2.32.0 (`ansible==12.3.0` / ansible-core 2.19, `cryptography`, `netaddr`, …). `deploy.sh` riallinea il venv con `requirements.txt` del tag in uso prima di ogni playbook. Il repo Kubespray stesso viene clonato da `deploy.sh` in `~/kubespray`.
 
 Questo approccio separa:
 - Le **dipendenze** (nel venv, già installate) → veloci da riconfigurare
@@ -293,7 +293,7 @@ Per aggiornare Kubespray a una versione più recente:
 ```bash
 cd ~/kubespray
 git fetch --tags
-git checkout v2.25.0   # tag della versione desiderata
+git checkout v2.32.0   # tag della versione desiderata
 # aggiornare anche kube_version in group_vars/all/all.yml
 cd /root/home-lab/kubespray
 ./deploy.sh upgrade
@@ -405,7 +405,8 @@ terraform apply -parallelism=2
 ```bash
 # Kubespray rinnova automaticamente via systemd timer (vedi auto_renew_certificates).
 # Per forzare il rinnovo:
-EXTRA_ARGS="-e force_certificate_regeneration=true" \
+# Ansible 2.19: i booleani via -e key=value sono stringhe; passare JSON
+EXTRA_ARGS='-e {"force_certificate_regeneration":true}' \
   PLAYBOOK=upgrade-cluster.yml ./deploy.sh upgrade
 ```
 

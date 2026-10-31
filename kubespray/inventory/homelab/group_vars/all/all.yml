@@ -5,11 +5,11 @@ cluster_name: ninjam-k8s
 # ── Versione Kubernetes ────────────────────────────────────────────────────────
 # Verificare la compatibilità con la versione Kubespray in uso:
 # https://github.com/kubernetes-sigs/kubespray#supported-components
-kube_version: 1.35.4
+kube_version: 1.36.4
 
 # ── Versione Kubespray ─────────────────────────────────────────────────────────
 # Tag release da usare per il clone. Vuoto = branch main.
-kubespray_version: v2.31.0
+kubespray_version: v2.32.0
 
 # ── DNS upstream ───────────────────────────────────────────────────────────────
 upstream_dns_servers:

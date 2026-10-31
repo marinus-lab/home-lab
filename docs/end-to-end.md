@@ -509,9 +509,9 @@ kubectl --kubeconfig ~/.kube/k3s-config get nodes -o wide
 # Tutti i nodi devono essere Ready
 kubectl get nodes -o wide
 # NAME           STATUS   ROLES           AGE   VERSION   INTERNAL-IP
-# k8s-master-1   Ready    control-plane   5m    1.35.4   192.168.1.210
-# k8s-worker-1   Ready    <none>          3m    1.35.4   192.168.1.220
-# k8s-worker-2   Ready    <none>          3m    1.35.4   192.168.1.221
+# k8s-master-1   Ready    control-plane   5m    1.36.4   192.168.1.210
+# k8s-worker-1   Ready    <none>          3m    1.36.4   192.168.1.220
+# k8s-worker-2   Ready    <none>          3m    1.36.4   192.168.1.221
 
 # Tutti i pod di sistema devono essere Running o Completed
 kubectl get pods -A
@@ -738,7 +738,7 @@ cd terraform && terraform init && terraform apply -parallelism=2
 cd ../kubespray && EXTRA_ARGS="--limit k8s-worker-3" ./deploy.sh
 
 # Aggiornare Kubernetes
-# → group_vars/all/all.yml: kube_version: 1.36.0
+# → group_vars/all/all.yml: kube_version: 1.36.4
 cd kubespray && ./deploy.sh upgrade
 
 # Rimuovere un worker

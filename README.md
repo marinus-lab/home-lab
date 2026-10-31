@@ -37,9 +37,9 @@ bash init-project.sh
 | Proxmox VE | 7.x / 8.x | Hypervisor |
 | Packer | ≥ 1.9 | Build template VM (Ubuntu 22.04/24.04, Debian 13, Rocky 9) |
 | Terraform | ≥ 1.5 | Provisioning VM dal template (K8s + K3S) |
-| Kubespray | v2.31.0 | Installazione Kubernetes |
+| Kubespray | v2.32.0 | Installazione Kubernetes |
 | K3S | latest | Kubernetes leggero (cluster separato) |
-| Kubernetes | v1.35.4 | Container orchestration (via Kubespray, cluster K8s) |
+| Kubernetes | v1.36.4 | Container orchestration (via Kubespray, cluster K8s) |
 | K3S | latest | Container orchestration (via install script, cluster K3S separato) |
 | Calico | bundled | CNI (overlay IPIP) |
 | containerd | bundled | Container runtime |
@@ -162,7 +162,7 @@ home-lab/
 │       ├── hosts.ini                      # Inventory (generato da Terraform)
 │       └── group_vars/
 │           ├── all/
-│           │   ├── all.yml                # Cluster name, K8s v1.35.4, DNS, NTP, SSH
+│           │   ├── all.yml                # Cluster name, K8s v1.36.4, DNS, NTP, SSH
 │           │   └── containerd.yml         # Runtime containerd
 │           └── k8s_cluster/
 │               ├── k8s-cluster.yml        # CIDR, kube-proxy, DNS, NTP, registry, certificati
