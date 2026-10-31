@@ -20,6 +20,7 @@ PHASE_NAMES=(
     "Pi Agent"
     "Ansible & Proxmox"
     "Terraform & Packer"
+    "kubectl"
     "Kubespray Python Environment"
     "SSH Key Generation"
     "less + Pygmentize Configuration"
@@ -291,8 +292,16 @@ TF_VER="$(terraform --version 2>&1 | head -1 | awk '{print $2}')"
 PACKER_VER="$(packer --version 2>&1)"
 phase_end 8 "TF $TF_VER / Packer $PACKER_VER"
 
-# 10. Python venv for Kubespray
+# 10. kubectl (client Kubernetes per k3s e Kubespray)
 phase_start 9
+curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /tmp/kubectl
+sudo install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+rm -f /tmp/kubectl
+KUBECTL_VER="$(kubectl version --client -o yaml 2>/dev/null | grep -m1 gitVersion | awk '{print $2}')"
+phase_end 9 "$KUBECTL_VER"
+
+# 11. Python venv for Kubespray
+phase_start 10
 mkdir -p "$HOME/kubespray-env"
 python3 -m venv "$HOME/kubespray-env"
 source "$HOME/kubespray-env/bin/activate"
@@ -308,20 +317,20 @@ else
 fi
 rm -rf "$TMP_DIR"
 deactivate
-phase_end 9
+phase_end 10
 
-# 11. SSH key generation
-phase_start 10
+# 12. SSH key generation
+phase_start 11
 if [ ! -f "$HOME/.ssh/id_rsa" ]; then
     ssh-keygen -t rsa -b 4096 -f "$HOME/.ssh/id_rsa" -N ""
     echo "✅ New SSH key generated."
 else
-    echo "ℹ️  SSH key already exists, skipping."
+    echo "i️  SSH key already exists, skipping."
 fi
-phase_end 10
+phase_end 11
 
-# 12. less + Pygmentize configuration (rrt theme)
-phase_start 11
+# 13. less + Pygmentize configuration (rrt theme)
+phase_start 12
 cat > "$HOME/.lessfilter" << 'LESSFILTER'
 #!/bin/bash
 case "$1" in
