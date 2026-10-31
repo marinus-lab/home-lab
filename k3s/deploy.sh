@@ -32,7 +32,16 @@ _auto_inventory() {
   fi
   [ -f "$INVENTORY" ] || error "Inventory non trovato: $INVENTORY
   Eseguire prima:
-    cd terraform-k3s && terraform apply"
+    cd terraform-k3s && terraform apply -parallelism=2"
+
+  # Il file deve contenere nodi reali: senza 'terraform apply' resta vuoto o placeholder
+  if ! grep -q '^\[k3s_cluster\]' "$INVENTORY" || [ -z "$(_read_nodes | head -1)" ]; then
+    error "Inventory senza nodi in [k3s_cluster]: $INVENTORY
+  Contiene solo commenti/placeholder — le VM non sono ancora state create.
+  Eseguire:
+    cd terraform-k3s && terraform init && terraform apply -parallelism=2
+    cat terraform-k3s/generated/k3s-inventory.ini   # deve contenere k3s-1/2/3 con gli IP"
+  fi
 }
 
 # ── Legge la lista nodi dall'inventory ─────────────────────────────────────
