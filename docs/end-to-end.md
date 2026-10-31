@@ -121,7 +121,7 @@ Lo script usa una dashboard tmux per mostrare il progresso in tempo reale:
 | 1 | OpenJDK 17 |
 | 2 | Dipendenze sistema (curl, git, python3, jq, tmux, htop...) |
 | 3 | Vim con tema desert e plugin Terraform |
-| 4 | Node.js 22 |
+| 4 | Node.js 26 |
 | 5 | GitHub Copilot CLI |
 | 6 | Gemini CLI |
 | 7 | OpenCode AI Agent |

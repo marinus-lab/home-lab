@@ -14,7 +14,7 @@ PHASE_NAMES=(
     "Java 17 Installation"
     "System Update & Dependencies"
     "Vim Configuration"
-    "Node.js 22 Installation"
+    "Node.js 26 Installation"
     "GitHub Copilot CLI"
     "Gemini CLI"
     "OpenCode AI Agent"
@@ -243,9 +243,9 @@ fi
 VIM_VER="$(vim --version 2>&1 | head -1 | awk '{print $5}')"
 phase_end 2 "$VIM_VER"
 
-# 4. Node.js 22 installation
+# 4. Node.js 26 installation
 phase_start 3
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash -
 sudo apt-get install -y nodejs
 NODE_VER="$(node --version 2>&1 | cut -c2-)"
 phase_end 3 "$NODE_VER"
@@ -395,7 +395,7 @@ echo "🎉 BASTION SETUP COMPLETED SUCCESSFULLY!"
 echo "================================================================="
 echo "• OpenJDK 17 Headless installed."
 echo "• Vim (desert theme, line numbers)."
-echo "• Node.js 22 + GitHub CLI + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + OpenClaude + Working Memory plugin."
+echo "• Node.js 26 + GitHub CLI + GitHub Copilot CLI + Gemini CLI + OpenCode-AI + OpenClaude + Working Memory plugin."
 echo "• Ansible + Proxmox integration."
 echo "• Terraform + Packer installed."
 echo "• Kubespray venv ready at $HOME/kubespray-env"
