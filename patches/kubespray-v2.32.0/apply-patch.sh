@@ -34,3 +34,12 @@ if [ -f "$ADMIN_CONF_FILE" ]; then
 else
   echo "Patch v2.32.0: $ADMIN_CONF_FILE non trovato (clone Kubespray potrebbe non contenere il ruolo)"
 fi
+
+# Rimuove anche i residui del blocco shell/changed_when lasciati dalla patch precedente
+if [ -f "$ADMIN_CONF_FILE" ]; then
+  if grep -q '^  shell: >-$' "$ADMIN_CONF_FILE"; then
+    echo "Applicando patch v2.32.0: rimuovo residui blocco shell da kubeadm-setup.yml..."
+    sed -i '/^  shell: >-$/,/changed_when: false$/d' "$ADMIN_CONF_FILE"
+    echo "Residui blocco shell rimossi."
+  fi
+fi
