@@ -69,20 +69,12 @@ _apply_patches() {
     fi
   fi
 
-  # Patch 2: admin.conf → insecure-skip-tls-verify=true (risolve tutti i TLS error su VIP)
+  # Patch 2: rimuove insecure-skip-tls-verify da kubeadm-setup.yml (v2.32.0 interferisce con kubeadm token create)
   # Idempotente: il task sedato applica la riga solo se non già presente.
   f="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-setup.yml"
-  if ! grep -q 'insecure-skip-tls-verify' "$f" 2>/dev/null; then
-    info "Applicando patch: insecure-skip-tls-verify in kubeadm-setup.yml..."
-    {
-      echo ""
-      echo "- name: Kubeadm | Set insecure-skip-tls-verify in admin.conf"
-      echo "  shell: >-"
-      echo "    grep -q insecure-skip-tls-verify {{ kube_config_dir }}/admin.conf ||"
-      echo "    sed -i '/certificate-authority-data:/a\\    insecure-skip-tls-verify: true'"
-      echo "    {{ kube_config_dir }}/admin.conf"
-      echo "  changed_when: false"
-    } >> "$f"
+  if grep -q 'insecure-skip-tls-verify' "$f" 2>/dev/null; then
+    info "Applicando patch v2.32.0: rimuovo insecure-skip-tls-verify da kubeadm-setup.yml..."
+    sed -i '/insecure-skip-tls-verify/d' "$f"
     ok "Patch kubeadm-setup.yml applicata."
   fi
 }
@@ -154,14 +146,6 @@ if [ -n "${EXTRA_ARGS:-}" ]; then
   ANSIBLE_CMD+=($EXTRA_ARGS)
 fi
 
-# ── Pre-deploy: applica insecure-skip-tls-verify su admin.conf esistente (re-deploy) ──
-if grep -q 'kube_control_plane' "$INVENTORY" 2>/dev/null; then
-  info "Verifico admin.conf esistente sui master per insecure-skip-tls-verify..."
-  ansible -i "$INVENTORY" kube_control_plane -m shell \
-    -a "test -f /etc/kubernetes/admin.conf && grep -q insecure-skip-tls-verify /etc/kubernetes/admin.conf || sed -i '/certificate-authority-data:/a\\    insecure-skip-tls-verify: true' /etc/kubernetes/admin.conf" \
-    -b --private-key ~/.ssh/id_rsa >/dev/null 2>&1 || true
-  ok "insecure-skip-tls-verify applicato su admin.conf esistente."
-fi
 # ── SSH ping test pre-deploy ──────────────────────────────────────────────────
 _ssh_ping_test() {
   local fail=0
