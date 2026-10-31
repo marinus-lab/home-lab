@@ -57,6 +57,18 @@ _apply_patches() {
     ok "Patch download_container.yml applicata."
   fi
 
+  # Patch 3: applica script di patch esterni per versione Kubespray (es. v2.32.0)
+  if [ -n "${KUBESPRAY_VERSION:-}" ]; then
+    patch_dir="$SCRIPT_DIR/../patches/$KUBESPRAY_VERSION"
+    if [ -d "$patch_dir" ]; then
+      for patch_script in "$patch_dir"/*.sh; do
+        [ -f "$patch_script" ] || continue
+        info "Applicando patch esterna: $(basename "$patch_script")..."
+        bash "$patch_script" || true
+      done
+    fi
+  fi
+
   # Patch 2: admin.conf → insecure-skip-tls-verify=true (risolve tutti i TLS error su VIP)
   # Idempotente: il task sedato applica la riga solo se non già presente.
   f="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-setup.yml"
