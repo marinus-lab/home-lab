@@ -33,6 +33,17 @@ ntp_servers:
   - 1.it.pool.ntp.org
   - 2.it.pool.ntp.org
 
+# ── Calico (CNI) ────────────────────────────────────────────────────────────────────
+kube_network_plugin: calico
+calico_ipip_mode: Always
+calico_vxlan_mode: Never
+calico_network_backend: bird
+calico_mtu: 1480
+kube_service_addresses: 10.96.0.0/12
+kube_pods_subnet: 10.244.0.0/16
+kube_proxy_mode: ipvs
+kube_proxy_strict_arp: true
+
 # ── SSH ────────────────────────────────────────────────────────────────────────
 ansible_user: ubuntu
 ansible_become: true
