@@ -580,15 +580,23 @@ ADDONS_YML="$SCRIPT_DIR/kubespray/inventory/homelab/group_vars/k8s_cluster/addon
 K8SCLUSTER_YML="$SCRIPT_DIR/kubespray/inventory/homelab/group_vars/k8s_cluster/k8s-cluster.yml"
 
 if [ -f "$ADDONS_YML" ]; then
-  info "Sincronizzo kube-vip/MetalLB su subnet $K8S_SUBNET in addons.yml..."
-  sed -i "s|^kube_vip_address: .*|kube_vip_address: ${NET_PREFIX}.80|" "$ADDONS_YML"
-  # Sostituisce qualsiasi range pool esistente (192.168.1.x di default o run precedenti)
-  sed -i "s|^\( *- \)[0-9.]*\.[0-9]*-[0-9.]*\.[0-9]* *$|\1${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}|" "$ADDONS_YML"
-  if grep -q "kube_vip_address: ${NET_PREFIX}.80" "$ADDONS_YML" && \
-     grep -q "${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}" "$ADDONS_YML"; then
-    ok "addons.yml aggiornato (VIP ${NET_PREFIX}.80, pool ${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END})"
+  info "Configurazione kube-vip / MetalLB..."
+  # Richiedi il VIP (IP dell'API server virtuale) — default: subnet.80
+  read -rp "IP VIP kube-vip (default: ${NET_PREFIX}.80): " VIP_IP
+  VIP_IP="${VIP_IP:-${NET_PREFIX}.80}"
+  # Richiedi il range pool MetalLB — default: subnet.120-135
+  read -rp "Range pool MetalLB (default: ${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}): " METALLB_RANGE
+  METALLB_RANGE="${METALLB_RANGE:-${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}}"
+  echo ""
+  # Sincronizza nel repo (file tracciato da git — applica subito)
+  sed -i "s|^kube_vip_address: .*|kube_vip_address: $VIP_IP|" "$ADDONS_YML"
+  sed -i "s|^\( *- \)[0-9.]*\.[0-9]*-[0-9.]*\.[0-9]* *$|\1$METALLB_RANGE|" "$ADDONS_YML"
+  # Verifica che le modifiche siano state applicate
+  if grep -q "kube_vip_address: $VIP_IP" "$ADDONS_YML" && \
+     grep -q "$METALLB_RANGE" "$ADDONS_YML"; then
+    ok "addons.yml aggiornato (VIP $VIP_IP, pool $METALLB_RANGE)"
   else
-    warn "addon.yml: sostituzione parziale — verifica manualmente kube_vip_address e metallb ip_range"
+    warn "addon.yml: sostituzione parziale — verifica manualmente kube_vip_address ($VIP_IP) e metallb ip_range ($METALLB_RANGE)"
   fi
 fi
 
