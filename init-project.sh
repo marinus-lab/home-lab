@@ -234,6 +234,11 @@ done
 
 ok "Rete Kubernetes configurata"
 
+# ── Dashboard Kubernetes ──────────────────────────────────────────────────────
+echo ""
+read -rp "Abilitare Kubernetes Dashboard? (s/N): " ENABLE_DASHBOARD
+ENABLE_DASHBOARD="${ENABLE_DASHBOARD:-n}"
+
 # ── KUBERNETES SETUP ──────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -591,6 +596,14 @@ if [ -f "$ADDONS_YML" ]; then
   # Sincronizza nel repo (file tracciato da git — applica subito)
   sed -i "s|^kube_vip_address: .*|kube_vip_address: $VIP_IP|" "$ADDONS_YML"
   sed -i "s|^\( *- \)[0-9.]*\.[0-9]*-[0-9.]*\.[0-9]* *$|\1$METALLB_RANGE|" "$ADDONS_YML"
+  # Dashboard on/off
+  if [[ "$ENABLE_DASHBOARD" =~ ^[sS] ]]; then
+    sed -i "s|^dashboard_enabled: .*|dashboard_enabled: true|" "$ADDONS_YML"
+    ok "Dashboard abilitata"
+  else
+    sed -i "s|^dashboard_enabled: .*|dashboard_enabled: false|" "$ADDONS_YML"
+    ok "Dashboard disabilitata"
+  fi
   # Verifica che le modifiche siano state applicate
   if grep -q "kube_vip_address: $VIP_IP" "$ADDONS_YML" && \
      grep -q "$METALLB_RANGE" "$ADDONS_YML"; then
