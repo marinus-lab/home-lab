@@ -25,6 +25,26 @@ else
   echo "Patch v2.32.0: $PATCH_FILE non trovato"
 fi
 
+# Aggiunge ignore_errors: true al task "Create kubeadm token for joining nodes"
+# Se l'API server (192.168.0.80:6443) non e' raggiungibile dal master che esegue il task,
+# il token creation fallisce ma il cluster puo' comunque funzionare (i nodi sono gia' Ready).
+TOKEN_FILE="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-setup.yml"
+if [ -f "$TOKEN_FILE" ]; then
+  if grep -q '^- name: Create kubeadm token for joining nodes with 24h expiration (default)$' "$TOKEN_FILE"; then
+    if ! grep -A1 '^- name: Create kubeadm token for joining nodes with 24h expiration (default)$' "$TOKEN_FILE" | grep -q 'ignore_errors: true'; then
+      echo "Applicando patch v2.32.0: aggiungo ignore_errors al token creation..."
+      sed -i '/^- name: Create kubeadm token for joining nodes with 24h expiration (default)$/a \  ignore_errors: true' "$TOKEN_FILE"
+      echo "Patch token creation applicata."
+    else
+      echo "Patch v2.32.0: token creation ha gia' ignore_errors (ok)"
+    fi
+  else
+    echo "Patch v2.32.0: task token creation non trovato in $TOKEN_FILE"
+  fi
+else
+  echo "Patch v2.32.0: $TOKEN_FILE non trovato"
+fi
+
 # Aggiunge ALLOW_BROKEN_CONDITIONALS per il ruolo registry (v2.32.0)
 # Il defaults/main.yml usa registry_storage_class: "" che con ansible-core 2.19
 # crea un conditional rotto (str invece di boolean).
