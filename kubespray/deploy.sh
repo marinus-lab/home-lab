@@ -143,6 +143,7 @@ ANSIBLE_CMD=(
   -i "$INVENTORY"
   --private-key ~/.ssh/id_rsa
   --become
+  -e ALLOW_BROKEN_CONDITIONALS=1
 )
 
 # Aggiunge argomenti extra se definiti
