@@ -118,6 +118,18 @@ fi
 
 _apply_patches
 
+# ── Copia group_vars personalizzati dal repo nel clone Kubespray ──────────────
+# Questo assicura che calico e le impostazioni custom (k8s-cluster.yml, k8s-net-plugin.yml)
+# siano disponibili nell'inventory del clone, altrimenti il CNI non viene installato.
+if [ -d "$SCRIPT_DIR/inventory/homelab/group_vars/k8s_cluster" ]; then
+  info "Copia group_vars k8s_cluster personalizzati nel clone Kubespray..."
+  cp -r "$SCRIPT_DIR/inventory/homelab/group_vars/k8s_cluster" "$KUBESPRAY_DIR/inventory/homelab/group_vars/k8s_cluster"
+fi
+if [ -f "$SCRIPT_DIR/inventory/homelab/group_vars/all/all.yml" ]; then
+  info "Copia group_vars/all/all.yml personalizzati nel clone Kubespray..."
+  cp "$SCRIPT_DIR/inventory/homelab/group_vars/all/all.yml" "$KUBESPRAY_DIR/inventory/homelab/group_vars/all/all.yml"
+fi
+
 # ── Attiva venv ───────────────────────────────────────────────────────────────
 info "Attivando venv: $VENV_DIR"
 # shellcheck disable=SC1091
