@@ -25,6 +25,22 @@ else
   echo "Patch v2.32.0: $PATCH_FILE non trovato"
 fi
 
+# Aggiunge ALLOW_BROKEN_CONDITIONALS per il ruolo registry (v2.32.0)
+# Il defaults/main.yml usa registry_storage_class: "" che con ansible-core 2.19
+# crea un conditional rotto (str invece di boolean).
+REGISTRY_DEFAULTS="$KUBESPRAY_DIR/roles/kubernetes-apps/registry/defaults/main.yml"
+if [ -f "$REGISTRY_DEFAULTS" ]; then
+  if grep -q 'registry_storage_class: ""' "$REGISTRY_DEFAULTS"; then
+    echo "Applicando patch v2.32.0: correggo registry_storage_class in $REGISTRY_DEFAULTS..."
+    sed -i 's/registry_storage_class: ""/registry_storage_class: none/' "$REGISTRY_DEFAULTS"
+    echo "Patch registry applicata."
+  else
+    echo "Patch v2.32.0: $REGISTRY_DEFAULTS non usa stringa vuota (ok)"
+  fi
+else
+  echo "Patch v2.32.0: $REGISTRY_DEFAULTS non trovato"
+fi
+
 # Aggiunge ignore_errors: true al task "Wait for new control plane nodes to be Ready"
 # Il CNI calico viene installato nei play kubernetes-apps SUCCESSIVI a questo wait:
 # su un cluster inzio i master restano NotReady e il task fallirebbe per sempre.
