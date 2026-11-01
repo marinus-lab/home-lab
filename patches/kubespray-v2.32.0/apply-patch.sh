@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
-# Patch per Kubespray v2.32.0 — risolve:
+# Patch per Kubespray v2.32.0 (ansible-core 2.19) — risolve:
 # 1. "specifying a root certificates file with the insecure flag is not allowed"
 #    (rimozione difensiva: presente solo in alcune build di cluster_roles)
-# 2. Timeout su "Wait for new control plane nodes to be Ready" quando il CNI
-#    (calico) viene installato in un play successivo: ignore_errors sul wait.
+# 2. Conditionals non booleani nel ruolo registry: in ansible-core 2.19 un
+#    when: che valuta a stringa è un ERRORE. Kubespray usa
+#      registry_storage_class != none and registry_storage_class
+#    che, con valore "local-path", valuta a stringa → "Conditional result (True)
+#    was derived from value of type 'str'". Riscritti in predicati booleani.
 # NOTA: NON toccare i blocchi shell/changed_when di kubeadm-setup.yml — sono
 # task legittimi (es. "Create hardcoded kubeadm token") e cancellarli con sed
 # corrompe il YAML ("no module/action detected in task").
+# NOTA: niente ignore_errors — se un task fallisce deve fallire il deploy
+# (mascherare non è un fix; VIP 192.168.0.80 è raggiungibile dalla v2.32.0+fix).
 set -euo pipefail
 
 KUBESPRAY_DIR="${KUBESPRAY_DIR:-$HOME/kubespray}"
 
-# Rimuove --insecure-skip-tls-verify dalla riga kubectl apply nel ruolo cluster_roles
+# 1) Rimuove --insecure-skip-tls-verify dalla riga kubectl apply nel ruolo cluster_roles
 PATCH_FILE="$KUBESPRAY_DIR/roles/kubernetes-apps/cluster_roles/tasks/main.yml"
 if [ -f "$PATCH_FILE" ]; then
   if grep -q 'insecure-skip-tls-verify' "$PATCH_FILE"; then
@@ -25,61 +30,24 @@ else
   echo "Patch v2.32.0: $PATCH_FILE non trovato"
 fi
 
-# Aggiunge ignore_errors: true al task "Create kubeadm token for joining nodes"
-# Se l'API server (192.168.0.80:6443) non e' raggiungibile dal master che esegue il task,
-# il token creation fallisce ma il cluster puo' comunque funzionare (i nodi sono gia' Ready).
-TOKEN_FILE="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-setup.yml"
-if [ -f "$TOKEN_FILE" ]; then
-  if grep -q '^- name: Create kubeadm token for joining nodes with 24h expiration (default)$' "$TOKEN_FILE"; then
-    if ! grep -A1 '^- name: Create kubeadm token for joining nodes with 24h expiration (default)$' "$TOKEN_FILE" | grep -q 'ignore_errors: true'; then
-      echo "Applicando patch v2.32.0: aggiungo ignore_errors al token creation..."
-      sed -i '/^- name: Create kubeadm token for joining nodes with 24h expiration (default)$/a \  ignore_errors: true' "$TOKEN_FILE"
-      echo "Patch token creation applicata."
-    else
-      echo "Patch v2.32.0: token creation ha gia' ignore_errors (ok)"
+# 2) Conditionals registry → booleani (ansible-core 2.19)
+# "X != none and X" restituisce la stringa X se vera; sostituito con
+# "X not in (none, '')" che restituisce sempre un bool.
+REGISTRY_TASKS="$KUBESPRAY_DIR/roles/kubernetes-apps/registry/tasks/main.yml"
+if [ -f "$REGISTRY_TASKS" ]; then
+  if grep -q 'registry_storage_class != none and registry_storage_class' "$REGISTRY_TASKS"; then
+    echo "Applicando patch v2.32.0: conditionals registry booleani in $REGISTRY_TASKS"
+    sed -i 's/registry_storage_class != none and registry_storage_class/registry_storage_class not in (none, "")/' "$REGISTRY_TASKS"
+    sed -i 's/registry_disk_size != none and registry_disk_size/registry_disk_size not in (none, "")/' "$REGISTRY_TASKS"
+    # Verifica: nessun conditional stringa residuo
+    if grep -q '!= none and registry_' "$REGISTRY_TASKS"; then
+      echo "ERRORE patch v2.32.0: conditionals registry rimasti non booleani" >&2
+      exit 1
     fi
+    echo "Patch registry applicata (booleana)."
   else
-    echo "Patch v2.32.0: task token creation non trovato in $TOKEN_FILE"
+    echo "Patch v2.32.0: conditionals registry già booleani o task assente (ok)"
   fi
 else
-  echo "Patch v2.32.0: $TOKEN_FILE non trovato"
-fi
-
-# Aggiunge ALLOW_BROKEN_CONDITIONALS per il ruolo registry (v2.32.0)
-# Il defaults/main.yml usa registry_storage_class: "" che con ansible-core 2.19
-# crea un conditional rotto (str invece di boolean).
-REGISTRY_DEFAULTS="$KUBESPRAY_DIR/roles/kubernetes-apps/registry/defaults/main.yml"
-if [ -f "$REGISTRY_DEFAULTS" ]; then
-  if grep -q 'registry_storage_class: ""' "$REGISTRY_DEFAULTS"; then
-    echo "Applicando patch v2.32.0: correggo registry_storage_class in $REGISTRY_DEFAULTS..."
-    sed -i 's/registry_storage_class: ""/registry_storage_class: none/' "$REGISTRY_DEFAULTS"
-    echo "Patch registry applicata."
-  else
-    echo "Patch v2.32.0: $REGISTRY_DEFAULTS non usa stringa vuota (ok)"
-  fi
-else
-  echo "Patch v2.32.0: $REGISTRY_DEFAULTS non trovato"
-fi
-
-# Aggiunge ignore_errors: true al task "Wait for new control plane nodes to be Ready"
-# Il CNI calico viene installato nei play kubernetes-apps SUCCESSIVI a questo wait:
-# su un cluster inzio i master restano NotReady e il task fallirebbe per sempre.
-SECONDARY_FILE="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-secondary.yml"
-if [ -f "$SECONDARY_FILE" ]; then
-  # Cerchiamo la riga esatta del nome del task
-  if grep -q '^- name: Wait for new control plane nodes to be Ready$' "$SECONDARY_FILE"; then
-    # Verifichiamo se ignore_errors è già presente per evitare duplicazioni
-    if ! grep -A1 '^- name: Wait for new control plane nodes to be Ready$' "$SECONDARY_FILE" | grep -q 'ignore_errors: true'; then
-      echo "Applicando patch v2.32.0: aggiungo ignore_errors a Wait for new control plane nodes to be Ready..."
-      # Usiamo sed per inserire la nuova linea dopo la linea del nome del task
-      sed -i '/^- name: Wait for new control plane nodes to be Ready$/a \  ignore_errors: true' "$SECONDARY_FILE"
-      echo "Patch kubeadm-secondary.yml applicata."
-    else
-      echo "Patch v2.32.0: kubeadm-secondary.yml ha già ignore_errors (ok)"
-    fi
-  else
-    echo "Patch v2.32.0: il task 'Wait for new control plane nodes to be Ready' non trovato in $SECONDARY_FILE"
-  fi
-else
-  echo "Patch v2.32.0: $SECONDARY_FILE non trovato"
+  echo "Patch v2.32.0: $REGISTRY_TASKS non trovato"
 fi
