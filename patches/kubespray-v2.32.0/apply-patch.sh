@@ -51,3 +51,28 @@ if [ -f "$REGISTRY_TASKS" ]; then
 else
   echo "Patch v2.32.0: $REGISTRY_TASKS non trovato"
 fi
+
+# 3) Aggiunge Kubernetes Dashboard al playbook principale
+CLUSTER_PLAYBOOK="$KUBESPRAY_DIR/playbooks/cluster.yml"
+if [ -f "$CLUSTER_PLAYBOOK" ]; then
+  if ! grep -q 'kubernetes-dashboard' "$CLUSTER_PLAYBOOK"; then
+    echo "Applicando patch v2.32.0: aggiungo Kubernetes Dashboard a $CLUSTER_PLAYBOOK"
+    # Inserisce il blocco dopo l'ultimo ruolo di installazione app (registry/helm)
+    sed -i '/role: kubernetes-apps, tags: apps }/a \
+\
+- name: Install Kubernetes Dashboard\
+  hosts: kube_control_plane\
+  gather_facts: false\
+  any_errors_fatal: "{{ kubespray_any_errors_fatal | default(true) }}"\
+  environment: "{{ proxy_disable_env }}"\
+  roles:\
+    - { role: kubespray_defaults }\
+    - { role: kubernetes-apps/kubernetes-dashboard, when: "dashboard_enabled | default(false) " }' "$CLUSTER_PLAYBOOK"
+    echo "Patch Dashboard applicata."
+  else
+    echo "Patch v2.32.0: Dashboard già configurata in $CLUSTER_PLAYBOOK (ok)"
+  fi
+else
+  echo "Patch v2.32.0: $CLUSTER_PLAYBOOK non trovato"
+fi
+
