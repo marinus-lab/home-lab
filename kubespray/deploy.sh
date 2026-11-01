@@ -144,6 +144,7 @@ ANSIBLE_CMD=(
   --private-key ~/.ssh/id_rsa
   --become
   -e ALLOW_BROKEN_CONDITIONALS=1
+  -e registry_storage_class=false
 )
 
 export ALLOW_BROKEN_CONDITIONALS=1
