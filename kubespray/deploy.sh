@@ -123,10 +123,12 @@ _apply_patches
 # siano disponibili nell'inventory del clone, altrimenti il CNI non viene installato.
 if [ -d "$SCRIPT_DIR/inventory/homelab/group_vars/k8s_cluster" ]; then
   info "Copia group_vars k8s_cluster personalizzati nel clone Kubespray..."
-  cp -r "$SCRIPT_DIR/inventory/homelab/group_vars/k8s_cluster" "$KUBESPRAY_DIR/inventory/homelab/group_vars/k8s_cluster"
+  mkdir -p "$KUBESPRAY_DIR/inventory/homelab/group_vars/k8s_cluster"
+  cp -r "$SCRIPT_DIR/inventory/homelab/group_vars/k8s_cluster/." "$KUBESPRAY_DIR/inventory/homelab/group_vars/k8s_cluster/"
 fi
 if [ -f "$SCRIPT_DIR/inventory/homelab/group_vars/all/all.yml" ]; then
   info "Copia group_vars/all/all.yml personalizzati nel clone Kubespray..."
+  mkdir -p "$KUBESPRAY_DIR/inventory/homelab/group_vars/all"
   cp "$SCRIPT_DIR/inventory/homelab/group_vars/all/all.yml" "$KUBESPRAY_DIR/inventory/homelab/group_vars/all/all.yml"
 fi
 
