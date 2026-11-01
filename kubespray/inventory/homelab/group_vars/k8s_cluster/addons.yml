@@ -14,8 +14,11 @@ metrics_server_resizer_nanny_cpu: "5m"
 metrics_server_resizer_nanny_mem: "32Mi"
 
 # ── Kubernetes Dashboard ────────────────────────────────────────────────────────
-# Dashboard UI nativa di Kubernetes per monitoraggio e gestione cluster.
-dashboard_enabled: true
+# La dashboard upstream è stata rimossa da Kubespray (v2.21+).
+# Viene installata post-deploy tramite lo script dedicato:
+#   bash kubespray/scripts/install-dashboard.sh
+# (il flag dashboard_enabled qui è deprecato/storico).
+dashboard_enabled: false
 
 # ── Ingress Controller (nginx) ─────────────────────────────────────────────────
 # Espone servizi all'esterno del cluster via MetalLB.

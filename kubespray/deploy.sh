@@ -204,7 +204,11 @@ _purge_fact_cache() {
   fi
 }
 
-# ── Info post-installazione ────────────────────────────────────────────────────
+# ── Kubernetes Dashboard ────────────────────────────────────────────────────────
+if [ -f "$SCRIPT_DIR/kubespray/scripts/install-dashboard.sh" ]; then
+  info "Installazione Kubernetes Dashboard (helm)..."
+  bash "$SCRIPT_DIR/kubespray/scripts/install-dashboard.sh" || warn "Installazione dashboard fallita (puoi riprovare manualmente)"
+fi
 _print_post_install() {
   MASTER_IP=$(grep ansible_host "$INVENTORY" | grep master | head -1 | awk -F'ansible_host=' '{print $2}' | awk '{print $1}')
   echo ""
