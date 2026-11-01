@@ -30,14 +30,19 @@ fi
 # su un cluster inzio i master restano NotReady e il task fallirebbe per sempre.
 SECONDARY_FILE="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-secondary.yml"
 if [ -f "$SECONDARY_FILE" ]; then
+  # Cerchiamo la riga esatta del nome del task
   if grep -q '^- name: Wait for new control plane nodes to be Ready$' "$SECONDARY_FILE"; then
+    # Verifichiamo se ignore_errors è già presente per evitare duplicazioni
     if ! grep -A1 '^- name: Wait for new control plane nodes to be Ready$' "$SECONDARY_FILE" | grep -q 'ignore_errors: true'; then
       echo "Applicando patch v2.32.0: aggiungo ignore_errors a Wait for new control plane nodes to be Ready..."
+      # Usiamo sed per inserire la nuova linea dopo la linea del nome del task
       sed -i '/^- name: Wait for new control plane nodes to be Ready$/a \  ignore_errors: true' "$SECONDARY_FILE"
       echo "Patch kubeadm-secondary.yml applicata."
     else
       echo "Patch v2.32.0: kubeadm-secondary.yml ha già ignore_errors (ok)"
     fi
+  else
+    echo "Patch v2.32.0: il task 'Wait for new control plane nodes to be Ready' non trovato in $SECONDARY_FILE"
   fi
 else
   echo "Patch v2.32.0: $SECONDARY_FILE non trovato"
