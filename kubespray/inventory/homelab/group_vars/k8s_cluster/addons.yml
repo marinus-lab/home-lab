@@ -1,7 +1,8 @@
 ---
 # ── Registry ───────────────────────────────────────────────────────────────────
-# Disabilitato per evitare errori conditional con Kubespray v2.32.0 (ansible-core 2.19)
-registry_enabled: false
+# Abilitato con StorageClass local-path per Kubespray v2.32.0 (evita errore conditional)
+registry_enabled: true
+registry_storage_class: "local-path"
 
 # ── Helm ───────────────────────────────────────────────────────────────────────
 helm_enabled: true
