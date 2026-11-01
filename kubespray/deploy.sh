@@ -180,6 +180,24 @@ _ssh_ping_test() {
   fi
 }
 
+# ── Pulizia fact cache Ansible (ansible.cfg Kubespray: jsonfile in /tmp, 24h) ─
+# Dopo un rebuild di VM i fatti in cache contengono gli IP vecchi: il check
+# "Stop if access_ip is not pingable" fallisce su IP non più esistenti e i task
+# usano indirizzi stale. Cancellare i file-cache dei nodi a ogni run.
+_purge_fact_cache() {
+  local host ip removed=0
+  while IFS= read -r line; do
+    host=$(echo "$line" | awk '{print $1}')
+    [ -z "$host" ] && continue
+    for f in "/tmp/$host" "/tmp/s1_$host"; do
+      if [ -f "$f" ]; then rm -f "$f"; removed=$((removed+1)); fi
+    done
+  done < <(grep -E '^[a-z0-9-]+ ' "$INVENTORY")
+  if [ "$removed" -gt 0 ]; then
+    info "Fact cache Ansible rimossa: $removed file (IP stale dopo rebuild VM)"
+  fi
+}
+
 # ── Info post-installazione ────────────────────────────────────────────────────
 _print_post_install() {
   MASTER_IP=$(grep ansible_host "$INVENTORY" | grep master | head -1 | awk -F'ansible_host=' '{print $2}' | awk '{print $1}')
@@ -205,6 +223,7 @@ _install() {
   info "Avvio installazione cluster Kubernetes..."
   info "Inventory: $INVENTORY"
   _ssh_ping_test
+  _purge_fact_cache
   warn "Durata stimata: 20-40 minuti a seconda dell'hardware."
   "${ANSIBLE_CMD[@]}" cluster.yml
   info "Cluster installato con successo!"
@@ -236,6 +255,7 @@ case "$COMMAND" in
       | awk '{print $2}')
     info "Upgrade cluster a Kubernetes $K8S_VER..."
     warn "Processo non distruttivo ma richiede un drain/uncordon di ogni nodo."
+    _purge_fact_cache
     "${ANSIBLE_CMD[@]}" upgrade-cluster.yml
     info "Upgrade completato."
     ;;
