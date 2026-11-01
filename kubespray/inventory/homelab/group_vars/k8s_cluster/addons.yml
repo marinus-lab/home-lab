@@ -1,4 +1,8 @@
 ---
+# ── Registry ───────────────────────────────────────────────────────────────────
+# Disabilitato per evitare errori conditional con Kubespray v2.32.0 (ansible-core 2.19)
+registry_enabled: false
+
 # ── Helm ───────────────────────────────────────────────────────────────────────
 helm_enabled: true
 
