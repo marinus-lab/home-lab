@@ -146,6 +146,9 @@ ANSIBLE_CMD=(
   -e ALLOW_BROKEN_CONDITIONALS=1
 )
 
+export ALLOW_BROKEN_CONDITIONALS=1
+
+
 # Aggiunge argomenti extra se definiti
 if [ -n "${EXTRA_ARGS:-}" ]; then
   # shellcheck disable=SC2206
