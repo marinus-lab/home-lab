@@ -68,15 +68,6 @@ _apply_patches() {
       done
     fi
   fi
-
-  # Patch 2: rimuove insecure-skip-tls-verify da kubeadm-setup.yml (v2.32.0 interferisce con kubeadm token create)
-  # Idempotente: il task sedato applica la riga solo se non già presente.
-  f="$KUBESPRAY_DIR/roles/kubernetes/control-plane/tasks/kubeadm-setup.yml"
-  if grep -q 'insecure-skip-tls-verify' "$f" 2>/dev/null; then
-    info "Applicando patch v2.32.0: rimuovo insecure-skip-tls-verify da kubeadm-setup.yml..."
-    sed -i '/insecure-skip-tls-verify/d' "$f"
-    ok "Patch kubeadm-setup.yml applicata."
-  fi
 }
 
 # ── Legge kubespray_version da group_vars/all/all.yml ────────────────────────────
