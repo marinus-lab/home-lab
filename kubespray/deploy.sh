@@ -185,12 +185,19 @@ _ssh_ping_test() {
 # "Stop if access_ip is not pingable" fallisce su IP non più esistenti e i task
 # usano indirizzi stale. Cancellare i file-cache dei nodi a ogni run.
 _purge_fact_cache() {
-  local host ip removed=0
+  local host removed=0
+  # Kubespray ansible.cfg: fact_caching=jsonfile, connection=/tmp (24h),
+  # gathering=smart -> i fatti vengono riusati dalla cache. Dopo un rebuild
+  # di VM la cache contiene gli IP vecchi: gli assert "pingable" e i template
+  # (es. kubelet node-ip) usano indirizzi stale. Si accumulano in /tmp con
+  # nome <host> o <prefix>_<host> (es. s1_k8s-worker-1).
   while IFS= read -r line; do
     host=$(echo "$line" | awk '{print $1}')
     [ -z "$host" ] && continue
-    for f in "/tmp/$host" "/tmp/s1_$host"; do
-      if [ -f "$f" ]; then rm -f "$f"; removed=$((removed+1)); fi
+    for f in "/tmp/$host" "/tmp/"*_"$host"; do
+      [ -f "$f" ] || continue
+      rm -f "$f"
+      removed=$((removed+1))
     done
   done < <(grep -E '^[a-z0-9-]+ ' "$INVENTORY")
   if [ "$removed" -gt 0 ]; then
