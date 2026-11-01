@@ -57,16 +57,18 @@ _apply_patches() {
     ok "Patch download_container.yml applicata."
   fi
 
-  # Patch 3: applica script di patch esterni per versione Kubespray (es. v2.32.0)
+  # Patch 3: applica script di patch esterni per versione Kubespray (es. kubespray-v2.32.0)
   if [ -n "${KUBESPRAY_VERSION:-}" ]; then
-    patch_dir="$SCRIPT_DIR/../patches/$KUBESPRAY_VERSION"
-    if [ -d "$patch_dir" ]; then
-      for patch_script in "$patch_dir"/*.sh; do
-        [ -f "$patch_script" ] || continue
-        info "Applicando patch esterna: $(basename "$patch_script")..."
-        bash "$patch_script" || true
-      done
-    fi
+    # Il naming delle directory patch è "kubespray-<versione>" (ref. commit 7c74133)
+    for patch_dir in "$SCRIPT_DIR/../patches/kubespray-$KUBESPRAY_VERSION" "$SCRIPT_DIR/../patches/$KUBESPRAY_VERSION"; do
+      if [ -d "$patch_dir" ]; then
+        for patch_script in "$patch_dir"/*.sh; do
+          [ -f "$patch_script" ] || continue
+          info "Applicando patch esterna: $(basename "$patch_script")..."
+          bash "$patch_script" || true
+        done
+      fi
+    done
   fi
 }
 
