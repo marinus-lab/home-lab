@@ -63,12 +63,219 @@ phase_end() {
     fi
 }
 
-# ─── Error handling ────────────────────────────────────────────
+# ─── List phases ─────────────────────────────────────────────────
+list_phases() {
+    echo "Fasi disponibili (usa --phase=N per eseguirle singolarmente):"
+    echo "┌─────┬─────────────────────────────────────────────┐"
+    printf "│ %-3s │ %-43s │\n" "ID" "Nome fase"
+    echo "├─────┼─────────────────────────────────────────────┤"
+    for i in "${!PHASE_NAMES[@]}"; do
+        printf "│ %-3d │ %-43s │\n" "$i" "${PHASE_NAMES[$i]}"
+    done
+    echo "└─────┴─────────────────────────────────────────────┘"
+}
+
+# ─── Phase 1: Java 17 ────────────────────────────────────────────
+_phase_0_java() {
+    phase_start 0
+    sudo apt-get update || { echo "⚠ apt update failed."; phase_end 0 "no repo"; exit 1; }
+    if ! dpkg -s openjdk-17-jre-headless &>/dev/null; then
+        sudo apt-get install -y openjdk-17-jre-headless || {
+            echo "⚠ openjdk-17-jre-headless not found in repositories." >&2
+            java -version 2>&1 | head -1 && {
+                echo "ℹ️  Java binary found, proceeding."
+            } || {
+                phase_end 0 "pkg missing"
+                exit 1
+            }
+        }
+    else
+        echo "ℹ️  openjdk-17-jre-headless already installed."
+    fi
+    JAVA_VER="$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)"
+    phase_end 0 "$JAVA_VER"
+}
+
+# ─── Phase 2: System dependencies ─────────────────────────────────
+_phase_1_deps() {
+    phase_start 1
+    sudo apt-get install -y curl gnupg software-properties-common git unzip \
+        python3-pip python3-venv python3-pygments build-essential \
+        tmux jq dnsutils netcat-openbsd htop aria2
+    TMUX_VER="$(tmux -V 2>&1 | awk '{print $2}')"
+    phase_end 1 "$TMUX_VER"
+}
+
+# ─── Phase 3: Vim Configuration ───────────────────────────────────
+_phase_2_vim() {
+    phase_start 2
+    sudo apt-get install -y vim
+    cat > "$HOME/.vimrc" << 'EOF'
+set number
+colorscheme desert
+EOF
+    mkdir -p "$HOME/.vim/pack/plugins/start"
+    if [ ! -d "$HOME/.vim/pack/plugins/start/vim-terraform" ]; then
+        git clone https://github.com/hashivim/vim-terraform.git "$HOME/.vim/pack/plugins/start/vim-terraform"
+    fi
+    VIM_VER="$(vim --version 2>&1 | head -1 | awk '{print $5}')"
+    phase_end 2 "$VIM_VER"
+}
+
+# ─── Phase 4: Node.js 26 ─────────────────────────────────────────
+_phase_3_nodejs() {
+    phase_start 3
+    curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    NODE_VER="$(node --version 2>&1 | cut -c2-)"
+    phase_end 3 "$NODE_VER"
+}
+
+# ─── Phase 5: OpenCode AI Agent ───────────────────────────────────
+_phase_4_opencode() {
+    phase_start 4
+    curl -fsSL https://opencode.ai/v2/install | bash
+    export PATH="$HOME/.opencode/bin:$PATH"
+    OPENCODE_VER="$(opencode --version 2>&1 | head -1 | awk '{print $NF}')"
+    phase_end 4 "$OPENCODE_VER"
+}
+
+# ─── Phase 6: Hermes Agent ────────────────────────────────────────
+_phase_5_hermes() {
+    phase_start 5
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive
+    export PATH="$HOME/.local/bin:$PATH"
+    HERMES_VER="$(hermes --version 2>&1 | head -1 | awk '{print $NF}')"
+    phase_end 5 "$HERMES_VER"
+}
+
+# ─── Phase 7: Pi Agent ──────────────────────────────────────────
+_phase_6_pi() {
+    phase_start 6
+    curl -fsSL https://pi.dev/install.sh | setsid -w sh
+    export PATH="$HOME/.local/bin:$HOME/.pi/agent/bin:$PATH"
+    PI_VER="$(pi --version 2>&1 | head -1 | awk '{print $NF}')"
+    phase_end 6 "$PI_VER"
+}
+
+# ─── Phase 8: Ansible & Proxmox ───────────────────────────────────
+_phase_7_ansible() {
+    phase_start 7
+    sudo add-apt-repository -y ppa:ansible/ansible
+    sudo apt-get update
+    sudo apt-get install -y ansible
+    sudo pip3 install --break-system-packages proxmoxer requests
+    ansible-galaxy collection install community.proxmox
+    ANSIBLE_VER="$(ansible --version 2>&1 | head -1 | sed 's/.*\[core \([^]]*\).*/\1/')"
+    phase_end 7 "$ANSIBLE_VER"
+}
+
+# ─── Phase 9: Terraform & Packer ──────────────────────────────────
+_phase_8_terraform() {
+    phase_start 8
+    curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+    sudo apt-get update
+    sudo apt-get install -y terraform packer
+    TF_VER="$(terraform --version 2>&1 | head -1 | awk '{print $2}')"
+    PACKER_VER="$(packer --version 2>&1)"
+    phase_end 8 "TF $TF_VER / Packer $PACKER_VER"
+}
+
+# ─── Phase 10: kubectl ────────────────────────────────────────────
+_phase_9_kubectl() {
+    phase_start 9
+    curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /tmp/kubectl
+    sudo install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+    rm -f /tmp/kubectl
+    KUBECTL_VER="$(kubectl version --client -o yaml 2>/dev/null | grep -m1 gitVersion | awk '{print $2}')"
+    phase_end 9 "$KUBECTL_VER"
+}
+
+# ─── Phase 11: Kubespray venv ─────────────────────────────────────
+_phase_10_kubespray() {
+    phase_start 10
+    mkdir -p "$HOME/kubespray-env"
+    python3 -m venv "$HOME/kubespray-env"
+    source "$HOME/kubespray-env/bin/activate"
+    pip install --upgrade pip
+    echo "📥 Installing Kubespray Python dependencies..."
+    TMP_DIR=$(mktemp -d)
+    git clone --depth 1 --branch v2.32.0 https://github.com/kubernetes-sigs/kubespray.git "$TMP_DIR/kubespray"
+    if [ -f "$TMP_DIR/kubespray/requirements.txt" ]; then
+        pip install -r "$TMP_DIR/kubespray/requirements.txt"
+        echo "✅ Kubespray dependencies installed in venv!"
+    else
+        pip install ansible-core cryptography netaddr jinja2
+    fi
+    rm -rf "$TMP_DIR"
+    deactivate
+    phase_end 10
+}
+
+# ─── Phase 12: SSH Key ──────────────────────────────────────────
+_phase_11_ssh() {
+    phase_start 11
+    if [ ! -f "$HOME/.ssh/id_rsa" ]; then
+        ssh-keygen -t rsa -b 4096 -f "$HOME/.ssh/id_rsa" -N ""
+        echo "✅ New SSH key generated."
+    else
+        echo "i️  SSH key already exists, skipping."
+    fi
+    phase_end 11
+}
+
+# ─── Phase 13: less/Pygmentize ───────────────────────────────────
+_phase_12_less() {
+    phase_start 12
+    cat > "$HOME/.lessfilter" << 'LESSFILTER'
+#!/bin/bash
+case "$1" in
+    *Makefile*|*makefile*|*\.mk|\\.
+    *.awk|*.c|*.h|*.sh|*.bash|*.zsh|*.py|*.rb|\\.
+    *.js|*.mjs|*.cjs|*.jsx|*.ts|*.tsx|*.go|*.rs|\\.
+    *.java|*.kt|*.scala|\\.
+    *.yaml|*.yml|*.json|*.xml|*.toml|*.ini|*.cfg|*.conf|\\.
+    *.md|*.rst|*.txt|\\.
+    *.sql|*.html|*.css|*.scss|*.less|*.php|*.pl|*.lua|\\.
+    *.vim|*.tf|*.hcl|*.tfvars|*.tfstate|\\.
+    *.dockerfile|*.Dockerfile|*.env|*.envrc|\\.
+    *.patch|*.diff|\\.
+    *.groovy|*.gradle|\\.
+    *.zig|*.nim|*.tex|*.bib)
+        pygmentize -O style=rrt -f terminal256 "$1" 2>/dev/null || cat "$1"
+        ;;
+    *)
+        cat "$1"
+        ;;
+esac
+LESSFILTER
+    chmod +x "$HOME/.lessfilter"
+    SHELL_RC="$HOME/.bashrc"
+    if ! grep -q 'lessfilter' "$SHELL_RC" 2>/dev/null; then
+        cat >> "$SHELL_RC" << 'BASHRC'
+# less + Pygmentize (rrt theme)
+export LESSOPEN='|~/.lessfilter %s'
+export LESS='-R'
+BASHRC
+    fi
+    export LESSOPEN='|~/.lessfilter %s'
+    export LESS='-R'
+    echo "✅ less will use pygmentize (rrt) for syntax-highlighted file viewing."
+    phase_end 12
+}
+
+# ─── Error handling ────────────────────────────────────────────────
 BOLD='\033[1m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
 cleanup() {
+    # Se SKIP_CLEANUP è true, non fare nulla
+    if [ "${SKIP_CLEANUP:-false}" = "true" ]; then
+        return 0
+    fi
+
     local ec=$?
     if [ -n "$CURRENT_PHASE" ] && [ -f "$STATUS_FILE" ]; then
         if [ $ec -ne 0 ]; then
@@ -90,6 +297,112 @@ cleanup() {
     tmux kill-session -t bastion-setup 2>/dev/null || true
 }
 trap cleanup EXIT
+
+# ─── Argomenti da riga di comando ─────────────────────────────────
+SHOW_LIST=false
+SINGLE_PHASE=""
+
+# Flag per evitare cleanup in modalità --list/--help (inizializzato a true)
+SKIP_CLEANUP=true
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --list)
+            SHOW_LIST=true
+            shift
+            ;;
+        --phase=*)
+            SINGLE_PHASE="${1#*=}"
+            SKIP_CLEANUP=false
+            shift
+            ;;
+        --all)
+            SKIP_CLEANUP=false
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --list              Mostra le fasi disponibili"
+            echo "  --phase=N           Esegui solo la fase N (es. --phase=3)"
+            echo "  --phase=N,M         Esegui le fasi N e M (es. --phase=0,9)"
+            echo "  --phase=N-M         Esegui le fasi da N a M inclusive (es. --phase=8-10)"
+            echo "  --all               Esegui tutte le fasi (default)"
+            echo "  --help, -h          Mostra questo messaggio"
+            exit 0
+            ;;
+        *)
+            echo "Argomento sconosciuto: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# ─── Tmux launcher ───────────────────────────────────────────────
+SCRIPT_PATH="$(readlink -f "$0")"
+
+if $SHOW_LIST; then
+    list_phases
+    exit 0
+fi
+
+# Funzione per eseguire una fase singola senza tmux
+_run_single_phase() {
+    local phase=$1
+    init_status_file
+    create_dashboard_script
+
+    # Modalità tmux o classica?
+    if [ -z "${TMUX:-}" ] && [ -z "${BASTION_NO_TMUX:-}" ]; then
+        echo "🚀 Launching setup in tmux dashboard mode..."
+
+        if ! command -v tmux &>/dev/null; then
+            sudo apt-get update -qq 2>/dev/null
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tmux >/dev/null 2>&1 || {
+                echo "⚠ tmux unavailable, falling back to classic mode."
+                exec bash "$SCRIPT_PATH" --no-tmux --phase="$phase"
+            }
+        fi
+
+        tmux kill-session -t bastion-setup 2>/dev/null || true
+        tmux new-session -d -s bastion-setup 2>/dev/null || {
+            echo "⚠ Could not create tmux session, falling back." >&2
+            exec bash "$SCRIPT_PATH" --no-tmux --phase="$phase"
+        }
+        tmux split-window -v -l 15 -b -t bastion-setup 2>/dev/null || true
+        tmux send-keys -t bastion-setup.0 "exec bash $DASHBOARD_SCRIPT $STATUS_FILE" Enter 2>/dev/null || true
+        tmux send-keys -t bastion-setup.1 "export LOG_FILE='$LOG_FILE'" Enter "BASTION_NO_TMUX=1 script -q -c 'bash $SCRIPT_PATH --no-tmux --phase=$phase' \"\$LOG_FILE\"" Enter 2>/dev/null || true
+        tmux attach-session -t bastion-setup
+        exit 0
+    fi
+
+    # Modalità classica
+    if [ "${1:-}" = "--no-tmux" ]; then
+        echo "Classic mode (no tmux dashboard)."
+    fi
+
+    # Esegui la fase specificata
+    case "$phase" in
+        0) _phase_0_java ;;
+        1) _phase_1_deps ;;
+        2) _phase_2_vim ;;
+        3) _phase_3_nodejs ;;
+        4) _phase_4_opencode ;;
+        5) _phase_5_hermes ;;
+        6) _phase_6_pi ;;
+        7) _phase_7_ansible ;;
+        8) _phase_8_terraform ;;
+        9) _phase_9_kubectl ;;
+        10) _phase_10_kubespray ;;
+        11) _phase_11_ssh ;;
+        12) _phase_12_less ;;
+        *)
+            echo "Fase non valida: $phase (valori consentiti: 0-12)" >&2
+            exit 1
+            ;;
+    esac
+}
 
 # ─── Dashboard script generation ────────────────────────────────
 create_dashboard_script() {
@@ -157,38 +470,29 @@ DASHBOARD
     chmod +x "$DASHBOARD_SCRIPT"
 }
 
-# ─── Tmux launcher ───────────────────────────────────────────────
-SCRIPT_PATH="$(readlink -f "$0")"
+# ─── Parse phase ranges/comma-separated ────────────────────────────
+parse_phases() {
+    local input="$1"
+    local result=""
 
-if [ -z "${TMUX:-}" ] && [ -z "${BASTION_NO_TMUX:-}" ]; then
-    echo "🚀 Launching setup in tmux dashboard mode..."
+    # Split by comma
+    IFS=',' read -ra PARTS <<< "$input"
+    for part in "${PARTS[@]}"; do
+        if [[ "$part" == *-* ]]; then
+            # Range N-M
+            local start end
+            start="${part%-*}"
+            end="${part#*-}"
+            for ((i=start; i<=end; i++)); do
+                result="$result $i"
+            done
+        else
+            result="$result $part"
+        fi
+    done
 
-    if ! command -v tmux &>/dev/null; then
-        sudo apt-get update -qq 2>/dev/null
-        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tmux >/dev/null 2>&1 || {
-            echo "⚠ tmux unavailable, falling back to classic mode."
-            exec bash "$SCRIPT_PATH" --no-tmux
-        }
-    fi
-
-    init_status_file
-    create_dashboard_script
-
-    tmux kill-session -t bastion-setup 2>/dev/null || true
-    tmux new-session -d -s bastion-setup 2>/dev/null || {
-        echo "⚠ Could not create tmux session, falling back." >&2
-        exec bash "$SCRIPT_PATH" --no-tmux
-    }
-    tmux split-window -v -l 15 -b -t bastion-setup 2>/dev/null || true
-    tmux send-keys -t bastion-setup.0 "exec bash $DASHBOARD_SCRIPT $STATUS_FILE" Enter 2>/dev/null || true
-    tmux send-keys -t bastion-setup.1 "export LOG_FILE='$LOG_FILE'" Enter "BASTION_NO_TMUX=1 script -q -c 'bash $SCRIPT_PATH' \"\$LOG_FILE\"" Enter 2>/dev/null || true
-    tmux attach-session -t bastion-setup
-    exit 0
-fi
-
-if [ "${1:-}" = "--no-tmux" ]; then
-    echo "Classic mode (no tmux dashboard)."
-fi
+    echo $result | tr ' ' '\n' | sort -nu
+}
 
 # ─── OS check ─────────────────────────────────────────────────
 if ! grep -qiE 'debian|ubuntu' /etc/os-release 2>/dev/null; then
@@ -196,176 +500,34 @@ if ! grep -qiE 'debian|ubuntu' /etc/os-release 2>/dev/null; then
     exit 1
 fi
 
+# ─── Esecuzione ────────────────────────────────────────────────────
 echo "================================================================="
 echo "🏗️  Bastion Init: OpenCode-AI, Java 17, IaC & Kubernetes"
 echo "================================================================="
 
-# 1. Java 17 (standalone per visibilità in dashboard)
-phase_start 0
-sudo apt-get update || { echo "⚠ apt update failed."; phase_end 0 "no repo"; exit 1; }
-if ! dpkg -s openjdk-17-jre-headless &>/dev/null; then
-    sudo apt-get install -y openjdk-17-jre-headless || {
-        echo "⚠ openjdk-17-jre-headless not found in repositories." >&2
-        java -version 2>&1 | head -1 && {
-            # Java is already available via different package
-            echo "ℹ️  Java binary found, proceeding."
-        } || {
-            phase_end 0 "pkg missing"
-            exit 1
-        }
-    }
+if [ -n "$SINGLE_PHASE" ]; then
+    # Parse phase list/range
+    PHASES_TO_RUN=$(parse_phases "$SINGLE_PHASE")
+
+    for phase in $PHASES_TO_RUN; do
+        _run_single_phase "$phase"
+    done
 else
-    echo "ℹ️  openjdk-17-jre-headless already installed."
+    # Esecuzione completa (default)
+    _phase_0_java
+    _phase_1_deps
+    _phase_2_vim
+    _phase_3_nodejs
+    _phase_4_opencode
+    _phase_5_hermes
+    _phase_6_pi
+    _phase_7_ansible
+    _phase_8_terraform
+    _phase_9_kubectl
+    _phase_10_kubespray
+    _phase_11_ssh
+    _phase_12_less
 fi
-JAVA_VER="$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)"
-phase_end 0 "$JAVA_VER"
-
-# 2. System update and base dependencies
-phase_start 1
-sudo apt-get install -y curl gnupg software-properties-common git unzip \
-    python3-pip python3-venv python3-pygments build-essential \
-    tmux jq dnsutils netcat-openbsd htop aria2
-TMUX_VER="$(tmux -V 2>&1 | awk '{print $2}')"
-phase_end 1 "$TMUX_VER"
-
-# 3. Vim configuration (Desert theme + line numbers)
-phase_start 2
-sudo apt-get install -y vim
-cat > "$HOME/.vimrc" << 'EOF'
-set number
-colorscheme desert
-EOF
-mkdir -p "$HOME/.vim/pack/plugins/start"
-if [ ! -d "$HOME/.vim/pack/plugins/start/vim-terraform" ]; then
-    git clone https://github.com/hashivim/vim-terraform.git "$HOME/.vim/pack/plugins/start/vim-terraform"
-fi
-VIM_VER="$(vim --version 2>&1 | head -1 | awk '{print $5}')"
-phase_end 2 "$VIM_VER"
-
-# 4. Node.js 26 installation
-phase_start 3
-curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash -
-sudo apt-get install -y nodejs
-NODE_VER="$(node --version 2>&1 | cut -c2-)"
-phase_end 3 "$NODE_VER"
-
-# 5. OpenCode AI Agent v2
-phase_start 4
-curl -fsSL https://opencode.ai/v2/install | bash
-export PATH="$HOME/.opencode/bin:$PATH"
-OPENCODE_VER="$(opencode --version 2>&1 | head -1 | awk '{print $NF}')"
-phase_end 4 "$OPENCODE_VER"
-
-# 6. Hermes Agent
-phase_start 5
-# --non-interactive: l'installer chiederebbe input; in tmux bloccherebbe la dashboard
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive
-export PATH="$HOME/.local/bin:$PATH"
-HERMES_VER="$(hermes --version 2>&1 | head -1 | awk '{print $NF}')"
-phase_end 5 "$HERMES_VER"
-
-# 7. Pi Agent
-phase_start 6
-# setsid: l'installer è interattivo su /dev/tty; in tmux verrebbe in attesa di conferma
-curl -fsSL https://pi.dev/install.sh | setsid -w sh
-export PATH="$HOME/.local/bin:$HOME/.pi/agent/bin:$PATH"
-PI_VER="$(pi --version 2>&1 | head -1 | awk '{print $NF}')"
-phase_end 6 "$PI_VER"
-
-# 8. Ansible & Proxmox Integration
-phase_start 7
-sudo add-apt-repository -y ppa:ansible/ansible
-sudo apt-get update
-sudo apt-get install -y ansible
-sudo pip3 install --break-system-packages proxmoxer requests
-ansible-galaxy collection install community.proxmox
-ANSIBLE_VER="$(ansible --version 2>&1 | head -1 | sed 's/.*\[core \([^]]*\).*/\1/')"
-phase_end 7 "$ANSIBLE_VER"
-
-# 9. HashiCorp Packer and Terraform
-phase_start 8
-curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt-get update
-sudo apt-get install -y terraform packer
-TF_VER="$(terraform --version 2>&1 | head -1 | awk '{print $2}')"
-PACKER_VER="$(packer --version 2>&1)"
-phase_end 8 "TF $TF_VER / Packer $PACKER_VER"
-
-# 10. kubectl (client Kubernetes per k3s e Kubespray)
-phase_start 9
-curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /tmp/kubectl
-sudo install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl
-rm -f /tmp/kubectl
-KUBECTL_VER="$(kubectl version --client -o yaml 2>/dev/null | grep -m1 gitVersion | awk '{print $2}')"
-phase_end 9 "$KUBECTL_VER"
-
-# 11. Python venv for Kubespray
-phase_start 10
-mkdir -p "$HOME/kubespray-env"
-python3 -m venv "$HOME/kubespray-env"
-source "$HOME/kubespray-env/bin/activate"
-pip install --upgrade pip
-echo "📥 Installing Kubespray Python dependencies..."
-TMP_DIR=$(mktemp -d)
-git clone --depth 1 --branch v2.32.0 https://github.com/kubernetes-sigs/kubespray.git "$TMP_DIR/kubespray"
-if [ -f "$TMP_DIR/kubespray/requirements.txt" ]; then
-    pip install -r "$TMP_DIR/kubespray/requirements.txt"
-    echo "✅ Kubespray dependencies installed in venv!"
-else
-    pip install ansible-core cryptography netaddr jinja2
-fi
-rm -rf "$TMP_DIR"
-deactivate
-phase_end 10
-
-# 12. SSH key generation
-phase_start 11
-if [ ! -f "$HOME/.ssh/id_rsa" ]; then
-    ssh-keygen -t rsa -b 4096 -f "$HOME/.ssh/id_rsa" -N ""
-    echo "✅ New SSH key generated."
-else
-    echo "i️  SSH key already exists, skipping."
-fi
-phase_end 11
-
-# 13. less + Pygmentize configuration (rrt theme)
-phase_start 12
-cat > "$HOME/.lessfilter" << 'LESSFILTER'
-#!/bin/bash
-case "$1" in
-    *Makefile*|*makefile*|*\.mk|\
-    *.awk|*.c|*.h|*.sh|*.bash|*.zsh|*.py|*.rb|\
-    *.js|*.mjs|*.cjs|*.jsx|*.ts|*.tsx|*.go|*.rs|\
-    *.java|*.kt|*.scala|\
-    *.yaml|*.yml|*.json|*.xml|*.toml|*.ini|*.cfg|*.conf|\
-    *.md|*.rst|*.txt|\
-    *.sql|*.html|*.css|*.scss|*.less|*.php|*.pl|*.lua|\
-    *.vim|*.tf|*.hcl|*.tfvars|*.tfstate|\
-    *.dockerfile|*.Dockerfile|*.env|*.envrc|\
-    *.patch|*.diff|\
-    *.groovy|*.gradle|\
-    *.zig|*.nim|*.tex|*.bib)
-        pygmentize -O style=rrt -f terminal256 "$1" 2>/dev/null || cat "$1"
-        ;;
-    *)
-        cat "$1"
-        ;;
-esac
-LESSFILTER
-chmod +x "$HOME/.lessfilter"
-SHELL_RC="$HOME/.bashrc"
-if ! grep -q 'lessfilter' "$SHELL_RC" 2>/dev/null; then
-    cat >> "$SHELL_RC" << 'BASHRC'
-# less + Pygmentize (rrt theme)
-export LESSOPEN='|~/.lessfilter %s'
-export LESS='-R'
-BASHRC
-fi
-export LESSOPEN='|~/.lessfilter %s'
-export LESS='-R'
-echo "✅ less will use pygmentize (rrt) for syntax-highlighted file viewing."
-phase_end 12
 
 echo ""
 echo "================================================================="
@@ -382,4 +544,3 @@ echo "================================================================="
 echo ""
 echo ""
 echo "📄 Full log: $LOG_FILE"
-echo ""
