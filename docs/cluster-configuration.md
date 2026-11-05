@@ -163,14 +163,55 @@ NAME           TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)        AG
 mio-servizio   LoadBalancer   10.233.x.x      192.168.1.120    80:32xxx/TCP   1m
 ```
 
+## Storage
+
+### Longhorn Storage (Consigliato)
+
+Longhorn è un sistema di storage distribuito ottimizzato per Kubernetes. Fornisce:
+- Storage condiviso su tutti i nodi
+- Replica automatica (default: 2 copie)
+- Snapshot e backup integrati
+- Dashboard web per monitoraggio
+
+**Installazione:**
+```bash
+# Dal root del repository
+./kubespray/scripts/longhorn-install.sh
+
+# Oppure manuale
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.1/deploy/longhorn.yaml
+```
+
+**Configurazione dischi:**
+1. Accedi alla dashboard: http://[IP-METALLB]:80
+2. Vai su Storage → Disk → Add Disk
+3. Configura su ogni nodo Kubernetes
+4. Usa StorageClass: `longhorn-local`
+
+**PVC con Longhorn:**
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mio-pvc
+spec:
+  storageClassName: longhorn-local
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 10Gi
+```
+
 ## Prossimi step
 
 1. **Aggiorna terraform/terraform.tfvars** con i parametri della topologia
 2. **Esegui Terraform**: `cd terraform && terraform init && terraform apply -parallelism=1`
 3. **Esegui Kubespray**: `./deploy.sh`
-4. **Accedi al cluster**:
+4. **Installa Longhorn**: `./kubespray/scripts/longhorn-install.sh`
+5. **Configura dischi** nella dashboard Longhorn
+6. **Accedi al cluster**:
    - Dashboard: `kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard 8443:443`
-   - Test MetalLB: crea un servizio LoadBalancer
+   - Longhorn: http://[IP-METALLB]:80
 
 ## Documentazione completa
 
@@ -178,3 +219,4 @@ mio-servizio   LoadBalancer   10.233.x.x      192.168.1.120    80:32xxx/TCP   1m
 - Kubespray: `docs/kubespray-deploy.md` (deployment K8s)
 - MetalLB: https://metallb.universe.tf/
 - Kubernetes Dashboard: https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/
+- Longhorn: https://longhorn.io/
