@@ -29,9 +29,10 @@ echo ""
 
 # ── 1. Tetris ──────────────────────────────────────────────────────────────────
 info "1. Tetris"
+svc_ip=""
 deploy_app tetris docker.io/lrakai/tetris:latest 80 80
 if [ -n "$svc_ip" ]; then
-  H=$(curl -s -o /dev/null -w "%{http_code}" "http://$svc_ip/" 2>/dev/null || echo)
+  H=$(curl -s -o /dev/null -w "%{http_code}" "http://$svc_ip/" --connect-timeout 5 2>/dev/null || echo "000")
   [ "$H" = "200" ] && pass "http://$svc_ip (Tetris)" || fail "HTTP $H su $svc_ip"
 else
   fail "Nessun IP MetalLB per tetris"
@@ -40,9 +41,10 @@ TETRIS_IP=$svc_ip
 
 # ── 2. Hello Kubernetes ────────────────────────────────────────────────────────
 info "2. Hello Kubernetes"
+svc_ip=""
 deploy_app hello-k8s docker.io/paulbouwer/hello-kubernetes:1.10.1 8080 80
 if [ -n "$svc_ip" ]; then
-  H=$(curl -s -o /dev/null -w "%{http_code}" "http://$svc_ip/" 2>/dev/null || echo)
+  H=$(curl -s -o /dev/null -w "%{http_code}" "http://$svc_ip/" --connect-timeout 5 2>/dev/null || echo "000")
   [ "$H" = "200" ] && pass "http://$svc_ip (Hello K8s)" || fail "HTTP $H su $svc_ip"
 else
   fail "Nessun IP MetalLB per hello-k8s"
@@ -51,9 +53,10 @@ HELLO_IP=$svc_ip
 
 # ── 3. Podinfo ─────────────────────────────────────────────────────────────────
 info "3. Podinfo"
+svc_ip=""
 deploy_app podinfo ghcr.io/stefanprodan/podinfo:latest 9898 9898
 if [ -n "$svc_ip" ]; then
-  H=$(curl -s -o /dev/null -w "%{http_code}" "http://$svc_ip:9898/" 2>/dev/null || echo)
+  H=$(curl -s -o /dev/null -w "%{http_code}" "http://$svc_ip:9898/" --connect-timeout 5 2>/dev/null || echo "000")
   [ "$H" = "200" ] && pass "http://$svc_ip:9898 (Podinfo)" || fail "HTTP $H su $svc_ip"
 else
   fail "Nessun IP MetalLB per podinfo"
