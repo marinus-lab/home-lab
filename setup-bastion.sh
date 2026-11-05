@@ -195,21 +195,43 @@ _phase_9_kubectl() {
 # ─── Phase 11: Kubespray venv ─────────────────────────────────────
 _phase_10_kubespray() {
     phase_start 10
+    
+    # Controllo: se venv esiste già, salti
+    if [ -d "$HOME/kubespray-env" ] && [ -f "$HOME/kubespray-env/bin/pip" ]; then
+        echo "ℹ️  Kubespray venv già esistente — salto la creazione"
+        phase_end 10
+        return 0
+    fi
+    
     mkdir -p "$HOME/kubespray-env"
     python3 -m venv "$HOME/kubespray-env"
-    source "$HOME/kubespray-env/bin/activate"
-    pip install --upgrade pip
+    
+    # Usa il python del venv in modo sicuro
+    "$HOME/kubespray-env/bin/pip" install --upgrade pip
     echo "📥 Installing Kubespray Python dependencies..."
+    
     TMP_DIR=$(mktemp -d)
-    git clone --depth 1 --branch v2.32.0 https://github.com/kubernetes-sigs/kubespray.git "$TMP_DIR/kubespray"
+    
+    # Messaggio progressivo durante il clone
+    echo "   ↳ Clonazione Kubespray da GitHub (potrebbe richiedere 1-2 minuti)..."
+    if git clone --depth 1 --branch v2.32.0 https://github.com/kubernetes-sigs/kubespray.git "$TMP_DIR/kubespray"; then
+        echo "   ✅ Git clone completato"
+    else
+        echo "   ⚠ Git clone fallito, riprovo con profondità 0..."
+        rm -rf "$TMP_DIR"
+        TMP_DIR=$(mktemp -d)
+        git clone --branch v2.32.0 https://github.com/kubernetes-sigs/kubespray.git "$TMP_DIR/kubespray"
+    fi
+    
     if [ -f "$TMP_DIR/kubespray/requirements.txt" ]; then
-        pip install -r "$TMP_DIR/kubespray/requirements.txt"
+        "$HOME/kubespray-env/bin/pip" install -r "$TMP_DIR/kubespray/requirements.txt"
         echo "✅ Kubespray dependencies installed in venv!"
     else
-        pip install ansible-core cryptography netaddr jinja2
+        "$HOME/kubespray-env/bin/pip" install ansible-core cryptography netaddr jinja2
     fi
+    
     rm -rf "$TMP_DIR"
-    deactivate
+    
     phase_end 10
 }
 
@@ -305,6 +327,9 @@ SINGLE_PHASE=""
 # Flag per evitare cleanup in modalità --list/--help (inizializzato a true)
 SKIP_CLEANUP=true
 
+# Flag per modalità non-tmux (usato quando si specifica --phase o --all)
+FORCE_NO_TMUX=false
+
 while [ $# -gt 0 ]; do
     case "$1" in
         --list)
@@ -313,11 +338,11 @@ while [ $# -gt 0 ]; do
             ;;
         --phase=*)
             SINGLE_PHASE="${1#*=}"
-            SKIP_CLEANUP=false
+            FORCE_NO_TMUX=true
             shift
             ;;
         --all)
-            SKIP_CLEANUP=false
+            FORCE_NO_TMUX=true
             shift
             ;;
         --help|-h)
@@ -354,31 +379,32 @@ _run_single_phase() {
     create_dashboard_script
 
     # Modalità tmux o classica?
-    if [ -z "${TMUX:-}" ] && [ -z "${BASTION_NO_TMUX:-}" ]; then
+    # Usa tmux SOLO se non è forzata la modalità non-tmux e non siamo già in tmux
+    if [ -z "${TMUX:-}" ] && [ -z "${BASTION_NO_TMUX:-}" ] && [ "${FORCE_NO_TMUX:-false}" = "false" ]; then
         echo "🚀 Launching setup in tmux dashboard mode..."
 
         if ! command -v tmux &>/dev/null; then
             sudo apt-get update -qq 2>/dev/null
             sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tmux >/dev/null 2>&1 || {
                 echo "⚠ tmux unavailable, falling back to classic mode."
-                exec bash "$SCRIPT_PATH" --no-tmux --phase="$phase"
+                exec bash "$SCRIPT_PATH" --phase="$phase"
             }
         fi
 
         tmux kill-session -t bastion-setup 2>/dev/null || true
         tmux new-session -d -s bastion-setup 2>/dev/null || {
             echo "⚠ Could not create tmux session, falling back." >&2
-            exec bash "$SCRIPT_PATH" --no-tmux --phase="$phase"
+            exec bash "$SCRIPT_PATH" --phase="$phase"
         }
         tmux split-window -v -l 15 -b -t bastion-setup 2>/dev/null || true
         tmux send-keys -t bastion-setup.0 "exec bash $DASHBOARD_SCRIPT $STATUS_FILE" Enter 2>/dev/null || true
-        tmux send-keys -t bastion-setup.1 "export LOG_FILE='$LOG_FILE'" Enter "BASTION_NO_TMUX=1 script -q -c 'bash $SCRIPT_PATH --no-tmux --phase=$phase' \"\$LOG_FILE\"" Enter 2>/dev/null || true
+        tmux send-keys -t bastion-setup.1 "export LOG_FILE='$LOG_FILE'" Enter "BASTION_NO_TMUX=1 script -q -c 'bash $SCRIPT_PATH --phase=$phase' \"\$LOG_FILE\"" Enter 2>/dev/null || true
         tmux attach-session -t bastion-setup
         exit 0
     fi
 
-    # Modalità classica
-    if [ "${1:-}" = "--no-tmux" ]; then
+    # Modalità classica (senza tmux)
+    if [ "${FORCE_NO_TMUX:-false}" = "true" ] || [ -n "${BASTION_NO_TMUX:-}" ]; then
         echo "Classic mode (no tmux dashboard)."
     fi
 
