@@ -42,7 +42,7 @@ TETRIS_IP=$svc_ip
 # ── 2. Hello Kubernetes ────────────────────────────────────────────────────────
 info "2. Hello Kubernetes"
 svc_ip=""
-deploy_app hello-k8s docker.io/paulbouwer/hello-kubernetes:1.10.1 8080 80
+deploy_app hello-k8s docker.io/paulbouwer/hello-kubernetes:1.11 8080 80
 if [ -n "$svc_ip" ]; then
   H=$(curl -s -o /dev/null -w "%{http_code}" "http://$svc_ip/" --connect-timeout 5 2>/dev/null || echo "000")
   [ "$H" = "200" ] && pass "http://$svc_ip (Hello K8s)" || fail "HTTP $H su $svc_ip"
