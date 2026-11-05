@@ -38,6 +38,32 @@ echo ""
 info "Per generare un nuovo token di accesso (validità 12h):"
 echo "  kubectl -n $NAMESPACE create token admin-dashboard --duration=12h"
 echo ""
-info "Per accedere via port-forward:"
-echo "  kubectl -n $NAMESPACE port-forward svc/kubernetes-dashboard 8443:443"
-echo "  poi apri: https://localhost:8443"
+
+# ── Accesso esterno con MetalLB ─────────────────────────────────────────────
+info "Configurazione accesso esterno..."
+
+# Controlliamo se MetalLB è disponibile
+if kubectl get pods -n metallb-system &>/dev/null; then
+    # Patch del servizio Dashboard per usare MetalLB
+    kubectl patch svc/kubernetes-dashboard -n $NAMESPACE -p '{"spec":{"type":"LoadBalancer"}}' 2>/dev/null || {
+        echo "   ⚠️ Impossibile patchare il servizio Dashboard"
+    }
+    
+    echo "   ↳ Attendendo assegnazione IP da MetalLB..."
+    sleep 3
+    
+    EXTERNAL_IP=$(kubectl get svc kubernetes-dashboard -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+    
+    if [ -n "$EXTERNAL_IP" ]; then
+        ok "Dashboard accessibile su: https://${EXTERNAL_IP}:443"
+        info "Token di accesso:"
+        kubectl -n $NAMESPACE create token admin-dashboard --duration=12h 2>/dev/null || echo "   (genera il token con: kubectl -n $NAMESPACE create token admin-dashboard --duration=12h)"
+    else
+        echo "   ⚠️ IP non ancora assegnato (MetalLB potrebbe impiegare qualche secondo)"
+        echo "   Verifica con: kubectl get svc -n $NAMESPACE"
+    fi
+else
+    info "MetalLB non trovato. Usa il port-forward:"
+    echo "  kubectl -n $NAMESPACE port-forward svc/kubernetes-dashboard 8443:443"
+    echo "  poi apri: https://localhost:8443"
+fi
