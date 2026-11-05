@@ -213,10 +213,16 @@ home-lab/
 ## Quick start
 
 ```bash
-# 1. Bastion — installa tutto il tooling (inclusi OpenCode v2, Hermes Agent e Pi Agent)
+# 1. Bastion — mostra le fasi disponibili
+bash setup-bastion.sh --list
+
+# 2. Bastion — installa una singola fase (es. solo Terraform/Packer + kubectl)
+bash setup-bastion.sh --phase=8,9
+
+# Oppure esecuzione completa
 bash setup-bastion.sh
 
-# 1b. (Opzionale) Provider LLM custom OpenAI-compatible
+# 2b. (Opzionale) Provider LLM custom OpenAI-compatible
 bash configure-ai-agents.sh
 
 # 2. Inizializzazione — crea credenziali Proxmox e configurazione rete

@@ -103,34 +103,51 @@ Il bastion è la macchina da cui si controlla tutto. Può essere una VM su Proxm
 
 ### Esecuzione
 
-```bash
-# Clona il repository sul bastion
-git clone <repo-url> ~/home-lab
-cd ~/home-lab
+Lo script `setup-bastion.sh` supporta diverse modalità di esecuzione:
 
-# Avvia lo script di setup (richiede Debian/Ubuntu)
+```bash
+# Esecuzione completa (default, tutte le fasi)
 bash setup-bastion.sh
+
+# Mostra le fasi disponibili con i loro ID
+bash setup-bastion.sh --list
+```
+
+**Selezione singola fase o gruppi di fasi:**
+
+```bash
+# Esegui solo la fase 3 (Node.js 26)
+bash setup-bastion.sh --phase=3
+
+# Esegui più fasi separate da virgola (es. 0, 9)
+bash setup-bastion.sh --phase=0,9
+
+# Esegui un range di fasi (es. 8-10: Terraform, Packer, kubectl)
+bash setup-bastion.sh --phase=8-10
+
+# Esegui tutte le fasi (uguale a nessun argomento)
+bash setup-bastion.sh --all
 ```
 
 ### Cosa installa
 
-Lo script usa una dashboard tmux per mostrare il progresso in tempo reale:
+Lo script usa una dashboard tmux per mostrare il progresso in tempo reale. Ogni fase ha un ID numerico che può essere usato con `--phase=N`:
 
-| Fase | Cosa viene installato |
-|------|-----------------------|
-| 1 | OpenJDK 17 |
-| 2 | Dipendenze sistema (curl, git, python3, jq, tmux, htop...) |
-| 3 | Vim con tema desert e plugin Terraform |
-| 4 | Node.js 26 |
-| 5 | OpenCode AI Agent v2 |
-| 6 | Hermes Agent |
-| 7 | Pi Agent |
-| 8 | Ansible + modulo community.proxmox + proxmoxer |
-| 9 | Terraform + Packer (HashiCorp APT repo) |
-| 10 | kubectl (binario ufficiale da dl.k8s.io) |
-| 11 | **Venv Python `~/kubespray-env`** con dipendenze Kubespray |
-| 12 | Chiave SSH RSA 4096-bit in `~/.ssh/id_rsa` |
-| 13 | less + Pygmentize (syntax highlight nei file) |
+| ID | Cosa viene installato |
+|-----|------------------------|
+| 0 | OpenJDK 17 |
+| 1 | Dipendenze sistema (curl, git, python3, jq, tmux, htop...) |
+| 2 | Vim con tema desert e plugin Terraform |
+| 3 | Node.js 26 |
+| 4 | OpenCode AI Agent v2 |
+| 5 | Hermes Agent |
+| 6 | Pi Agent |
+| 7 | Ansible + modulo community.proxmox + proxmoxer |
+| 8 | Terraform + Packer (HashiCorp APT repo) |
+| 9 | kubectl (binario ufficiale da dl.k8s.io) |
+| 10 | **Venv Python `~/kubespray-env`** con dipendenze Kubespray |
+| 11 | Chiave SSH RSA 4096-bit in `~/.ssh/id_rsa` |
+| 12 | less + Pygmentize (syntax highlight nei file) |
 
 ### Verifica
 
