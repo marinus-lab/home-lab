@@ -22,7 +22,7 @@ Questo documento descrive la configurazione attuale del cluster Kubernetes e com
 │  └──────────┴──────────┴──────────┘                         │
 │           (192.168.1.220-222)                               │
 │                                                             │
-│  MetalLB: 192.168.1.120-192.168.1.135 (16 IP)               │
+│  MetalLB: ${NET_PREFIX}.120-${NET_PREFIX}.135 (16 IP)               │
 │  Dashboard: Kubernetes Dashboard UI                         │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -72,12 +72,15 @@ Se vuoi usare una topologia diversa, modifica questi parametri:
 
 ### Addons abilitati
 
-Nel file `kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml`:
+Nel file `kubespray/inventory/homelab/group_vars/k8s_cluster/addons.yml` (gestito da `init-project.sh`):
 
 ```yaml
 # ── Kubernetes Dashboard ──────────────────────────────────
-dashboard_enabled: true
-# Accesso: kubectl port-forward -n kube-system svc/kubernetes-dashboard 8443:443
+# La dashboard upstream è stata rimossa da Kubespray (v2.21+).
+# Viene installata post-deploy via scripts/install-dashboard.sh
+# (abilitata da init-project.sh con il flag install_dashboard: true)
+# install_dashboard: true
+# Accesso: kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard 8443:443
 
 # ── MetalLB ────────────────────────────────────────────────
 metallb_enabled: true
@@ -85,7 +88,8 @@ metallb_config:
   address_pools:
     primary:
       ip_range:
-        - 192.168.1.120-192.168.1.135
+        # Configurato da init-project.sh in base alla subnet (es. 192.168.1.120-192.168.1.135)
+        - ${NET_PREFIX}.120-${NET_PREFIX}.135
       auto_assign: true
       avoid_buggy_ips: true
   layer2:
@@ -104,7 +108,7 @@ helm_enabled: true
 **Kubernetes Dashboard (dopo deployment):**
 ```bash
 # Port-forward al servizio (se non ha LoadBalancer)
-kubectl port-forward -n kube-system svc/kubernetes-dashboard 8443:443
+kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard 8443:443
 
 # Visitare: https://localhost:8443
 ```
@@ -129,7 +133,7 @@ MetalLB è un load balancer software per homelab/on-premise Kubernetes. Permette
 
 ### Range IP
 
-**Range configurato**: 192.168.1.120-192.168.1.135 (16 IP)
+**Range configurato**: ${NET_PREFIX}.120-${NET_PREFIX}.135 (16 IP)  *(valore di default: 192.168.1.120-192.168.1.135, sovrascrivibile in init-project.sh)*
 
 - **Protocollo**: Layer2 (ARP, funziona sulla stessa subnet)
 - **Uso**: Automatico per servizi di tipo `LoadBalancer`
@@ -151,7 +155,7 @@ spec:
       targetPort: 8080
 ```
 
-MetalLB assegnerà automaticamente un IP da 192.168.1.120-192.168.1.135:
+MetalLB assegnerà automaticamente un IP da ${NET_PREFIX}.120-${NET_PREFIX}.135:
 
 ```bash
 $ kubectl get svc
@@ -165,7 +169,7 @@ mio-servizio   LoadBalancer   10.233.x.x      192.168.1.120    80:32xxx/TCP   1m
 2. **Esegui Terraform**: `cd terraform && terraform init && terraform apply -parallelism=1`
 3. **Esegui Kubespray**: `./deploy.sh`
 4. **Accedi al cluster**:
-   - Dashboard: `kubectl port-forward -n kube-system svc/kubernetes-dashboard 8443:443`
+   - Dashboard: `kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard 8443:443`
    - Test MetalLB: crea un servizio LoadBalancer
 
 ## Documentazione completa

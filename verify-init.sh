@@ -41,14 +41,16 @@ pass "packer/packer.pkrvars.hcl contiene token valido"
 # Verifica storage pool in packer
 grep -q "iso_storage_pool" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" || \
   fail "packer/packer.pkrvars.hcl manca iso_storage_pool"
-grep -q "iso_storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" && \
+if grep -q "iso_storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"; then
   fail "packer/packer.pkrvars.hcl ha PLACEHOLDER non sostituito per iso_storage_pool"
+fi
 pass "packer/packer.pkrvars.hcl contiene iso_storage_pool valido"
 
 grep -q "template_storage_pool" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" || \
   fail "packer/packer.pkrvars.hcl manca template_storage_pool"
-grep -q "template_storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/packer/packer.pkrvars.hcl" && \
+if grep -q "template_storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/packer/packer.pkrvars.hcl"; then
   fail "packer/packer.pkrvars.hcl ha PLACEHOLDER non sostituito per template_storage_pool"
+fi
 pass "packer/packer.pkrvars.hcl contiene template_storage_pool valido"
 
 # Verifica terraform.tfvars
@@ -58,8 +60,9 @@ pass "terraform/terraform.tfvars esiste"
 [ -f "$SCRIPT_DIR/terraform/terraform.auto.tfvars" ] || fail "terraform/terraform.auto.tfvars non esiste"
 pass "terraform/terraform.auto.tfvars esiste"
 
-grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
+if ! grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"; then
   fail "terraform/terraform.auto.tfvars token non valido o vuoto"
+fi
 pass "terraform/terraform.auto.tfvars contiene token valido"
 
 # Verifica parametri rete K8s in terraform.auto.tfvars
@@ -82,8 +85,9 @@ pass "terraform/terraform.auto.tfvars contiene worker_ip_start"
 # Verifica storage pool in terraform
 grep -q "storage_pool" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" || \
   fail "terraform/terraform.auto.tfvars manca storage_pool"
-grep -q "storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/terraform/terraform.auto.tfvars" && \
+if grep -q "storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/terraform/terraform.auto.tfvars"; then
   fail "terraform/terraform.auto.tfvars ha PLACEHOLDER non sostituito per storage_pool"
+fi
 pass "terraform/terraform.auto.tfvars contiene storage_pool valido"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -97,8 +101,9 @@ pass "terraform-k3s/terraform.tfvars esiste"
 [ -f "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" ] || fail "terraform-k3s/terraform.auto.tfvars non esiste"
 pass "terraform-k3s/terraform.auto.tfvars esiste"
 
-grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" || \
+if ! grep -q "proxmox_token_secret = \"[a-f0-9\-]*\"" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"; then
   fail "terraform-k3s/terraform.auto.tfvars token non valido o vuoto"
+fi
 pass "terraform-k3s/terraform.auto.tfvars contiene token valido"
 
 grep -q "k3s_subnet" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" || \
@@ -111,8 +116,9 @@ pass "terraform-k3s/terraform.auto.tfvars contiene k3s_gateway"
 
 grep -q "storage_pool" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" || \
   fail "terraform-k3s/terraform.auto.tfvars manca storage_pool"
-grep -q "storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars" && \
+if grep -q "storage_pool.*PLACEHOLDER" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"; then
   fail "terraform-k3s/terraform.auto.tfvars ha PLACEHOLDER non sostituito per storage_pool"
+fi
 pass "terraform-k3s/terraform.auto.tfvars contiene storage_pool valido"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -133,7 +139,9 @@ pass "~/.vault_pass ha permessi corretti (600)"
 pass "group_vars/all.yml esiste"
 
 # Verifica che il file contiene variabili Vault cifrate
-grep -q "!vault" "$SCRIPT_DIR/group_vars/all.yml" || fail "group_vars/all.yml non contiene credenziali cifrate"
+if ! grep -q "!vault" "$SCRIPT_DIR/group_vars/all.yml"; then
+  fail "group_vars/all.yml non contiene credenziali cifrate"
+fi
 pass "group_vars/all.yml contiene credenziali cifrate"
 
 # Verifica che le variabili attese sono presenti nel file
@@ -178,7 +186,7 @@ API_RESPONSE=$(curl -s -k -X GET \
   "https://$PROXMOX_URL:8006/api2/json/access/users/$AUTOMATION_USERNAME@pve/token" \
   -H "Authorization: PVEAPIToken=$PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_SECRET" 2>&1 || echo '{"data":[]}')
 
-if echo "$API_RESPONSE" | grep -q "\"data\""; then
+if echo "$API_RESPONSE" | grep -q '"data"'; then
   pass "Token API funzionante"
 else
   fail "Token API non funzionante (secret sbagliato?)"
@@ -235,22 +243,8 @@ fi
 
 # ───────────────────────────────────────────────────────────────────────────────
 echo ""
-echo "📦 DIPENDENZE"
-echo "───────────────────────────────────────────────────────────────────────────"
-
-for cmd in curl ansible-vault terraform packer python3; do
-  command -v "$cmd" >/dev/null || fail "$cmd non trovato"
-  pass "$cmd disponibile"
-done
-
-# ───────────────────────────────────────────────────────────────────────────────
-echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  ✅ TUTTE LE VERIFICHE PASSATE"
+echo -e "  ${GREEN}✅ VERIFICA COMPLETATA — TUTTI I CONTROLLI PASSATI${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Prossimi passi:"
-echo "  1. cd packer && ./build.sh              (crea template VM)"
-echo "  2. cd ../terraform && terraform apply   (crea VM K8s)"
-echo "  3. cd ../kubespray && ./deploy.sh       (installa Kubernetes)"
-echo ""
+exit 0

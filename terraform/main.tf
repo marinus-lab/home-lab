@@ -4,7 +4,7 @@ terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
-      version = "~> 0.66"
+      version = "~> 0.114"
     }
     local = {
       source  = "hashicorp/local"
@@ -14,10 +14,10 @@ terraform {
 }
 
 provider "proxmox" {
-  endpoint  = var.proxmox_url
+  endpoint = var.proxmox_url
   # formato token: "user@realm!tokenname=<secret-uuid>"
   api_token = "${var.proxmox_token_id}=${var.proxmox_token_secret}"
-  insecure  = true  # Proxmox usa certificato TLS self-signed di default
+  insecure  = true # Proxmox usa certificato TLS self-signed di default
 }
 
 locals {

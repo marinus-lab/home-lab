@@ -14,11 +14,15 @@ metrics_server_resizer_nanny_cpu: "5m"
 metrics_server_resizer_nanny_mem: "32Mi"
 
 # ── Kubernetes Dashboard ────────────────────────────────────────────────────────
-# La dashboard upstream è stata rimossa da Kubespray (v2.21+).
-# Viene installata post-deploy tramite lo script dedicato:
+# La dashboard upstream è stata rimossa da Kubespray (v2.21+): il ruolo
+# kubernetes-apps/kubernetes-dashboard NON esiste più e il flag
+# dashboard_enabled non ha alcun effetto su Kubespray.
+# L'installazione avviene post-deploy via script dedicato, invocato
+# automaticamente da deploy.sh a fine installazione:
 #   bash kubespray/scripts/install-dashboard.sh
-# (il flag dashboard_enabled qui è deprecato/storico).
-dashboard_enabled: false
+# Il flag `install_dashboard:` (impostato da init-project.sh) decide
+# se deploy.sh la esegue automaticamente (true) o no (false).
+install_dashboard: false
 
 # ── Ingress Controller (nginx) ─────────────────────────────────────────────────
 # Espone servizi all'esterno del cluster via MetalLB.

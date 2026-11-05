@@ -204,11 +204,26 @@ _purge_fact_cache() {
   fi
 }
 
-# ── Kubernetes Dashboard ────────────────────────────────────────────────────────
-if [ -f "$SCRIPT_DIR/kubespray/scripts/install-dashboard.sh" ]; then
-  info "Installazione Kubernetes Dashboard (helm)..."
-  bash "$SCRIPT_DIR/kubespray/scripts/install-dashboard.sh" || warn "Installazione dashboard fallita (puoi riprovare manualmente)"
-fi
+# ── Kubernetes Dashboard (post-install, opzionale) ──────────────────────────────
+# La dashboard upstream non è più un ruolo Kubespray (rimossa in v2.21+):
+# viene installata con manifest ufficiale via scripts/install-dashboard.sh.
+# Il flag `install_dashboard:` in addons.yml (impostato da init-project.sh)
+# decide se eseguirla automaticamente a fine installazione.
+_install_dashboard_if_enabled() {
+  local flag=""
+  local addons="$SCRIPT_DIR/inventory/homelab/group_vars/k8s_cluster/addons.yml"
+  [ -f "$addons" ] && flag=$(grep '^install_dashboard:' "$addons" | awk '{print $2}' || true)
+  if [ "$flag" != "true" ]; then
+    info "Dashboard non abilitata (install_dashboard: $flag) — per installarla: bash \"$SCRIPT_DIR/scripts/install-dashboard.sh\""
+    return 0
+  fi
+  if [ ! -x "$SCRIPT_DIR/scripts/install-dashboard.sh" ] && [ ! -f "$SCRIPT_DIR/scripts/install-dashboard.sh" ]; then
+    warn "scripts/install-dashboard.sh non trovato — salto la dashboard"
+    return 0
+  fi
+  info "Installazione Kubernetes Dashboard (manifest ufficiale)..."
+  bash "$SCRIPT_DIR/scripts/install-dashboard.sh" || warn "Installazione dashboard fallita (puoi riprovare manualmente)"
+}
 _print_post_install() {
   MASTER_IP=$(grep ansible_host "$INVENTORY" | grep master | head -1 | awk -F'ansible_host=' '{print $2}' | awk '{print $1}')
   echo ""
@@ -249,6 +264,7 @@ _install() {
     ok "kubectl e kubeconfig installati su ~/.kube/config"
   fi
 
+  _install_dashboard_if_enabled
   _print_post_install
 }
 

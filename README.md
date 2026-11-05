@@ -67,22 +67,22 @@ Bastion ──API──▶ Proxmox VE
                     │
                     ├─ Template VMID 9000-9003  (Packer)
                     │       │
-                    │       ├─ clone ──▶ k8s-master-1  192.168.1.210  VMID 44555 (16 GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-master-2  192.168.1.211  VMID 44556 (16 GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-master-3  192.168.1.212  VMID 44557 (16 GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-1  192.168.1.220  VMID 44666 (16 GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-2  192.168.1.221  VMID 44667 (16 GB RAM, 4 CPU)
-                    │       ├─ clone ──▶ k8s-worker-3  192.168.1.222  VMID 44668 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-1  ${NET_PREFIX}.210  VMID 44555 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-2  ${NET_PREFIX}.211  VMID 44556 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-master-3  ${NET_PREFIX}.212  VMID 44557 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-1  ${NET_PREFIX}.220  VMID 44666 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-2  ${NET_PREFIX}.221  VMID 44667 (16 GB RAM, 4 CPU)
+                    │       ├─ clone ──▶ k8s-worker-3  ${NET_PREFIX}.222  VMID 44668 (16 GB RAM, 4 CPU)
                     │       │
-                    │       └─ clone ──▶ k3s-1  192.168.1.160  (16 GB RAM, 4 CPU)  ◄── K3S
-                    │         └─ clone ──▶ k3s-2  192.168.1.161  (16 GB RAM, 4 CPU)  ◄──
-                    │           └─ clone ──▶ k3s-3  192.168.1.162  (16 GB RAM, 4 CPU)  ◄──
+                    │       └─ clone ──▶ k3s-1  ${NET_PREFIX}.160  (16 GB RAM, 4 CPU)  ◄── K3S
+                    │         └─ clone ──▶ k3s-2  ${NET_PREFIX}.161  (16 GB RAM, 4 CPU)  ◄──
+                    │           └─ clone ──▶ k3s-3  ${NET_PREFIX}.162  (16 GB RAM, 4 CPU)  ◄──
                     │
 Bastion ──SSH──▶ 6 nodi K8s  (Kubespray)
 Bastion ──SSH──▶ 3 nodi K3S  (k3s/deploy.sh)
                     │
-                    ├─ kube-vip: 192.168.1.80 (VIP control plane via ARP)
-                    ├─ MetalLB: 192.168.1.120-192.168.1.135 (load balancing servizi)
+                    ├─ kube-vip: ${NET_PREFIX}.80 (VIP control plane via ARP)
+                    ├─ MetalLB: ${NET_PREFIX}.120-${NET_PREFIX}.135 (load balancing servizi)
                     └─ Registry locale immagini su ogni nodo
 ```
 

@@ -25,6 +25,29 @@ command -v python3 >/dev/null || error "python3 non trovato (richiesto per parsi
 [ -f "$SCRIPT_DIR/requirements.yml" ] || error "requirements.yml non trovato"
 ok "Prerequisiti OK"
 
+# ── Persistent answers (re-run senza re-interrogare tutto) ───────────────────
+# init-project.conf salva le risposte non-secret; la password vault NON viene
+# mai persistita (resta solo in ~/.vault_pass). Il file è in .gitignore.
+CONF_FILE="$SCRIPT_DIR/init-project.conf"
+if [ -f "$CONF_FILE" ]; then
+  # carica solo chiavi note, mai valori arbitrari
+  set -a
+  # shellcheck disable=SC1090
+  source <(grep -E '^(PROXMOX_HOST|API_USERNAME|K8S_SUBNET|K8S_GATEWAY|PROXMOX_BRIDGE|MASTER_IP_OCTET|WORKER_IP_OCTET|METALLB_START|METALLB_END|ENABLE_DASHBOARD|CLUSTER_NAME|KUBE_VERSION|KUBESPRAY_VERSION|VIP_IP|PACKER_ISO_POOL|PACKER_TEMPLATE_POOL|PROXMOX_NODE)=' "$CONF_FILE")
+  set +a
+fi
+
+# ask <VAR> <prompt> [default] — con VAR già valorizzata (da conf) la riusa
+ask() {
+  local var="$1" prompt="$2" def="${3:-}" cur="${!1:-}" val=""
+  if [ -n "$cur" ]; then
+    printf '%s\n' "$cur"
+    return 0
+  fi
+  read -rp "$prompt" val
+  printf '%s' "${val:-$def}"
+}
+
 # ── Input utente ──────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -38,6 +61,10 @@ echo ""
 
 # IP/hostname Proxmox
 while true; do
+  if [ -n "${PROXMOX_HOST:-}" ]; then
+    ok "Proxmox host (da init-project.conf): $PROXMOX_HOST"
+    break
+  fi
   read -rp "IP/hostname Proxmox (es. 192.168.1.10): " PROXMOX_HOST
   echo ""
 
@@ -50,7 +77,7 @@ while true; do
   break
 done
 
-# Password root Proxmox
+# Password root Proxmox (mai persistita in conf)
 while true; do
   read -rsp "Password utente root@pam di Proxmox: " PROXMOX_ROOT_PW
   echo ""
@@ -104,6 +131,7 @@ echo ""
 
 # Subnet Kubernetes
 while true; do
+  if [ -n "${K8S_SUBNET:-}" ]; then break; fi
   read -rp "Subnet Kubernetes (es. 192.168.0.0/24): " K8S_SUBNET
   echo ""
 
@@ -133,6 +161,7 @@ NET_PREFIX="${K8S_SUBNET%.*}"   # es. 192.168.1.0 → 192.168.1
 
 # Gateway Kubernetes
 while true; do
+  if [ -n "${K8S_GATEWAY:-}" ]; then break; fi
   echo ""
   read -rp "Gateway Kubernetes (es. 192.168.0.1): " K8S_GATEWAY
   echo ""
@@ -154,13 +183,14 @@ done
 
 # ── Bridge di rete Proxmox ─────────────────────────────────────────────────────
 echo ""
-read -rp "Bridge di rete Proxmox per VM (default: vmbr0): " PROXMOX_BRIDGE
+if [ -z "${PROXMOX_BRIDGE:-}" ]; then read -rp "Bridge di rete Proxmox per VM (default: vmbr0): " PROXMOX_BRIDGE; fi
 PROXMOX_BRIDGE="${PROXMOX_BRIDGE:-vmbr0}"
 echo ""
 ok "Bridge di rete: $PROXMOX_BRIDGE"
 
 # Ultimo ottetto IP primo master
 while true; do
+  if [ -n "${MASTER_IP_OCTET:-}" ]; then break; fi
   echo ""
   read -rp "Ultimo ottetto IP primo master (es. 210): " MASTER_IP_OCTET
   echo ""
@@ -182,6 +212,7 @@ done
 
 # Ultimo ottetto IP primo worker
 while true; do
+  if [ -n "${WORKER_IP_OCTET:-}" ]; then break; fi
   echo ""
   read -rp "Ultimo ottetto IP primo worker (es. 220): " WORKER_IP_OCTET
   echo ""
@@ -213,8 +244,8 @@ echo ""
 echo "🌐 CONFIGURAZIONE METALLB"
 echo ""
 while true; do
-  read -rp "Ottetto inizio pool MetalLB (es. 120): " METALLB_START
-  read -rp "Ottetto fine pool MetalLB (es. 135): " METALLB_END
+  [ -z "${METALLB_START:-}" ] && read -rp "Ottetto inizio pool MetalLB (es. 120): " METALLB_START
+  [ -z "${METALLB_END:-}" ] && read -rp "Ottetto fine pool MetalLB (es. 135): " METALLB_END
   echo ""
 
   if [ -z "$METALLB_START" ] || [ -z "$METALLB_END" ]; then
@@ -236,7 +267,7 @@ ok "Rete Kubernetes configurata"
 
 # ── Dashboard Kubernetes ──────────────────────────────────────────────────────
 echo ""
-read -rp "Abilitare Kubernetes Dashboard? (s/N): " ENABLE_DASHBOARD
+if [ -z "${ENABLE_DASHBOARD:-}" ]; then read -rp "Abilitare Kubernetes Dashboard? (s/N): " ENABLE_DASHBOARD; fi
 ENABLE_DASHBOARD="${ENABLE_DASHBOARD:-n}"
 
 # ── KUBERNETES SETUP ──────────────────────────────────────────────────────────
@@ -322,6 +353,7 @@ done
 echo ""
 echo "Versione Kubernetes supportata: $DEFAULT_KUBE_VERSION"
 while true; do
+  if [ -n "${KUBE_VERSION:-}" ]; then break; fi
   read -rp "Versione Kubernetes (default: $DEFAULT_KUBE_VERSION, Enter per confermare): " KUBE_VERSION
   KUBE_VERSION="${KUBE_VERSION:-$DEFAULT_KUBE_VERSION}"
   if echo "$KUBE_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -334,6 +366,7 @@ done
 # ── Nome cluster ─────────────────────────────────────────────────────────
 echo ""
 while true; do
+  if [ -n "${CLUSTER_NAME:-}" ]; then break; fi
   read -rp "Nome cluster (default: homelab): " CLUSTER_NAME
   CLUSTER_NAME="${CLUSTER_NAME:-homelab}"
   if echo "$CLUSTER_NAME" | grep -qE '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'; then
@@ -365,6 +398,10 @@ kube_version: $KUBE_VERSION
 # Tag release da usare per il clone. Vuoto = branch main.
 kubespray_version: $KUBESPRAY_VERSION
 
+# ── etcd ────────────────────────────────────────────────────────────────────────
+# Dischi lenti (fdatasync > 1s): il default 5000ms causa elezioni leader spurie.
+etcd_election_timeout: "10000"
+
 # ── DNS upstream ───────────────────────────────────────────────────────────────
 upstream_dns_servers:
   - 1.1.1.1
@@ -381,6 +418,19 @@ ntp_servers:
   - 0.it.pool.ntp.org
   - 1.it.pool.ntp.org
   - 2.it.pool.ntp.org
+
+# ── Calico (CNI) ───────────────────────────────────────────────────────────────
+# Queste chiavi stanno in all.yml perché deploy.sh le ricopia nel clone;
+# k8s_cluster/k8s-cluster.yml e k8s-net-plugin.yml mantengono gli stessi valori.
+kube_network_plugin: calico
+calico_ipip_mode: Always
+calico_vxlan_mode: Never
+calico_network_backend: bird
+calico_mtu: 1480
+kube_service_addresses: 10.96.0.0/12
+kube_pods_subnet: 10.244.0.0/16
+kube_proxy_mode: ipvs
+kube_proxy_strict_arp: true
 
 # ── SSH ────────────────────────────────────────────────────────────────────────
 ansible_user: ubuntu
@@ -587,22 +637,24 @@ K8SCLUSTER_YML="$SCRIPT_DIR/kubespray/inventory/homelab/group_vars/k8s_cluster/k
 if [ -f "$ADDONS_YML" ]; then
   info "Configurazione kube-vip / MetalLB..."
   # Richiedi il VIP (IP dell'API server virtuale) — default: subnet.80
-  read -rp "IP VIP kube-vip (default: ${NET_PREFIX}.80): " VIP_IP
+  if [ -z "${VIP_IP:-}" ]; then read -rp "IP VIP kube-vip (default: ${NET_PREFIX}.80): " VIP_IP; fi
   VIP_IP="${VIP_IP:-${NET_PREFIX}.80}"
   # Richiedi il range pool MetalLB — default: subnet.120-135
-  read -rp "Range pool MetalLB (default: ${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}): " METALLB_RANGE
+  if [ -z "${METALLB_RANGE:-}" ]; then
+    read -rp "Range pool MetalLB (default: ${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}): " METALLB_RANGE
+  fi
   METALLB_RANGE="${METALLB_RANGE:-${NET_PREFIX}.${METALLB_START}-${NET_PREFIX}.${METALLB_END}}"
   echo ""
   # Sincronizza nel repo (file tracciato da git — applica subito)
   sed -i "s|^kube_vip_address: .*|kube_vip_address: $VIP_IP|" "$ADDONS_YML"
   sed -i "s|^\( *- \)[0-9.]*\.[0-9]*-[0-9.]*\.[0-9]* *$|\1$METALLB_RANGE|" "$ADDONS_YML"
-  # Dashboard on/off
+  # Dashboard on/off — flag letto da deploy.sh
   if [[ "$ENABLE_DASHBOARD" =~ ^[sS] ]]; then
-    sed -i "s|^dashboard_enabled: .*|dashboard_enabled: true|" "$ADDONS_YML"
-    ok "Dashboard abilitata"
+    sed -i "s|^install_dashboard: .*|install_dashboard: true|" "$ADDONS_YML"
+    ok "Dashboard abilitata (install_dashboard: true)"
   else
-    sed -i "s|^dashboard_enabled: .*|dashboard_enabled: false|" "$ADDONS_YML"
-    ok "Dashboard disabilitata"
+    sed -i "s|^install_dashboard: .*|install_dashboard: false|" "$ADDONS_YML"
+    ok "Dashboard disabilitata (install_dashboard: false)"
   fi
   # Verifica che le modifiche siano state applicate
   if grep -q "kube_vip_address: $VIP_IP" "$ADDONS_YML" && \
@@ -907,11 +959,9 @@ fi
 TERRAFORM_SECRET=$(echo "$TERRAFORM_BODY" | grep -oP '"value"\s*:\s*"\K[^"]+' | head -1)
 
 if [ -z "$TERRAFORM_SECRET" ]; then
-  warn "Token Terraform non generato — usa lo stesso di Packer"
-  TERRAFORM_SECRET="$TOKEN_SECRET"
-else
-  ok "Token Terraform creato"
+  error "Token Terraform non generato. Risposta: $TERRAFORM_BODY"
 fi
+ok "Token Terraform creato"
 
 # ── Aggiorna i file con i token e il nodo ────────────────────────────────────
 info "Aggiornamento file di configurazione con token, nodo e storage Proxmox..."
@@ -933,6 +983,32 @@ sed -i "s|\"PLACEHOLDER_NODO\"|\"$PROXMOX_NODE\"|g" "$SCRIPT_DIR/terraform-k3s/t
 sed -i "s|\"PLACEHOLDER_TEMPLATE_POOL\"|\"$PACKER_TEMPLATE_POOL\"|g" "$SCRIPT_DIR/terraform-k3s/terraform.auto.tfvars"
 
 ok "Token, nodo e storage Proxmox inseriti nei file di configurazione"
+
+# ── Salva risposte in init-project.conf (per ri-esecuzioni) ──────────────────
+cat > "$CONF_FILE" << EOF
+# init-project.conf — risposte non-secret per init-project.sh
+# NON contiene password/token/vault (in ~/.vault_pass e file .auto.tfvars)
+# Questo file è in .gitignore
+PROXMOX_HOST="$PROXMOX_HOST"
+API_USERNAME="$API_USERNAME"
+K8S_SUBNET="$K8S_SUBNET"
+K8S_GATEWAY="$K8S_GATEWAY"
+PROXMOX_BRIDGE="$PROXMOX_BRIDGE"
+MASTER_IP_OCTET="$MASTER_IP_OCTET"
+WORKER_IP_OCTET="$WORKER_IP_OCTET"
+METALLB_START="$METALLB_START"
+METALLB_END="$METALLB_END"
+ENABLE_DASHBOARD="$ENABLE_DASHBOARD"
+CLUSTER_NAME="$CLUSTER_NAME"
+KUBE_VERSION="$KUBE_VERSION"
+KUBESPRAY_VERSION="$KUBESPRAY_VERSION"
+VIP_IP="$VIP_IP"
+PACKER_ISO_POOL="$PACKER_ISO_POOL"
+PACKER_TEMPLATE_POOL="$PACKER_TEMPLATE_POOL"
+PROXMOX_NODE="$PROXMOX_NODE"
+EOF
+chmod 600 "$CONF_FILE"
+ok "Risposte salvate in $CONF_FILE"
 
 # ── Riepilogo ─────────────────────────────────────────────────────────────────
 echo ""
