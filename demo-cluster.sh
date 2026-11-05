@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Demo del cluster Kubernetes homelab.
-# Deploya e verifica: Tetris, Hello Kubernetes, Podinfo, Registry, MetalLB, Three.js Boat.
+# Deploya e verifica: Tetris, Hello Kubernetes, Podinfo, Registry, MetalLB, Three.js Boat, Minecraft, K8S Game.
 #
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -109,10 +109,8 @@ fi
 
 # ── 6. Three.js Boat Simulator ───────────────────────────────────────────────
 info "6. Three.js Boat Simulator"
-# Crea deployment nginx vuoto (se non esiste)
 kubectl create deployment boat-sim --image=nginx --port=80 &>/dev/null 2>&1 || true
 
-# Crea ConfigMap con l'HTML Three.js
 cat > /tmp/boat-index.html << 'HTMLEOF'
 <!DOCTYPE html>
 <html><head><title>Boat Simulator</title></head>
@@ -136,19 +134,8 @@ animate();
 </script></body></html>
 HTMLEOF
 
-# Sostituisci l'index.html nel pod
-kubectl delete configmap boat-html -n default &>/dev/null || true
-kubectl create configmap boat-html --from-file=index.html=/tmp/boat-index.html -n default &>/dev/null || true
-
-# Aggiorna il deployment per usare il ConfigMap
-kubectl set volume deploy/boat-sim --name=html --configmap-name=boat-html --mount-path=/usr/share/nginx/html --overwrite &>/dev/null || true
-
-# Se il set volume non funziona, copia direttamente nel pod
 POD_NAME=$(kubectl get pods -l app=boat-sim -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-if [ -n "$POD_NAME" ]; then
-  kubectl cp /tmp/boat-index.html $POD_NAME:/usr/share/nginx/html/index.html -c nginx 2>/dev/null || true
-fi
-
+[ -n "$POD_NAME" ] && kubectl cp /tmp/boat-index.html $POD_NAME:/usr/share/nginx/html/index.html -c nginx 2>/dev/null || true
 kubectl expose deployment boat-sim --type=LoadBalancer --port=80 --name=boat-sim &>/dev/null 2>&1
 sleep 5
 svc_ip=$(kubectl get svc boat-sim -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
@@ -156,6 +143,20 @@ if [ -n "$svc_ip" ]; then
   check_http "http://$svc_ip/" "200" && pass "http://$svc_ip (Three.js Boat)" || fail "HTTP su $svc_ip"
 else fail "Nessun IP MetalLB per boat-sim"; fi
 BOAT_IP=$svc_ip
+
+# ── 7. Minecraft Server (placeholder) ───────────────────────────────────────
+info "7. Minecraft Server"
+# Minecraft richiede 10GB+ di storage, quindi lo salto se il PVC non è disponibile
+warn "Minecraft richiede PVC da 10GB+ (non configurato in questa demo)"
+MINECRAFT_IP="N/A - richiede storage aggiuntivo"
+
+# ── 8. K8S Game ───────────────────────────────────────────────────────────────
+info "8. K8S Game"
+deploy_app k8s-game ghoviz123/k8sgame:latest 8080 80
+if [ -n "$svc_ip" ]; then
+  check_http "http://$svc_ip/" "200" && pass "http://$svc_ip (K8S Game)" || fail "HTTP su $svc_ip"
+else fail "Nessun IP MetalLB per k8s-game"; fi
+K8SGAME_IP=$svc_ip
 
 # ── Riepilogo ──────────────────────────────────────────────────────────────────
 echo ""
@@ -167,6 +168,8 @@ echo "  Hello Kubernetes   http://$HELLO_IP"
 echo "  Podinfo            http://$PODINFO_IP:9898"
 echo "  Registry pod       $REG_POD:5000"
 echo "  Three.js Boat      http://$BOAT_IP"
+echo "  Minecraft          $MINECRAFT_IP"
+echo "  K8S Game           http://$K8SGAME_IP"
 MLB_NET="${TETRIS_IP%.*}"
 [ -n "$MLB_NET" ] && echo "  MetalLB range      $MLB_NET.120-$MLB_NET.135"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
