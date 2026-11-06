@@ -220,7 +220,7 @@ Addon abilitati di default:
 | `dashboard_enabled` | ✅ | Dashboard web K8s |
 | `ingress_nginx_enabled` | ✅ | Ingress Controller HTTP/HTTPS |
 | `cert_manager_enabled` | ✅ | Certificati TLS automatici |
-| `metallb_enabled` | ✅ | LoadBalancer per homelab (range: 192.168.1.120-192.168.1.135) |
+|| `metallb_enabled` | ✅ | LoadBalancer per homelab (range: ${NET_PREFIX}.120-${NET_PREFIX}.135) |
 | `local_volume_provisioner_enabled` | ❌ | Storage class hostPath |
 
 ---
@@ -525,4 +525,26 @@ sudo journalctl -u kubelet -n 50
 # - swap abilitata (Kubernetes richiede swap disabilitata)
 # - CNI non configurato correttamente
 # - certificati scaduti
+```
+
+---
+
+## Script post-deploy
+
+Dopo il deploy del cluster, gli script in `kubespray/scripts/` automatizzano le operazioni comuni:
+
+| Script | Descrizione |
+|--------|-------------|
+| `install-dashboard.sh` | Installa Kubernetes Dashboard v2.7.0 (manifest ufficiale) e crea ServiceAccount admin con token |
+| `longhorn-install.sh` | Installa Longhorn Storage v1.7.1, crea StorageClass `longhorn-local` come default, espone dashboard via MetalLB |
+| `longhorn-add-disks-all-nodes.sh` | Configura dischi Longhorn su tutti i nodi (master + worker) via API HTTP |
+| `demo-cluster.sh` | Deploy demo completa: Tetris, Hello Kubernetes 1.11, Podinfo, Registry, Three.js Boat, Minecraft (placeholder), K8S Game — verifica MetalLB, Registry, LoadBalancer |
+
+**Uso tipico post-deploy:**
+```bash
+cd kubespray
+./scripts/longhorn-install.sh
+./scripts/longhorn-add-disks-all-nodes.sh
+./scripts/install-dashboard.sh
+./demo-cluster.sh
 ```

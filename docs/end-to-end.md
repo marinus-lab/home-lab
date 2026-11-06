@@ -684,7 +684,7 @@ home-lab/
 │           └── k8s_cluster/
 │               ├── k8s-cluster.yml     #   CIDR, proxy mode, certificati
 │               ├── k8s-net-plugin.yml  #   Calico IPIP
-│               └── addons.yml          #   Helm, Dashboard, MetalLB...
+│               └── addons.yml          #   Helm, Dashboard, MetalLB (range: ${NET_PREFIX}.120-${NET_PREFIX}.135)
 │
 └── docs/
     ├── end-to-end.md                   #   guida completa
@@ -737,16 +737,28 @@ terraform init && terraform apply -parallelism=1
 # 4. Cluster Kubernetes (deploy.sh copia inventory automaticamente)
 cd ../kubespray && ./deploy.sh
 
-# 5. Verifica cluster K8s
+# 5. Installa Longhorn Storage
+./kubespray/scripts/longhorn-install.sh
+
+# 6. Configura dischi Longhorn su tutti i nodi
+./kubespray/scripts/longhorn-add-disks-all-nodes.sh
+
+# 7. Installa Dashboard Kubernetes
+./kubespray/scripts/install-dashboard.sh
+
+# 8. Verifica cluster K8s
 kubectl get nodes
 
-# 6. (Opzionale) VM K3S
+# 9. (Opzionale) Esegui demo completa
+./demo-cluster.sh
+
+# 10. (Opzionale) VM K3S
 cd ../terraform-k3s && terraform init && terraform apply -parallelism=1
 
-# 7. (Opzionale) Deploy K3S (due fasi)
+# 11. (Opzionale) Deploy K3S (due fasi)
 cd ../k3s && ./deploy.sh install && ./deploy.sh join
 
-# 8. (Opzionale) Verifica cluster K3S
+# 12. (Opzionale) Verifica cluster K3S
 kubectl --kubeconfig ~/.kube/k3s-config get nodes
 ```
 

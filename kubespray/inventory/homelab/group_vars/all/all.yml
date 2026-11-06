@@ -1,6 +1,6 @@
 ---
 # ── Cluster ────────────────────────────────────────────────────────────────────
-cluster_name: ninjam-k8s
+cluster_name: homelab
 
 # ── Versione Kubernetes ────────────────────────────────────────────────────────
 # Verificare la compatibilità con la versione Kubespray in uso:
@@ -13,7 +13,6 @@ kubespray_version: v2.32.0
 
 # ── etcd ────────────────────────────────────────────────────────────────────────
 # Dischi lenti (fdatasync > 1s): il default 5000ms causa elezioni leader spurie.
-# Equivalente di --etcd-election-timeout 10s in k3s (qui si esprime in ms).
 etcd_election_timeout: "10000"
 
 # ── DNS upstream ───────────────────────────────────────────────────────────────
@@ -33,7 +32,9 @@ ntp_servers:
   - 1.it.pool.ntp.org
   - 2.it.pool.ntp.org
 
-# ── Calico (CNI) ────────────────────────────────────────────────────────────────────
+# ── Calico (CNI) ───────────────────────────────────────────────────────────────
+# Queste chiavi stanno in all.yml perché deploy.sh le ricopia nel clone;
+# k8s_cluster/k8s-cluster.yml e k8s-net-plugin.yml mantengono gli stessi valori.
 kube_network_plugin: calico
 calico_ipip_mode: Always
 calico_vxlan_mode: Never

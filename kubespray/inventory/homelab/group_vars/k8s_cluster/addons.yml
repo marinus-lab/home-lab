@@ -22,7 +22,7 @@ metrics_server_resizer_nanny_mem: "32Mi"
 #   bash kubespray/scripts/install-dashboard.sh
 # Il flag `install_dashboard:` (impostato da init-project.sh) decide
 # se deploy.sh la esegue automaticamente (true) o no (false).
-install_dashboard: false
+install_dashboard: true
 
 # ── Ingress Controller (nginx) ─────────────────────────────────────────────────
 # Espone servizi all'esterno del cluster via MetalLB.
@@ -44,7 +44,7 @@ metallb_config:
   address_pools:
     primary:
       ip_range:
-        - 192.168.0.120-192.168.0.135
+        - 192.168.0.130-192.168.0.145
       auto_assign: true
       avoid_buggy_ips: true
   layer2:

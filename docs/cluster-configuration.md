@@ -113,6 +113,15 @@ kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard 8443:443
 # Visitare: https://localhost:8443
 ```
 
+**Bastion setup:**
+```bash
+# Installa tooling sul bastion
+bash setup-bastion.sh
+
+# Esegui solo fasi specifiche
+bash setup-bastion.sh --phase=8-10
+```
+
 **Monitoraggio risorse:**
 ```bash
 # Top nodes
@@ -208,8 +217,9 @@ spec:
 2. **Esegui Terraform**: `cd terraform && terraform init && terraform apply -parallelism=1`
 3. **Esegui Kubespray**: `./deploy.sh`
 4. **Installa Longhorn**: `./kubespray/scripts/longhorn-install.sh`
-5. **Configura dischi** nella dashboard Longhorn
-6. **Accedi al cluster**:
+5. **Configura dischi su tutti i nodi**: `./kubespray/scripts/longhorn-add-disks-all-nodes.sh`
+6. **Esegui demo**: `./demo-cluster.sh`
+7. **Accedi al cluster**:
    - Dashboard: `kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard 8443:443`
    - Longhorn: http://[IP-METALLB]:80
 

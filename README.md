@@ -162,6 +162,11 @@ home-lab/
 ├── kubespray/                             # Deploy Kubernetes
 │   ├── ansible.cfg                        # Config Ansible (ruoli, SSH, parallelismo)
 │   ├── deploy.sh                          # Comandi: install | upgrade | remove-node | reset
+│   ├── scripts/                           # Script post-deploy automatizzati
+│   │   ├── install-dashboard.sh           # Installa K8s Dashboard v2.7.0
+│   │   ├── longhorn-install.sh            # Installa Longhorn Storage v1.7.1
+│   │   ├── longhorn-add-disks-all-nodes.sh # Configura dischi su tutti i nodi
+│   │   └── demo-cluster.sh                # Demo completa (Tetris, Podinfo, Registry...)
 │   └── inventory/homelab/
 │       ├── hosts.ini                      # Inventory (generato da Terraform)
 │       └── group_vars/
@@ -282,11 +287,16 @@ bash demo-cluster.sh
 ```
 
 Lo script testa:
-1. **Tetris** (service LoadBalancer) → `http://192.168.1.120`
-2. **Hello Kubernetes** (Deployment + LoadBalancer) → `http://192.168.1.121`
-3. **Podinfo** (Deployment + LoadBalancer) → `http://192.168.1.122:9898`
+1. **Tetris** (service LoadBalancer) → `http://[IP-METALLB]`
+2. **Hello Kubernetes 1.11** (Deployment + LoadBalancer) → `http://[IP-METALLB]`
+3. **Podinfo** (Deployment + LoadBalancer) → `http://[IP-METALLB]:9898`
 4. **Registry interno** — verifica API tramite port-forward
 5. **Push al registry** via nerdctl su SSH — testa che il registry locale funzioni
+6. **Three.js Boat Simulator** (nginx + Three.js WebGL, Deployment + LoadBalancer) → `http://[IP-METALLB]`
+7. **Minecraft Server** — placeholder (richiede PVC da 10GB+ con Longhorn; saltato se non configurato)
+8. **K8S Game** (gioco per imparare Kubernetes, Deployment + LoadBalancer) → `http://[IP-METALLB]`
+
+Gli IP sono assegnati dinamicamente da MetalLB dal range `${NET_PREFIX}.120-${NET_PREFIX}.135`.
 
 Esempio di output:
 ```
@@ -294,15 +304,21 @@ Esempio di output:
   DEMO CLUSTER KUBERNETES HOMELAB
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [INFO] 1. Tetris
-[PASS] http://192.168.1.120 (Tetris)
+[PASS] http://192.168.0.131 (Tetris)
 [INFO] 2. Hello Kubernetes
-[PASS] http://192.168.1.121 (Hello K8s)
+[PASS] http://192.168.0.132 (Hello K8s)
 [INFO] 3. Podinfo
-[PASS] http://192.168.1.122:9898 (Podinfo)
+[PASS] http://192.168.0.133:9898 (Podinfo)
 [INFO] 4. Registry interno
-[PASS] Registry 10.98.158.126:5000 — "repositories":["nginx"]
+[PASS] Registry 10.109.24.79:5000 — "repositories":["nginx"]
 [INFO] 5. Registry push/pull
 [PASS] Push nginx:alpine → 10.244.69.198:5000/nginx:test
+[INFO] 6. Three.js Boat Simulator
+[PASS] http://192.168.0.134 (Three.js Boat)
+[INFO] 7. Minecraft Server
+[WARN] Minecraft richiede PVC da 10GB+ (non configurato in questa demo)
+[INFO] 8. K8S Game
+[PASS] http://192.168.0.135 (K8S Game)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ✅ DEMO COMPLETATA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
