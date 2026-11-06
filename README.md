@@ -95,20 +95,6 @@ Bastion ──SSH──▶ 3 nodi K3S  (k3s/deploy.sh)
 - **3 nodi Server** (HA embedded etcd): k3s-1/2/3 (control plane + worker, nessun taint)
 - **Totale K3S**: 3 VM (default: 16 GB RAM, 4 CPU)
 
-## Patch Kubespray
-
-Le correzioni note a Kubespray sono organizzate per versione nella directory `patches/`:
-
-```
-patches/
-└── kubespray-v2.32.0/
-    └── apply-patch.sh   # rimuove --insecure-skip-tls-verify dal ruolo cluster_roles
-```
-
-`kubespray/deploy.sh` applica automaticamente gli script `*.sh` presenti in `patches/kubespray-$KUBESPRAY_VERSION/` (fallback: `patches/$KUBESPRAY_VERSION/`) durante la fase di preparazione (`_apply_patches`). Per aggiungere una nuova correzione, creare la cartella con il tag della versione e lo script eseguibile; il deploy lo applicherà senza interventi manuali.
-
-Dettaglio dei fix per versione e regole operative: [docs/kubespray-deploy.md](docs/kubespray-deploy.md#patch-esterne-per-versione-patches).
-
 ## Struttura del repository
 
 ```
