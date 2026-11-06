@@ -248,6 +248,31 @@ Il deploy script applica automaticamente alcune patch al codice Kubespray per ri
 
 Le patch vengono applicate a ogni run di `deploy.sh`, sia su clone fresco (`~/kubespray` non esistente) sia su repo già esistente.
 
+### Patch esterne per versione (`patches/`)
+
+Oltre alle patch inline sopra, `deploy.sh` legge `kubespray_version` da `inventory/homelab/group_vars/all/all.yml` e, se esiste, esegue tutti gli script `.sh` contenuti in `patches/kubespray-<versione>/` (fallback: `patches/<versione>/`). Questo permette di isolare i fix specifici di una release senza toccare il codice inline.
+
+```
+patches/
+└── kubespray-v2.32.0/
+    └── apply-patch.sh   # vedi tabella sotto
+```
+
+Patch attualmente definite per **v2.32.0** (`ansible-core 2.19`):
+
+| # | File nel clone Kubespray | Problema | Fix |
+|---|--------------------------|----------|-----|
+| 1 | `roles/kubernetes-apps/cluster_roles/tasks/main.yml` | In alcune build è presente `--insecure-skip-tls-verify` sulla riga `kubectl apply` | Rimozione difensiva del flag (no-op se già assente) |
+| 2 | `roles/kubernetes-apps/registry/tasks/main.yml` | Con ansible-core 2.19 un `when:` che valuta a stringa è errore: `registry_storage_class != none and registry_storage_class` restituisce la stringa → "Conditional result derived from value of type 'str'" | Riscritti in predicati booleani: `not in (none, "")` |
+
+Regole per aggiungere nuove patch in futuro:
+
+1. Crea la directory `patches/kubespray-<versione>/` (il nome deve corrispondere esattamente al tag in `all.yml`).
+2. Uno o più file `*.sh`, idempotenti: controllano con `grep` se la patch è già applicata e usciranno silenziosamente in quel caso.
+3. `set -euo pipefail` obbligatorio; niente `ignore_errors` — se un task fallisce deve fallire il deploy.
+4. Non toccare blocchi `shell`/`changed_when` legittimi con `sed` globali: corrompono il YAML.
+5. Al upgrade di Kubespray, verificare se le patch della versione vecchia sono ancora necessarie (potrebbero essere state fixed upstream) e rimuoverle se obsolete.
+
 ### Comandi disponibili
 
 ```bash
