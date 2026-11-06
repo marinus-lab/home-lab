@@ -105,7 +105,9 @@ patches/
     └── apply-patch.sh   # rimuove --insecure-skip-tls-verify dal ruolo cluster_roles
 ```
 
-`kubespray/deploy.sh` applica automaticamente gli script `*.sh` presenti in `patches/$KUBESPRAY_VERSION/` durante la fase di preparazione (`_apply_patches`). Per aggiungere una nuova correzione, creare la cartella con il tag della versione e lo script eseguibile; il deploy lo applicherà senza interventi manuali.
+`kubespray/deploy.sh` applica automaticamente gli script `*.sh` presenti in `patches/kubespray-$KUBESPRAY_VERSION/` (fallback: `patches/$KUBESPRAY_VERSION/`) durante la fase di preparazione (`_apply_patches`). Per aggiungere una nuova correzione, creare la cartella con il tag della versione e lo script eseguibile; il deploy lo applicherà senza interventi manuali.
+
+Dettaglio dei fix per versione e regole operative: [docs/kubespray-deploy.md](docs/kubespray-deploy.md#patch-esterne-per-versione-patches).
 
 ## Struttura del repository
 
