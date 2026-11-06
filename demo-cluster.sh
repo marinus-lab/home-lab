@@ -152,7 +152,7 @@ MINECRAFT_IP="N/A - richiede storage aggiuntivo"
 
 # ── 8. K8S Game ───────────────────────────────────────────────────────────────
 info "8. K8S Game"
-deploy_app k8s-game ghoviz123/k8sgame:latest 8080 80
+deploy_app k8sgame nginx:alpine 80 80
 if [ -n "$svc_ip" ]; then
   check_http "http://$svc_ip/" "200" && pass "http://$svc_ip (K8S Game)" || fail "HTTP su $svc_ip"
 else fail "Nessun IP MetalLB per k8s-game"; fi
